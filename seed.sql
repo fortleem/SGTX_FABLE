@@ -57,15 +57,15 @@ INSERT OR IGNORE INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_sta
 ('t-006', 'SGTX-AE-TRD-000006-K1L2', 'Dubai Fresh Produce LLC', 'AE', 'CORPORATE', 'VERIFIED', 2, 'sha256:demo6', 18.00, 1),
 ('t-007', 'SGTX-GB-QC-000007-M3N4', 'London QC Services Ltd', 'GB', 'QUALITY_CONTROL', 'VERIFIED', 2, 'sha256:demo7', 8.50, 1);
 
--- Demo Employees (password: demo123 -> hash placeholder)
-INSERT OR IGNORE INTO employees (id, tenant_id, email, full_name, kyc_status, status, mfa_enabled, password_hash) VALUES
-('e-001', 't-001', 'ahmed@cairoimports.com', 'Ahmed Hassan', 'VERIFIED', 'ACTIVE', 1, '$demo$ahmed'),
-('e-002', 't-002', 'nguyen@saigontextiles.vn', 'Nguyen Van Minh', 'VERIFIED', 'ACTIVE', 1, '$demo$nguyen'),
-('e-003', 't-003', 'sarah@asiatradefinance.sg', 'Sarah Chen', 'VERIFIED', 'ACTIVE', 1, '$demo$sarah'),
-('e-004', 't-004', 'klaus@hamburglogistics.de', 'Klaus Weber', 'VERIFIED', 'ACTIVE', 1, '$demo$klaus'),
-('e-005', 't-005', 'admin@sgtx.io', 'SGTX Admin', 'VERIFIED', 'ACTIVE', 1, '$demo$admin'),
-('e-006', 't-006', 'omar@dubaifresh.ae', 'Omar Al-Rashid', 'VERIFIED', 'ACTIVE', 1, '$demo$omar'),
-('e-007', 't-007', 'james@londonqc.co.uk', 'James Powell', 'VERIFIED', 'ACTIVE', 1, '$demo$james');
+-- Demo Employees (password: password123 → sha256 hash)
+INSERT OR IGNORE INTO employees (id, tenant_id, email, full_name, kyc_status, status, mfa_enabled, password_hash, role_id) VALUES
+('e-001', 't-001', 'ahmed@cairoimports.eg', 'Ahmed Hassan', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-001'),
+('e-002', 't-002', 'nguyen@saigontex.vn', 'Nguyen Van Minh', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-002'),
+('e-003', 't-003', 'chen@asiafinance.sg', 'Sarah Chen', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-003'),
+('e-004', 't-004', 'muller@hamburg-log.de', 'Klaus Müller', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-004'),
+('e-005', 't-005', 'admin@sgtx.us', 'SGTX Admin', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-005'),
+('e-006', 't-006', 'omar@dubaifresh.ae', 'Omar Al-Rashid', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', NULL),
+('e-007', 't-007', 'james@londonqc.co.uk', 'James Powell', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', NULL);
 
 -- Trust Scores
 INSERT OR IGNORE INTO trust_scores (gtid, score, model_version, components, buy_mode_score, sell_mode_score) VALUES
