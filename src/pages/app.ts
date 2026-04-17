@@ -82,7 +82,7 @@ tailwind.config = {
         <button onclick="switchMode('DUAL')" id="mode-DUAL" class="px-3 py-1 rounded-full bg-sgtx-500 text-white">DUAL</button>
       </div>
       <span class="text-xs px-3 py-1 bg-green-50 text-green-700 rounded-full font-medium"><i class="fas fa-circle text-[6px] mr-1"></i>Operational</span>
-      <button onclick="showCreateModal()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sgtx-600 transition"><i class="fas fa-plus mr-1"></i>New</button>
+      <button id="new-action-btn" onclick="showCreateModal()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sgtx-600 transition"><i class="fas fa-plus mr-1"></i>New</button>
     </div>
   </header>
   <div id="content" class="p-6 fade-in"></div>

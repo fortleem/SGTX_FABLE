@@ -87,6 +87,25 @@ finance.post('/financing/:requestId/award', async (c) => {
   return c.json({ data: { agreement_id: agreeId, governor_decision: gov }, message: 'Financing awarded' });
 });
 
+// ─── FINANCING BIDS (Financier Portal) ──────────────────
+finance.post('/financing/bids', async (c) => {
+  const body = await c.req.json();
+  const id = uuid();
+  const gov = await evaluateGovernor(c.env.DB, {
+    decision_type: 'financing.bid', actor_gtid: body.actor_gtid || 'system',
+    action_context: { financing_request_id: body.financing_request_id, financier_tenant_id: body.financier_tenant_id },
+  });
+
+  await c.env.DB.prepare(`
+    INSERT INTO financing_offers (id, financing_request_id, financier_tenant_id, effective_apr, all_in_cost, conditions, bid_encrypted, status)
+    VALUES (?, ?, ?, ?, ?, ?, 1, 'SUBMITTED')
+  `).bind(id, body.financing_request_id, body.financier_tenant_id, body.effective_apr, body.all_in_cost || null, JSON.stringify({ text: body.conditions || '' })).run();
+
+  // Update request to BIDDING
+  await c.env.DB.prepare("UPDATE financing_requests SET status = 'BIDDING' WHERE id = ? AND status = 'REQUESTED'").bind(body.financing_request_id).run();
+  return c.json({ data: { id, governor_decision: gov }, message: 'Financing bid submitted (encrypted)' }, 201);
+});
+
 // ─── DISTRESSED CARGO (Phase 7) ───────────────────────
 finance.get('/distressed', async (c) => {
   const { results } = await c.env.DB.prepare(`
