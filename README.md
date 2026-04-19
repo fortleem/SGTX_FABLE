@@ -1,123 +1,127 @@
-# SGTX Platform v6.1 — Sovereign Trade Execution Infrastructure
+# SGTX Platform v6.1
 
 ## Project Overview
-- **Name**: SGTX Platform (Sovereign, AI-Governed, Non-Custodial Global Trade Execution)
-- **Version**: 6.1 (Merged Complete)
-- **Goal**: Provide infrastructure for organizations to execute cross-border trade with cryptographic certainty, AI-assisted optimization, and zero counterparty risk through non-custodial commission protection
-- **Governance Invariant**: No irreversible action without Governor approval
+- **Name**: SGTX Platform v6.1
+- **Goal**: Sovereign, AI-Governed, Non-Custodial Global Trade Execution Infrastructure
+- **Blueprint**: v6.1 (2026-04-13) — 24 Parts, 35 Microservices, 84 Governance Gates
 
-## URLs
-- **Live Dashboard**: https://3000-il85601vwqkrrkvpugkce-d0b9e1e2.sandbox.novita.ai/
-- **Health Check**: /api/health
-- **API Base**: /api/v1
+## Live URLs
+- **Sandbox**: https://3000-il85601vwqkrrkvpugkce-b32ec7bb.sandbox.novita.ai
+- **Landing**: `/`
+- **Login**: `/login`
+- **Register**: `/register`
+- **App Dashboard**: `/app`
 
-## Architecture
-Built on Cloudflare Pages with Hono + D1 (SQLite), implementing the full SGTX v6.1 blueprint:
+## Demo Accounts (password: `password123`)
+| Email | Role | Portal |
+|-------|------|--------|
+| ahmed@cairoimports.eg | Importer (CORPORATE, EG) | Importer Portal |
+| nguyen@saigontex.vn | Exporter (CORPORATE, VN) | Exporter Portal |
+| chen@asiafinance.sg | Financier (FINANCIAL, SG) | Financier Portal |
+| muller@hamburg-log.de | Logistics (LOGISTICS, DE) | Logistics Portal |
+| james@londonqc.co.uk | QC Inspector (QUALITY_CONTROL, GB) | QC Portal |
+| admin@sgtx.us | Platform Admin (CORPORATE, US) | Admin Portal |
 
-### Core Components
-- **Governor Service** — OPA + WasmEdge (simulated) + Loom logging, Ed25519 signing
-- **Commission AI Engine** — Dynamic rate calculation: `clamp(0.1%, 2.5%, base + country_boost + seasonality ± geopolitical_risk - volume_discount + perishability)`
-- **USTN Generator** — `SGTX-{JURISDICTION}-{YYYYMMDDHHMMSS}-{RANDOM8}-{VERSION}`
-- **GTID System** — `SGTX-{COUNTRY}-{TYPE}-{SEQ}-{CHECKSUM}`
-- **Jurisdiction Engine** — 27 countries, auto-blocked sanctions, high-risk enhanced DD
+## Implemented Features
 
-### 10-Phase Trade Workflow (All Implemented)
-1. **Trade Initiation** — Direct GTID entry, multi-commodity specs, Governor pre-screen
-2. **Exporter Quote** — EXW price lock, logistics sourcing
-3. **Contracting** — Commission allocation, signature collection, CommissionLock creation
-4. **Trade Finance** — Post-contract financing requests, blind bidding, credit intelligence
-5. **Physical Execution** — Shipment creation, USTN tracking, auto-generated barcodes (GS1-128), milestone confirmation, disruption predictions
-6. **Settlement** — USTN-linked settlement instructions, multi-rail verification
-7. **Distressed Cargo** — AI-driven cargo resolution, alternative buyer matching
-8. **Buyer Search** — Exporter-initiated capability broadcast
-9. **Payment Orchestrator** — PSP routing (8 aggregators: Stripe, Adyen, Fawry, Payoneer, Flutterwave, RazorpayX, M-Pesa, Mercury)
-10. **Dispute Resolution** — Filing, CommissionLock freeze, mediation
+### Backend (Hono + Cloudflare Workers)
+- **Auth**: Register, Login, Session, Logout, KYB/KYC, Employee Invite, Portal Switch, Mode Switch
+- **Identity**: Tenants CRUD, GTID Resolution, Employees, Roles/Permissions, Trust Scores, Contacts/Network
+- **Trade (Phase 1-3)**: Trade Requests, Exporter Quotes (EXW Lock), Contracts, Commission Locks, Negotiation Sessions
+- **Shipment (Phase 5-6)**: Shipments with USTN, Milestones (commission release), Barcodes (GS1-128/QR), Document Requirements, Disruption Predictions, Settlements
+- **Finance (Phase 4, 7-10)**: Financing Requests, Blind Bidding, Distressed Cargo, Buyer Search, Disputes (CommissionLock freeze), Payment Orchestrator (8 PSPs)
+- **Governance**: Governor Decisions (OPA simulation), Audit Log (Loom hash chain), Jurisdictions (31 countries), Compliance Events/Checks, Sanctions Screening, ESG Assessments, Marketplace API, Carbon Footprint, Commission Calculations, AI Inference Records, Legal Disclaimers
 
-### Governance Gates
-- **84 governance gates** across all 10 phases (as specified in blueprint)
-- Every gate enforced by Governor decision with cryptographic signature + Loom hash
-- AI operates at A2 max (can block, never force)
+### Governor Service (OPA Policies)
+All 10 phases covered with specific policy rules:
+- Phase 1: `trade.request.create`, `tenant.register`
+- Phase 2: `quote.submit`, `quote.accept`, `logistics.rfq`
+- Phase 3: `contract.create`, `contract.lock`, `commission.calculate`, `commission.release`
+- Phase 4: `financing.request`, `financing.bid`, `financing.award`
+- Phase 5: `shipment.create`, `shipment.milestone.confirm`
+- Phase 6: `settlement.execute`, `settlement.confirm`
+- Phase 7: `distressed.list`, `distressed.offer`
+- Phase 8: `buyer.search`
+- Phase 9: `payment.initiate`
+- Phase 10: `dispute.file`
+- KYB/KYC: `kyb.verify`, `kyc.verify`
 
-## API Endpoints
-
-### Identity & Tenants
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/tenants` | List all tenants |
-| GET | `/api/v1/tenants/:id` | Tenant detail with employees, contacts, trust |
-| POST | `/api/v1/tenants` | Register tenant (Governor gated) |
-| GET | `/api/v1/resolve?gtid=...` | GTID Resolution Service |
-| GET | `/api/v1/trust-scores` | All trust scores (XGBoost model) |
-| GET | `/api/v1/tenants/:id/contacts` | Network contacts |
-
-### Trade Core
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/trades` | List trades (filter by status, tenant) |
-| POST | `/api/v1/trades` | Create trade request |
-| POST | `/api/v1/quotes` | Submit exporter quote (EXW lock) |
-| POST | `/api/v1/contracts` | Create contract |
-| POST | `/api/v1/contracts/:id/sign` | Sign contract |
-| POST | `/api/v1/contracts/:id/lock` | Lock contract (creates CommissionLock + calculates commission) |
-| GET | `/api/v1/commission-locks` | All commission locks |
-| POST | `/api/v1/commission-locks/:id/release` | Release commission |
-
-### Shipments & Execution
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/shipments` | List shipments |
-| POST | `/api/v1/shipments` | Create shipment (auto-generates USTN, barcodes, doc requirements) |
-| POST | `/api/v1/shipments/:ustn/milestones` | Confirm milestone (auto-releases commission) |
-| GET | `/api/v1/shipments/:ustn/barcodes` | Get pallet barcodes |
-| POST | `/api/v1/barcodes/scan` | Scan barcode |
-
-### Finance & Settlement
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/financing` | Create financing request (post-contract only) |
-| POST | `/api/v1/financing/:id/offers` | Submit financing offer (blind bid) |
-| POST | `/api/v1/settlements` | Create settlement instruction |
-| POST | `/api/v1/payments` | Initiate payment (auto PSP routing) |
-
-### Governance
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/governor/decisions` | All governor decisions |
-| POST | `/api/v1/governor/evaluate` | Manual governor evaluation |
-| GET | `/api/v1/jurisdictions` | 27 jurisdictions (sanctions, PSPs, CBDC) |
-| POST | `/api/v1/jurisdictions/check` | Jurisdiction supremacy check |
-| GET | `/api/v1/audit` | Immutable audit log |
-| GET | `/api/v1/compliance/events` | Compliance events |
-| POST | `/api/v1/sanctions/screen` | Screen entity against sanctions |
-| GET | `/api/v1/esg` | ESG assessments |
-
-## Data Architecture
-- **Database**: Cloudflare D1 (SQLite) with 70+ tables
-- **Schema**: Full SGTX v6.1 DDL adapted for SQLite (UUIDs, JSON columns, foreign keys)
-- **Key Tables**: tenants, employees, governor_decisions, trade_requests, contracts, commission_locks, shipments, shipment_milestones, financing_requests, settlement_instructions, jurisdictions, payment_aggregators
-- **Seed Data**: 7 demo tenants, 7 employees, 5 roles, 27 jurisdictions, 8 PSP aggregators, trust scores, contacts
-
-## Jurisdiction Coverage
-- **Clear (14)**: US, DE, AE, CN, GB, EG, IN, BR, NG, KE, SA, SG, ZA, TR, VN, JP
-- **High Risk (5)**: IQ, AF, YE, LB, PK — Bank-only + enhanced DD
-- **Blocked (6)**: KP, IR, SY, CU, RU, BY — Auto-blocked
-
-## Commission Engine
-- Base rate from estimated profit margin (0.1%–2.2%)
-- Country corridor boost (VN→EG: +0.3%, CN→AE: +0.2%)
-- Seasonality adjustment (perishables: summer/holiday premium)
+### Commission AI Engine (Part 7)
+Formula: `clamp(0.1%, 2.5%, base + country_boost + seasonality ± geopolitical_risk - volume_discount + perishability ± anomaly)`
+- Base rate mapping from estimated profit margin
+- Country corridor boost (VN-EG, CN-AE, IN-US, etc.)
+- Seasonality adjustment for perishables (HS 07, 08, 20)
 - Geopolitical risk premium
-- Volume discount (10+ trades: -0.1% to -0.5%)
-- Perishability surcharge (+0.2%)
-- Final rate clamped: `max(0.1%, min(2.5%, calculated))`
+- Volume discount (10-100+ trades)
+- Full breakdown persisted in `commission_calculations` table
+
+### Frontend (Tailwind CSS + Chart.js)
+- **Portal RBAC**: Each tenant type sees only its authorized portals
+- **Dashboards**: Importer, Exporter, Logistics, Financier, QC, Regulatory, Government, Admin — each with role-specific stats and quick actions
+- **Trade Wizard**: Multi-commodity specs, GTID resolver with live preview, incoterm selection
+- **Contract Wizard**: Commission allocation slider, governing law, dispute resolution
+- **Shipment Detail**: Milestone tracker, barcode listing, document requirements, disruption predictions
+- **Commission View**: AI commission calculation breakdown with full formula components
+- **Financing**: Blind bid forms for financiers
+- **All 10 Phases**: Complete UI coverage for trades, quotes, contracts, shipments, financing, settlements, distressed cargo, buyer search, payments, disputes
+
+### Database (D1 SQLite)
+- 70+ tables across 2 migrations (1423 lines of DDL)
+- Seed data: 7 tenants, 31 jurisdictions, 8 PSPs, 1 complete trade pipeline, 3 milestones, 4 barcodes, ESG/compliance/audit data
+
+## API Endpoints Summary
+
+### Auth (`/api/v1/auth/`)
+- `POST /register` — Register org + admin
+- `POST /login` — Login
+- `GET /session` — Verify session
+- `POST /logout` — Logout
+- `POST /kyb/submit` — Submit KYB
+- `POST /kyb/verify` — Verify KYB (admin)
+
+### Identity (`/api/v1/`)
+- `GET /tenants` — List tenants
+- `GET /tenants/:id` — Tenant detail
+- `GET /resolve?gtid=` — GTID resolution
+- `GET /trust-scores` — Trust scores
+
+### Trade (`/api/v1/`)
+- `GET /trades` — List trades
+- `POST /trades` — Create trade
+- `POST /quotes` — Submit exporter quote
+- `GET /contracts` — List contracts
+- `POST /contracts` — Create contract
+- `POST /contracts/:id/lock` — Lock + CommissionLock
+
+### Shipment (`/api/v1/`)
+- `GET /shipments` — List shipments
+- `POST /shipments` — Create shipment (USTN + barcodes)
+- `POST /shipments/:ustn/milestones` — Confirm milestone
+
+### Finance (`/api/v1/`)
+- `GET /financing` — List requests
+- `POST /financing` — Create request
+- `POST /financing/bids` — Submit bid
+- `GET /distressed` — Distressed cargo
+- `GET /buyer-search` — Buyer search
+- `GET /disputes` — Disputes
+- `GET /payments` — Payment attempts
+
+### Governance (`/api/v1/`)
+- `GET /governor/decisions` — Governor decisions
+- `GET /jurisdictions` — 31 jurisdictions
+- `GET /compliance/events` — Compliance
+- `GET /audit` — Audit log
+- `GET /esg` — ESG assessments
+- `GET /commissions` — Commission calculations
 
 ## Tech Stack
-- **Backend**: Hono (TypeScript) on Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite)
-- **Frontend**: Vanilla JS + Tailwind CSS + Chart.js + FontAwesome
-- **Build**: Vite + @hono/vite-build
+- **Backend**: Hono 4.x + TypeScript (Cloudflare Workers runtime)
+- **Database**: Cloudflare D1 (SQLite) — 70+ tables
+- **Frontend**: Vanilla JS + Tailwind CSS CDN + Chart.js + FontAwesome
+- **Build**: Vite + @hono/vite-cloudflare-pages
+- **Dev**: Wrangler pages dev (PM2 managed)
+- **Deployment**: Cloudflare Pages
 
-## Deployment
-- **Platform**: Cloudflare Pages
-- **Status**: Running (sandbox)
-- **Last Updated**: 2026-04-14
+## Last Updated
+2026-04-19 — Blueprint v6.1 gaps fixed
