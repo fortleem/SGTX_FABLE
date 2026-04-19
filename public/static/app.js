@@ -1013,7 +1013,6 @@ async function showCommissionBreakdown() {
       </div>`).join('') : emptyState('No calculations yet')}
   `);
 }
-}
 
 // ─── SHIPMENTS ──────────────────────────────────────────
 async function renderShipments() {
