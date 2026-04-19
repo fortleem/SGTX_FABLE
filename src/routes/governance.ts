@@ -187,6 +187,40 @@ governance.get('/commissions', async (c) => {
   return c.json({ data: results });
 });
 
+governance.get('/commissions/:id', async (c) => {
+  const calc = await c.env.DB.prepare('SELECT * FROM commission_calculations WHERE id = ?').bind(c.req.param('id')).first();
+  if (!calc) return c.json({ error: 'Calculation not found' }, 404);
+  return c.json({ data: calc });
+});
+
+// ─── DISRUPTION PREDICTIONS ──────────────────────────
+governance.get('/disruptions', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT * FROM disruption_predictions ORDER BY created_at DESC LIMIT 50').all();
+  return c.json({ data: results });
+});
+
+// ─── CARBON FOOTPRINT ────────────────────────────────
+governance.get('/carbon', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT * FROM carbon_footprint_calculations ORDER BY calculated_at DESC LIMIT 50').all();
+  return c.json({ data: results });
+});
+
+governance.post('/carbon', async (c) => {
+  const body = await c.req.json();
+  const id = uuid();
+  await c.env.DB.prepare(`
+    INSERT INTO carbon_footprint_calculations (id, shipment_id, route_distance_nm, vessel_type, cargo_weight_mt, total_co2e_tons, calculation_method, calculated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, body.shipment_id, body.route_distance_nm || 0, body.vessel_type || 'CONTAINER', body.cargo_weight_mt || 0, body.total_co2e_tons || 0, body.calculation_method || 'IMO_EEXI_2023', isoNow()).run();
+  return c.json({ data: { id }, message: 'Carbon footprint calculated' }, 201);
+});
+
+// ─── MARKETPLACE PARTNERS ────────────────────────────
+governance.get('/marketplace/partners', async (c) => {
+  const { results } = await c.env.DB.prepare('SELECT id, partner_name, commission_split_percent, active FROM marketplace_partners WHERE active = 1').all();
+  return c.json({ data: results });
+});
+
 // ─── LOOM LOGS ─────────────────────────────────────────
 governance.get('/loom', async (c) => {
   const { results } = await c.env.DB.prepare('SELECT * FROM loom_logs ORDER BY logged_at DESC LIMIT 100').all();

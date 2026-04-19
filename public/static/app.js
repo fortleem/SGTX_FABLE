@@ -838,17 +838,40 @@ async function renderTrades() {
 async function showTradeDetail(id) {
   const { data } = await api(`/trades/${id}`);
   const isExporter = currentPortal === 'exporter';
+  const specs = data.parsed_specs || {};
   showModal(`
     <h2 class="text-lg font-bold mb-4"><i class="fas fa-handshake mr-2 text-sgtx-500"></i>Trade Request</h2>
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
       <div><span class="text-gray-500">Status:</span> ${badge(data.status)}</div>
-      <div><span class="text-gray-500">Importer:</span> ${data.importer_name||'—'}</div>
-      <div><span class="text-gray-500">Exporter:</span> ${data.exporter_name||'—'}</div>
+      <div><span class="text-gray-500">Importer:</span> ${data.importer_name||'—'} <span class="text-xs text-gray-400">(${data.importer_gtid||''})</span></div>
+      <div><span class="text-gray-500">Exporter:</span> ${data.exporter_name||'—'} <span class="text-xs text-gray-400">(${data.exporter_gtid||''})</span></div>
       <div><span class="text-gray-500">Governor:</span> <span class="font-mono text-xs">${data.governor_decision_id?.slice(0,12)}...</span></div>
     </div>
-    <h3 class="font-semibold text-sm mb-2">Specifications</h3>
-    <pre class="bg-gray-50 p-3 rounded-lg text-xs overflow-x-auto mb-3">${JSON.stringify(data.parsed_specs, null, 2)}</pre>
-    ${data.quotes?.length?`<h3 class="font-semibold text-sm mb-2">Quotes (${data.quotes.length})</h3>${data.quotes.map(q=>`<div class="bg-gray-50 p-2 rounded mb-1 text-xs">EXW: ${usd(q.exw_price)} (${q.incoterm}) — ${badge(q.status||'SUBMITTED')}</div>`).join('')}`:''}
+    <h3 class="font-semibold text-sm mb-2">Commodity Specifications</h3>
+    <div class="bg-gray-50 rounded-lg p-3 mb-3">
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        ${specs.hs_code ? `<div><span class="text-gray-500">HS Code:</span> <span class="font-mono font-semibold">${specs.hs_code}</span></div>` : ''}
+        ${specs.incoterm ? `<div><span class="text-gray-500">Incoterm:</span> <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-semibold">${specs.incoterm}</span></div>` : ''}
+        ${specs.quantity ? `<div><span class="text-gray-500">Quantity:</span> ${specs.quantity} ${specs.unit||'KG'}</div>` : ''}
+        ${specs.qc_preference ? `<div><span class="text-gray-500">QC:</span> ${specs.qc_preference}</div>` : ''}
+        ${specs.certifications?.length ? `<div class="col-span-2"><span class="text-gray-500">Certifications:</span> ${specs.certifications.map(c=>`<span class="bg-green-50 text-green-700 px-1.5 py-0.5 rounded text-[10px] ml-1">${c}</span>`).join('')}</div>` : ''}
+      </div>
+      ${specs.description ? `<div class="mt-2 text-xs text-gray-600">${specs.description}</div>` : ''}
+    </div>
+    ${data.quotes?.length ? `<h3 class="font-semibold text-sm mb-2">Exporter Quotes (${data.quotes.length})</h3>
+      <div class="space-y-2 mb-3">${data.quotes.map(q=>`
+        <div class="bg-gray-50 p-3 rounded-lg border ${q.status==='ACCEPTED'?'border-green-300':'border-gray-200'}">
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-sm font-bold text-green-600">${usd(q.exw_price)}</span>
+              <span class="text-xs text-gray-500 ml-2">EXW (${q.incoterm})</span>
+              ${q.exw_locked_at ? `<span class="text-[10px] text-blue-500 ml-2"><i class="fas fa-lock mr-1"></i>Locked ${time(q.exw_locked_at)}</span>` : ''}
+            </div>
+            <div>${badge(q.status||'SUBMITTED')}</div>
+          </div>
+          <div class="text-[10px] text-gray-400 mt-1">Valid ${q.validity_days} days | Created ${time(q.created_at)}</div>
+        </div>`).join('')}</div>` : ''}
+    ${data.channel ? `<div class="bg-blue-50 p-2 rounded text-xs mb-3"><i class="fas fa-stream mr-1 text-blue-500"></i> Trade Channel Phase: <b>${data.channel.current_phase}</b>/10</div>` : ''}
     ${!isReadOnly() ? `<div class="flex gap-2 mt-4">
       ${isExporter ? `<button onclick="closeModal();showQuoteForm('${data.id}')" class="flex-1 bg-blue-500 text-white py-2 rounded-lg text-xs"><i class="fas fa-tag mr-1"></i>Submit Quote</button>` : ''}
       ${currentPortal === 'importer' || currentPortal === 'admin' ? `<button onclick="closeModal();showContractWizard()" class="flex-1 bg-green-500 text-white py-2 rounded-lg text-xs"><i class="fas fa-file-contract mr-1"></i>Create Contract</button>` : ''}
@@ -863,7 +886,10 @@ function showTradeWizard() {
     <form onsubmit="submitTrade(event)" class="space-y-3">
       <div class="grid grid-cols-2 gap-3">
         <div><label class="text-sm text-gray-600">Importer Tenant ID</label><input id="tr-importer" class="w-full border rounded-lg px-3 py-2 text-sm" value="${tenant?.id||'t-001'}" required></div>
-        <div><label class="text-sm text-gray-600">Exporter GTID (Direct Entry)</label><input id="tr-exporter" class="w-full border rounded-lg px-3 py-2 text-sm" value="SGTX-VN-TRD-000002-C3D4" placeholder="SGTX-XX-TRD-NNNNNN-XXXX"></div>
+        <div><label class="text-sm text-gray-600">Exporter GTID (Direct Entry)</label>
+          <input id="tr-exporter" class="w-full border rounded-lg px-3 py-2 text-sm" value="SGTX-VN-TRD-000002-C3D4" placeholder="SGTX-XX-TRD-NNNNNN-XXXX" oninput="resolveGTID(this.value)">
+          <div id="gtid-preview" class="text-xs mt-1 text-gray-400"></div>
+        </div>
       </div>
       <div><label class="text-sm text-gray-600">Description</label><textarea id="tr-desc" class="w-full border rounded-lg px-3 py-2 text-sm" rows="2">Organic cotton yarn 32s, GOTS certified, 5000kg</textarea></div>
       <div class="grid grid-cols-3 gap-3">
@@ -871,13 +897,28 @@ function showTradeWizard() {
         <div><label class="text-sm text-gray-600">Incoterm</label><select id="tr-incoterm" class="w-full border rounded-lg px-3 py-2 text-sm"><option>CFR</option><option>FOB</option><option>CIF</option><option>EXW</option><option>FCA</option><option>DAP</option><option>DDP</option><option>CPT</option><option>CIP</option><option>DPU</option><option>FAS</option></select></div>
         <div><label class="text-sm text-gray-600">QC Preference</label><select id="tr-qc" class="w-full border rounded-lg px-3 py-2 text-sm"><option>THIRD_PARTY</option><option>SGTX_TEAM</option><option>NONE</option></select></div>
       </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div><label class="text-sm text-gray-600">Quantity</label><input id="tr-qty" type="number" class="w-full border rounded-lg px-3 py-2 text-sm" value="5000"></div>
+        <div><label class="text-sm text-gray-600">Unit</label><select id="tr-unit" class="w-full border rounded-lg px-3 py-2 text-sm"><option>KG</option><option>MT</option><option>CBM</option><option>PCS</option><option>CARTONS</option></select></div>
+        <div><label class="text-sm text-gray-600">Certifications</label><input id="tr-certs" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="GOTS,OEKO-TEX" value="GOTS"></div>
+      </div>
       <div><label class="text-sm text-gray-600">Created By (Employee ID)</label><input id="tr-by" class="w-full border rounded-lg px-3 py-2 text-sm" value="${employee?.id||'e-001'}"></div>
       <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm hover:bg-sgtx-600"><i class="fas fa-paper-plane mr-1"></i>Submit (Governor Gated)</button>
     </form>`);
 }
+async function resolveGTID(gtid) {
+  const preview = document.getElementById('gtid-preview');
+  if (!preview || gtid.length < 15) { if(preview) preview.innerHTML = ''; return; }
+  try {
+    const r = await api('/resolve?gtid=' + encodeURIComponent(gtid));
+    if (r.data) preview.innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>${r.data.legal_name} (${r.data.jurisdiction}) — Trust: ${r.data.trust_score || '—'}</span>`;
+    else preview.innerHTML = '<span class="text-red-500"><i class="fas fa-times-circle mr-1"></i>GTID not found</span>';
+  } catch(e) { preview.innerHTML = ''; }
+}
 async function submitTrade(e) {
   e.preventDefault();
-  const r = await apiPost('/trades', { importer_tenant_id: document.getElementById('tr-importer').value, exporter_gtid: document.getElementById('tr-exporter').value, raw_description: document.getElementById('tr-desc').value, parsed_specs: { hs_code: document.getElementById('tr-hs').value, incoterm: document.getElementById('tr-incoterm').value, description: document.getElementById('tr-desc').value, qc_preference: document.getElementById('tr-qc').value }, created_by: document.getElementById('tr-by').value });
+  const certs = (document.getElementById('tr-certs')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const r = await apiPost('/trades', { importer_tenant_id: document.getElementById('tr-importer').value, exporter_gtid: document.getElementById('tr-exporter').value, raw_description: document.getElementById('tr-desc').value, parsed_specs: { hs_code: document.getElementById('tr-hs').value, incoterm: document.getElementById('tr-incoterm').value, description: document.getElementById('tr-desc').value, qc_preference: document.getElementById('tr-qc').value, quantity: Number(document.getElementById('tr-qty')?.value || 0), unit: document.getElementById('tr-unit')?.value || 'KG', certifications: certs }, created_by: document.getElementById('tr-by').value });
   if (r.error) { alert('Denied: ' + r.error); return; }
   closeModal(); navigate('trades');
 }
@@ -929,9 +970,12 @@ async function renderContracts() {
 
 // ─── COMMISSIONS ────────────────────────────────────────
 async function renderCommissions() {
-  setTitle('Commission Locks', 'Non-custodial commission protection — NATS KV');
+  setTitle('Commission Locks', 'Non-custodial commission protection — AI formula: clamp(0.1%, 2.5%, base + country + seasonality ± geoRisk - discount + perishability)');
   const { data } = await api('/commission-locks');
-  document.getElementById('content').innerHTML = `<div class="card overflow-x-auto"><table class="w-full text-sm">
+  const canViewCalcs = currentPortal === 'admin' || currentPortal === 'importer' || currentPortal === 'exporter';
+  document.getElementById('content').innerHTML = `
+    ${canViewCalcs ? `<div class="mb-4"><button onclick="showCommissionBreakdown()" class="bg-sgtx-50 text-sgtx-600 px-4 py-2 rounded-lg text-sm hover:bg-sgtx-100"><i class="fas fa-calculator mr-1"></i>View AI Commission Calculations</button></div>` : ''}
+    <div class="card overflow-x-auto"><table class="w-full text-sm">
     <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Lock ID</th><th class="px-4 py-3">Rate</th><th class="px-4 py-3">Commission</th><th class="px-4 py-3">Released</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Locked</th></tr></thead>
     <tbody>${data.map(cl => `<tr class="border-t border-gray-50">
       <td class="px-4 py-3 font-mono text-xs">${cl.lock_id?.slice(0,8)}...</td>
@@ -941,6 +985,34 @@ async function renderCommissions() {
       <td class="px-4 py-3 text-center">${badge(cl.status)}</td>
       <td class="px-4 py-3 text-xs text-gray-400">${time(cl.locked_at)}</td>
     </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function showCommissionBreakdown() {
+  const { data } = await api('/commissions');
+  showModal(`
+    <h2 class="text-lg font-bold mb-4"><i class="fas fa-calculator mr-2 text-sgtx-500"></i>AI Commission Calculations</h2>
+    <div class="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-lg">
+      <b>Formula:</b> clamp(0.1%, 2.5%, base_profit_rate + country_boost + seasonality ± geopolitical_risk - volume_discount + perishability ± anomaly)
+    </div>
+    ${data.length ? data.map(c => `
+      <div class="bg-gray-50 rounded-lg p-3 mb-3">
+        <div class="flex justify-between mb-2">
+          <span class="font-semibold text-sm">${c.explanation || 'Commission Calculation'}</span>
+          <span class="text-green-600 font-bold">${usd(c.commission_usd)}</span>
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-xs">
+          <div>Base: <b>${(c.base_rate_pct*100).toFixed(2)}%</b></div>
+          <div>Country: <b>+${(c.country_boost_pct*100).toFixed(2)}%</b></div>
+          <div>Season: <b>+${(c.seasonality_pct*100).toFixed(2)}%</b></div>
+          <div>GeoRisk: <b>+${(c.geopolitical_risk_pct*100).toFixed(2)}%</b></div>
+          <div>Vol.Disc: <b>-${(c.volume_discount_pct*100).toFixed(2)}%</b></div>
+          <div>Perish: <b>+${(c.perishability_surcharge_pct*100).toFixed(2)}%</b></div>
+          <div>Anomaly: <b>${(c.anomaly_correction_pct*100).toFixed(2)}%</b></div>
+          <div class="font-bold text-sgtx-600">Final: ${(c.final_rate_pct*100).toFixed(2)}%</div>
+        </div>
+      </div>`).join('') : emptyState('No calculations yet')}
+  `);
+}
 }
 
 // ─── SHIPMENTS ──────────────────────────────────────────
@@ -978,7 +1050,7 @@ async function showShipmentDetail(id) {
       <div><span class="text-gray-500">Status:</span> ${badge(data.status)}</div>
       <div><span class="text-gray-500">Origin:</span> ${data.origin_port||'—'}</div>
       <div><span class="text-gray-500">Destination:</span> ${data.destination_port||'—'}</div>
-      <div><span class="text-gray-500">Vessel:</span> ${data.vessel_name||'—'}</div>
+      <div><span class="text-gray-500">Vessel:</span> ${data.vessel_name||'—'} ${data.imo_number ? `<span class="text-[10px] text-gray-400">(${data.imo_number})</span>` : ''}</div>
     </div>
     <h3 class="font-semibold text-sm mb-2">Milestone Tracker</h3>
     <div class="flex items-center gap-1 mb-4">${milestoneSteps.map(m => `
@@ -987,8 +1059,14 @@ async function showShipmentDetail(id) {
           ${confirmed.has(m)?'<i class="fas fa-check"></i>':''}
         </div><div class="text-[9px] mt-1 text-gray-500">${m}</div>
       </div>`).join('<div class="w-4 h-0.5 bg-gray-200"></div>')}</div>
-    ${data.barcodes?.length?`<h3 class="font-semibold text-sm mb-2">Barcodes (${data.barcodes.length})</h3>
+    ${data.milestones?.length ? `<div class="mb-3"><h4 class="text-xs font-semibold text-gray-500 mb-1">Confirmed Milestones</h4>
+      <div class="space-y-1">${data.milestones.map(m=>`<div class="flex justify-between bg-gray-50 p-2 rounded text-xs"><span><i class="fas fa-check-circle text-green-500 mr-1"></i>${m.milestone}</span><span class="text-gray-400">${m.confirmation_method || 'MANUAL'} — ${time(m.confirmed_at)}</span></div>`).join('')}</div></div>` : ''}
+    ${data.barcodes?.length?`<h3 class="font-semibold text-sm mb-2">Barcodes (${data.barcodes.length} pallets)</h3>
       <div class="grid grid-cols-2 gap-2 mb-3">${data.barcodes.map(b=>`<div class="bg-gray-50 p-2 rounded text-xs"><div class="font-semibold">${b.barcode_type} — Pallet ${b.pallet_number}</div><div class="font-mono text-[10px]">SSCC: ${b.sscc}</div></div>`).join('')}</div>`:''}
+    ${data.document_requirements?.length?`<h3 class="font-semibold text-sm mb-2">Document Requirements</h3>
+      <div class="space-y-1 mb-3">${data.document_requirements.map(d=>`<div class="flex justify-between bg-gray-50 p-2 rounded text-xs"><span>${d.document_type.replace(/_/g,' ')}</span>${badge(d.status)}</div>`).join('')}</div>`:''}
+    ${data.disruption_predictions?.length?`<h3 class="font-semibold text-sm mb-2"><i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>Disruption Predictions</h3>
+      <div class="space-y-1 mb-3">${data.disruption_predictions.map(d=>`<div class="bg-yellow-50 p-2 rounded text-xs border border-yellow-200"><div class="font-semibold">${d.prediction_type}: ${(d.probability*100).toFixed(0)}% probability</div><div class="text-gray-500">${d.recommendation||''}</div>${d.predicted_delay_days?`<div class="text-yellow-700">Est. delay: ${d.predicted_delay_days} days</div>`:''}</div>`).join('')}</div>`:''}
   `);
 }
 
@@ -1439,20 +1517,40 @@ async function submitKYB(e) {
 function showContractWizard() {
   showModal(`
     <h2 class="text-lg font-bold mb-4"><i class="fas fa-file-contract mr-2 text-sgtx-500"></i>Create Contract</h2>
-    <div class="text-xs text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg"><i class="fas fa-info-circle mr-1"></i> Phase 3: Select a trade, set incoterm, governing law. Commission calculated via AI Engine after lock.</div>
+    <div class="text-xs text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg"><i class="fas fa-info-circle mr-1"></i> Phase 3: Contract Genesis Pipeline — Clause Forge, Risk Oracle, Jurisdiction Harmonizer, Commission Engine. AI generates 47 legal primitives.</div>
     <form onsubmit="submitContract(event)" class="space-y-3">
       <div><label class="text-sm text-gray-600">Trade Request ID</label><input id="ct-trade" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Enter trade request ID" required></div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-sm text-gray-600">Incoterm</label><select id="ct-incoterm" class="w-full border rounded-lg px-3 py-2 text-sm"><option>CFR</option><option>FOB</option><option>CIF</option><option>EXW</option><option>FCA</option><option>DAP</option><option>DDP</option><option>CPT</option><option>CIP</option><option>DPU</option><option>FAS</option></select></div>
+        <div><label class="text-sm text-gray-600">Incoterm (Incoterms 2020)</label><select id="ct-incoterm" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateCommPayer()"><option>CFR</option><option>FOB</option><option>CIF</option><option>EXW</option><option>FCA</option><option>DAP</option><option>DDP</option><option>CPT</option><option>CIP</option><option>DPU</option><option>FAS</option></select></div>
         <div><label class="text-sm text-gray-600">Governing Law</label><select id="ct-law" class="w-full border rounded-lg px-3 py-2 text-sm"><option>English Law</option><option>New York Law</option><option>Singapore Law</option><option>UAE Federal Law</option><option>Swiss Law</option></select></div>
       </div>
       <div><label class="text-sm text-gray-600">Dispute Resolution</label><select id="ct-dispute" class="w-full border rounded-lg px-3 py-2 text-sm"><option>ICC Arbitration</option><option>DIFC-LCIA Arbitration</option><option>SIAC Arbitration</option><option>Ad hoc Arbitration</option></select></div>
+      <div class="bg-gray-50 p-3 rounded-lg">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm text-gray-600 font-semibold">Commission Allocation</label>
+          <span id="comm-payer-label" class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Default: Exporter pays (CFR)</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-500">Importer</span>
+          <input id="ct-comm-slider" type="range" min="0" max="100" value="50" class="flex-1" oninput="document.getElementById('ct-comm-val').textContent=this.value+'% / '+(100-this.value)+'%'">
+          <span class="text-xs text-gray-500">Exporter</span>
+        </div>
+        <div id="ct-comm-val" class="text-center text-xs text-gray-500 mt-1">50% / 50%</div>
+      </div>
       <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm hover:bg-sgtx-600"><i class="fas fa-paper-plane mr-1"></i>Create Contract (Governor Gated)</button>
     </form>`);
 }
+function updateCommPayer() {
+  const incoterm = document.getElementById('ct-incoterm')?.value;
+  const exporterPays = ['CFR','CIF','CPT','CIP','DAP','DPU','DDP'].includes(incoterm);
+  const label = document.getElementById('comm-payer-label');
+  if (label) label.textContent = `Default: ${exporterPays ? 'Exporter' : 'Importer'} pays (${incoterm})`;
+}
 async function submitContract(e) {
   e.preventDefault();
-  const r = await apiPost('/contracts', { trade_request_id: document.getElementById('ct-trade').value, incoterm: document.getElementById('ct-incoterm').value, governing_law: document.getElementById('ct-law').value, dispute_resolution: document.getElementById('ct-dispute').value, actor_gtid: tenant?.gtid || 'system' });
+  const slider = document.getElementById('ct-comm-slider');
+  const importerPct = slider ? Number(slider.value) : 50;
+  const r = await apiPost('/contracts', { trade_request_id: document.getElementById('ct-trade').value, incoterm: document.getElementById('ct-incoterm').value, governing_law: document.getElementById('ct-law').value, dispute_resolution: document.getElementById('ct-dispute').value, commission_allocation: { importer: importerPct, exporter: 100 - importerPct }, actor_gtid: tenant?.gtid || 'system' });
   if (r.error) { alert('Denied: ' + r.error); return; }
   closeModal(); navigate('contracts');
 }

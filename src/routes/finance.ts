@@ -187,6 +187,11 @@ finance.get('/disputes', async (c) => {
   return c.json({ data: results });
 });
 
+finance.post('/disputs', async (c) => {
+  // Legacy typo fix: redirect to correct handler
+  return c.json({ error: 'Use POST /disputes instead' }, 301);
+});
+
 finance.post('/disputes', async (c) => {
   const body = await c.req.json();
   const id = uuid();

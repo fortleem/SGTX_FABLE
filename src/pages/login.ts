@@ -55,6 +55,9 @@ export function loginHTML(): string {
       <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('muller@hamburg-log.de','password123')">
         <span>Hamburg Logistics (Logistics, DE)</span><span class="text-sgtx-500">Use →</span>
       </div>
+      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('james@londonqc.co.uk','password123')">
+        <span>London QC Services (QC, GB)</span><span class="text-sgtx-500">Use →</span>
+      </div>
       <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('admin@sgtx.us','password123')">
         <span>SGTX Platform (Admin, US)</span><span class="text-sgtx-500">Use →</span>
       </div>
