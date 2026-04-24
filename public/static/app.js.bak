@@ -108,7 +108,6 @@ const PORTAL_PERMISSIONS = {
     canViewDeFi: false, canViewSettlements: true, canViewRoutes: false,
     canViewGovernor: true, canViewJurisdictions: true, canViewCompliance: true,
     canViewAudit: true, canViewESG: true, canViewMarketplace: false, canViewTenants: true,
-    canViewDisputeHistory: true,
     readOnly: true, // Regulatory is read-only per blueprint
   },
   government: {
@@ -118,7 +117,6 @@ const PORTAL_PERMISSIONS = {
     canViewDeFi: false, canViewSettlements: false, canViewRoutes: false,
     canViewGovernor: true, canViewJurisdictions: true, canViewCompliance: true,
     canViewAudit: true, canViewESG: true, canViewMarketplace: false, canViewTenants: true,
-    canViewDisputeHistory: true,
     readOnly: true,
   },
   admin: {
@@ -227,10 +225,9 @@ function switchPortal(portal) {
       { section: 'Finance & Payments' },
       { id: 'financing', icon: 'fa-university', label: 'Financing' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Payments' },
-      { section: 'Network & Disputes' },
+      { section: 'Network' },
       { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
       { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes' },
-      { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
     ],
     exporter: [
       { section: 'Exporter Portal' },
@@ -245,10 +242,9 @@ function switchPortal(portal) {
       { section: 'Discovery' },
       { id: 'buyersearch', icon: 'fa-search-dollar', label: 'Find Buyers' },
       { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
-      { section: 'Network & Disputes' },
+      { section: 'Network' },
       { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
       { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes' },
-      { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
     ],
     logistics: [
       { section: 'Logistics Portal' },
@@ -257,11 +253,6 @@ function switchPortal(portal) {
       { id: 'shipments', icon: 'fa-ship', label: 'Active Shipments' },
       { id: 'barcodes', icon: 'fa-barcode', label: 'Scan / Track' },
       { id: 'routes', icon: 'fa-route', label: 'Route Intelligence' },
-      { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
-      { section: 'Services' },
-      { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
-      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Bidding' },
-      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance' },
       { section: 'Finance' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'Service Contracts' },
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlements' },
@@ -296,7 +287,6 @@ function switchPortal(portal) {
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlement Instructions' },
       { section: 'Analysis' },
       { id: 'trust', icon: 'fa-star', label: 'Credit Scores' },
-      { id: 'creditassessments', icon: 'fa-chart-pie', label: 'Credit Assessments' },
     ],
     qc: [
       { section: 'QC / Inspection Portal' },
@@ -315,10 +305,6 @@ function switchPortal(portal) {
       { id: 'trades', icon: 'fa-handshake', label: 'Trade Requests' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'Contracts' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments' },
-      { section: 'Dispute Oversight' },
-      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'All Disputes' },
-      { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
-      { section: 'Governance & Compliance' },
       { id: 'governor', icon: 'fa-gavel', label: 'Governor Decisions' },
       { id: 'compliance', icon: 'fa-clipboard-check', label: 'Compliance' },
       { id: 'audit', icon: 'fa-history', label: 'Audit Log' },
@@ -330,11 +316,6 @@ function switchPortal(portal) {
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Overview' },
       { id: 'tenants', icon: 'fa-building', label: 'Registered Entities' },
       { id: 'trades', icon: 'fa-handshake', label: 'Trade Activity' },
-      { id: 'shipments', icon: 'fa-ship', label: 'Shipments' },
-      { section: 'Dispute Oversight' },
-      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'All Disputes' },
-      { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
-      { section: 'Governance & Compliance' },
       { id: 'governor', icon: 'fa-gavel', label: 'Governance' },
       { id: 'compliance', icon: 'fa-clipboard-check', label: 'Compliance' },
       { id: 'audit', icon: 'fa-history', label: 'Audit Trail' },
@@ -369,18 +350,8 @@ function switchPortal(portal) {
       { id: 'esg', icon: 'fa-leaf', label: 'ESG Assessments' },
       { id: 'marketplace', icon: 'fa-store', label: 'Marketplace API' },
       { id: 'disputes', icon: 'fa-balance-scale-right', label: 'All Disputes' },
-      { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
       { id: 'contacts', icon: 'fa-address-book', label: 'Network' },
       { id: 'routes', icon: 'fa-route', label: 'Route Intelligence' },
-      { section: 'v6.2 Gap Features' },
-      { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
-      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'Logistics RFQ' },
-      { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
-      { id: 'creditassessments', icon: 'fa-chart-pie', label: 'Credit Assessments' },
-      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Logistics Performance' },
-      { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
-      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
-      { id: 'gapstats', icon: 'fa-database', label: 'Gap Stats' },
     ],
   };
 
@@ -426,13 +397,9 @@ async function loadPage(page) {
       commissions: renderCommissions, shipments: renderShipments, barcodes: renderBarcodes,
       settlements: renderSettlements, financing: renderFinancing, defi: renderDeFi,
       distressed: renderDistressed, buyersearch: renderBuyerSearch, payments: renderPayments,
-      disputes: renderDisputes, disputehistory: renderDisputeHistory, governor: renderGovernor, jurisdictions: renderJurisdictions,
+      disputes: renderDisputes, governor: renderGovernor, jurisdictions: renderJurisdictions,
       compliance: renderCompliance, audit: renderAudit, esg: renderESG,
       marketplace: renderMarketplace, routes: renderRoutes, inspections: renderInspections,
-      servicecatalog: renderServiceCatalog, logisticsrfq: renderLogisticsRFQ,
-      drivers: renderDrivers, creditassessments: renderCreditAssessments,
-      logisticsperf: renderLogisticsPerformance, packingplans: renderPackingPlans,
-      digitaltwin: renderDigitalTwin, gapstats: renderGapStats,
     };
     if (pages[page]) await pages[page]();
     else content.innerHTML = '<div class="card p-12 text-center text-gray-400"><i class="fas fa-hard-hat text-4xl mb-3"></i><p>Page coming soon</p></div>';
@@ -443,7 +410,7 @@ async function loadPage(page) {
 
 // ─── HELPERS ────────────────────────────────────────────
 async function api(path) { const r = await fetch(`${API}${path}`); return r.json(); }
-async function apiPost(path, body) { const r = await fetch(`${API}${path}`, { method: path.includes('/status') ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); }
+async function apiPost(path, body) { const r = await fetch(`${API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); }
 function setTitle(t, s) { document.getElementById('page-title').textContent = t; document.getElementById('page-subtitle').textContent = s || ''; }
 function badge(s) { return `<span class="status-badge status-${s}">${s}</span>`; }
 function verdictBadge(v) { return `<span class="verdict-${v} font-semibold">${v}</span>`; }
@@ -687,9 +654,7 @@ async function renderQCDashboard() {
 // ─── REGULATORY / GOVERNMENT DASHBOARD ──────────────────
 async function renderRegulatoryDashboard() {
   setTitle(currentPortal === 'government' ? 'Government Dashboard' : 'Regulatory Dashboard', `Read-Only Overview — ${tenant?.legal_name || 'Platform Monitoring'}`);
-  const [statsR, disputeStatsR] = await Promise.all([api('/stats'), api('/dispute-history/stats').catch(() => ({ data: {} }))]);
-  const stats = statsR.data;
-  const dStats = disputeStatsR.data || {};
+  const { data: stats } = await api('/stats');
   document.getElementById('content').innerHTML = `
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-5 text-xs text-yellow-800"><i class="fas fa-lock mr-2"></i><b>Read-Only Access:</b> This portal provides monitoring and oversight capabilities. No modification actions are available.</div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -698,28 +663,13 @@ async function renderRegulatoryDashboard() {
       ${statCard('fas fa-gavel', 'Gov Decisions', stats.governor_decisions, 'bg-sgtx-50 text-sgtx-600')}
       ${statCard('fas fa-globe', 'Jurisdictions', stats.jurisdictions_covered, 'bg-red-50 text-red-600')}
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <div class="card p-5">
-        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>Platform Metrics</h3>
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Total Commission:</span> <span class="font-bold">${usd(stats.total_commission_usd)}</span></div>
-          <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Active Shipments:</span> <span class="font-bold">${stats.shipments}</span></div>
-          <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Contracts Executed:</span> <span class="font-bold">${stats.contracts}</span></div>
-          <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Gov. Invariant:</span> <span class="font-bold text-green-600">Enforced</span></div>
-        </div>
-      </div>
-      <div class="card p-5">
-        <h3 class="font-bold mb-3 text-red-600"><i class="fas fa-balance-scale-right mr-2"></i>Dispute Overview</h3>
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="bg-red-50 p-3 rounded"><span class="text-gray-500">Total Disputes:</span> <span class="font-bold">${dStats.total_disputes||0}</span></div>
-          <div class="bg-yellow-50 p-3 rounded"><span class="text-gray-500">Pending:</span> <span class="font-bold text-yellow-600">${dStats.pending_disputes||0}</span></div>
-          <div class="bg-green-50 p-3 rounded"><span class="text-gray-500">Resolved:</span> <span class="font-bold text-green-600">${dStats.resolved_disputes||0}</span></div>
-          <div class="bg-orange-50 p-3 rounded"><span class="text-gray-500">Flagged Entities:</span> <span class="font-bold text-orange-600">${dStats.flagged_entities||0}</span></div>
-        </div>
-        <div class="mt-3 flex gap-2">
-          <button onclick="navigate('disputes')" class="flex-1 bg-red-50 text-red-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-red-100"><i class="fas fa-list mr-1"></i>View Disputes</button>
-          <button onclick="navigate('disputehistory')" class="flex-1 bg-orange-50 text-orange-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-orange-100"><i class="fas fa-history mr-1"></i>Dispute History</button>
-        </div>
+    <div class="card p-5 mb-6">
+      <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>Platform Metrics</h3>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Total Commission Collected:</span> <span class="font-bold">${usd(stats.total_commission_usd)}</span></div>
+        <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Active Shipments:</span> <span class="font-bold">${stats.shipments}</span></div>
+        <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Contracts Executed:</span> <span class="font-bold">${stats.contracts}</span></div>
+        <div class="bg-gray-50 p-3 rounded"><span class="text-gray-500">Governance Invariant:</span> <span class="font-bold text-green-600">Enforced</span></div>
       </div>
     </div>`;
 }
@@ -1337,197 +1287,23 @@ async function renderPayments() {
 
 // ─── DISPUTES ───────────────────────────────────────────
 async function renderDisputes() {
-  setTitle('Disputes' + roLabel(), 'Phase 10 — AI mediation, triage, predictive outcome & ICC/DIFC-LCIA arbitration');
-  const gtidFilter = (currentPortal === 'importer' || currentPortal === 'exporter') && tenant?.gtid ? `?gtid=${tenant.gtid}` : '';
-  const { data } = await api('/disputes' + gtidFilter);
+  setTitle('Disputes' + roLabel(), 'Phase 10 — AI mediation & ICC/DIFC-LCIA arbitration');
+  const { data } = await api('/disputes');
   const canFile = (currentPortal === 'importer' || currentPortal === 'exporter' || currentPortal === 'admin') && !isReadOnly();
-
-  // Stats summary
-  const total = data.length;
-  const pending = data.filter(d => d.status === 'FILED' || d.status === 'IN_MEDIATION').length;
-  const resolved = data.filter(d => ['RESOLVED','SETTLED','ARBITRATED','DISMISSED'].includes(d.status)).length;
-
   document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-      ${statCard('fas fa-balance-scale-right', 'Total Disputes', total, 'bg-red-50 text-red-600')}
-      ${statCard('fas fa-clock', 'Pending/Mediation', pending, 'bg-yellow-50 text-yellow-600')}
-      ${statCard('fas fa-check-circle', 'Resolved', resolved, 'bg-green-50 text-green-600')}
-      ${statCard('fas fa-exclamation-triangle', 'CommLocks Frozen', data.filter(d=>d.status==='FILED').length, 'bg-orange-50 text-orange-600')}
-    </div>
     <div class="flex justify-between items-center mb-4">
       <span class="text-sm text-gray-500">${data.length} disputes</span>
-      <div class="flex gap-2">
-        ${canFile ? `<button onclick="showDisputeForm()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fas fa-balance-scale-right mr-1"></i>File Dispute</button>` : ''}
-        <button onclick="navigate('disputehistory')" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"><i class="fas fa-history mr-1"></i>View History</button>
-      </div>
+      ${canFile ? `<button onclick="showDisputeForm()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"><i class="fas fa-balance-scale-right mr-1"></i>File Dispute</button>` : ''}
     </div>
     ${data.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-    <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Filing Party</th><th class="px-4 py-3">Respondent</th><th class="px-4 py-3">Severity</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Filed</th><th class="px-4 py-3">Actions</th></tr></thead>
-    <tbody>${data.map(d => `<tr class="border-t border-gray-50 hover:bg-gray-50 cursor-pointer" onclick="showDisputeDetail('${d.id}')">
+    <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Filing Party</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Filed</th></tr></thead>
+    <tbody>${data.map(d => `<tr class="border-t border-gray-50">
       <td class="px-4 py-3 font-mono text-xs">${d.id?.slice(0,8)}...</td>
-      <td class="px-4 py-3"><span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">${d.dispute_type}</span></td>
-      <td class="px-4 py-3 text-xs">${d.filing_party_name||d.filing_party_gtid}</td>
-      <td class="px-4 py-3 text-xs">${d.respondent_name||d.respondent_gtid||'—'}</td>
-      <td class="px-4 py-3 text-center">${d.severity ? `<span class="inline-flex items-center gap-1 text-xs ${d.severity>=4?'text-red-600':d.severity>=3?'text-yellow-600':'text-green-600'}"><i class="fas fa-circle text-[6px]"></i>${d.severity}/5</span>` : '—'}</td>
+      <td class="px-4 py-3">${d.dispute_type}</td>
+      <td class="px-4 py-3 font-mono text-xs">${d.filing_party_gtid}</td>
       <td class="px-4 py-3 text-center">${badge(d.status)}</td>
       <td class="px-4 py-3 text-xs text-gray-400">${time(d.filed_at)}</td>
-      <td class="px-4 py-3 text-center">${d.resolution_path ? `<span class="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">${d.resolution_path}</span>` : ''}</td>
     </tr>`).join('')}</tbody></table></div>` : emptyState('No disputes filed')}`;
-}
-
-async function showDisputeDetail(id) {
-  const { data } = await api(`/disputes/${id}`);
-  const mediationLog = JSON.parse(data.mediation_log || '[]');
-  const recs = data.recommendations || [];
-  showModal(`
-    <h2 class="text-lg font-bold mb-3"><i class="fas fa-balance-scale-right mr-2 text-red-500"></i>Dispute Detail</h2>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><span class="text-gray-500">ID:</span> <span class="font-mono text-xs">${data.id}</span></div>
-      <div><span class="text-gray-500">Type:</span> <span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">${data.dispute_type}</span></div>
-      <div><span class="text-gray-500">Status:</span> ${badge(data.status)}</div>
-      <div><span class="text-gray-500">Severity:</span> ${data.severity||'—'}/5</div>
-      <div><span class="text-gray-500">Filer:</span> ${data.filing_party_name||data.filing_party_gtid}</div>
-      <div><span class="text-gray-500">Respondent:</span> ${data.respondent_name||data.respondent_gtid||'—'}</div>
-      <div><span class="text-gray-500">Resolution Path:</span> ${data.resolution_path||'Pending Triage'}</div>
-      <div><span class="text-gray-500">Filed:</span> ${time(data.filed_at)}</div>
-    </div>
-    ${data.description ? `<div class="bg-gray-50 rounded-lg p-3 mb-3"><h4 class="text-xs font-semibold text-gray-500 mb-1">Description</h4><p class="text-sm">${data.description}</p></div>` : ''}
-    ${recs.length ? `<div class="mb-3"><h4 class="text-xs font-semibold text-gray-500 mb-2">AI Recommendations</h4>
-      <div class="space-y-2">${recs.map(r => `
-        <div class="bg-blue-50 p-2 rounded-lg text-xs border border-blue-100">
-          <div class="flex justify-between mb-1"><span class="font-semibold text-blue-800">${r.recommendation_type||'TRIAGE'}</span><span class="text-gray-400">${r.confidence ? (r.confidence*100).toFixed(0)+'% confidence' : ''}</span></div>
-          <div class="text-blue-700">${r.ai_prediction||'—'}</div>
-          ${r.suggested_settlement ? `<div class="mt-1 text-green-700"><b>Settlement:</b> ${typeof r.suggested_settlement === 'string' ? r.suggested_settlement : JSON.stringify(r.suggested_settlement)}</div>` : ''}
-        </div>`).join('')}</div></div>` : ''}
-    ${mediationLog.length ? `<div class="mb-3"><h4 class="text-xs font-semibold text-gray-500 mb-2">Mediation Log (${mediationLog.length} messages)</h4>
-      <div class="space-y-2 max-h-40 overflow-y-auto">${mediationLog.map(m => `
-        <div class="bg-gray-50 p-2 rounded text-xs">
-          <div class="flex justify-between text-gray-400 mb-1"><span class="font-semibold text-gray-700">${m.sender_name||m.sender_gtid}</span><span>${time(m.timestamp)}</span></div>
-          <div>${m.message}</div>
-        </div>`).join('')}</div></div>` : ''}
-    ${data.ai_settlement_proposal ? `<div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3"><h4 class="text-xs font-semibold text-green-800 mb-1"><i class="fas fa-robot mr-1"></i>AI Settlement Proposal</h4><p class="text-sm text-green-700">${typeof data.ai_settlement_proposal === 'string' ? data.ai_settlement_proposal : JSON.stringify(data.ai_settlement_proposal)}</p></div>` : ''}
-    ${!isReadOnly() ? `<div class="flex gap-2 mt-4">
-      <button onclick="closeModal();addMediationMessage('${data.id}')" class="flex-1 bg-blue-500 text-white py-2 rounded-lg text-xs"><i class="fas fa-comment mr-1"></i>Add Mediation Message</button>
-      ${data.status === 'FILED' || data.status === 'IN_MEDIATION' ? `<button onclick="closeModal();resolveDispute('${data.id}')" class="flex-1 bg-green-500 text-white py-2 rounded-lg text-xs"><i class="fas fa-check mr-1"></i>Resolve</button>` : ''}
-    </div>` : ''}
-  `);
-}
-
-function addMediationMessage(disputeId) {
-  showModal(`
-    <h2 class="text-lg font-bold mb-4"><i class="fas fa-comment mr-2 text-blue-500"></i>Add Mediation Message</h2>
-    <form onsubmit="submitMediation(event,'${disputeId}')" class="space-y-3">
-      <div><label class="text-sm text-gray-600">Message</label><textarea id="med-msg" class="w-full border rounded-lg px-3 py-2 text-sm" rows="4" placeholder="Enter your mediation message..." required></textarea></div>
-      <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg text-sm"><i class="fas fa-paper-plane mr-1"></i>Send</button>
-    </form>`);
-}
-async function submitMediation(e, disputeId) {
-  e.preventDefault();
-  await apiPost(`/disputes/${disputeId}/mediation`, { sender_gtid: tenant?.gtid || 'system', sender_name: tenant?.legal_name || employee?.full_name || 'Unknown', message: document.getElementById('med-msg').value });
-  closeModal(); navigate('disputes');
-}
-
-async function resolveDispute(disputeId) {
-  const status = prompt('Resolution type: RESOLVED, SETTLED, ARBITRATED, DISMISSED', 'SETTLED');
-  if (!status) return;
-  await apiPost(`/disputes/${disputeId}/status`, { status: status.toUpperCase() });
-  navigate('disputes');
-}
-
-// ─── DISPUTE HISTORY (Persistent Per-Entity Tracking) ───
-async function renderDisputeHistory() {
-  const isEntityView = (currentPortal === 'importer' || currentPortal === 'exporter') && tenant?.gtid;
-  setTitle('Dispute History' + roLabel(), 'Persistent dispute tracking — risk scoring & flagged entities');
-
-  if (isEntityView) {
-    // Show this entity's own dispute history
-    const { data } = await api(`/dispute-history?gtid=${tenant.gtid}`);
-    const h = data.history;
-    const disputes = data.disputes || [];
-    document.getElementById('content').innerHTML = `
-      ${h ? `
-      <div class="card p-5 mb-6">
-        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-user-shield mr-2 text-sgtx-500"></i>My Dispute Profile</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          ${statCard('fas fa-balance-scale-right', 'Total Disputes', h.total_disputes, 'bg-red-50 text-red-600')}
-          ${statCard('fas fa-arrow-up', 'Filed by Me', h.disputes_as_filer, 'bg-blue-50 text-blue-600')}
-          ${statCard('fas fa-arrow-down', 'Filed Against Me', h.disputes_as_respondent, 'bg-orange-50 text-orange-600')}
-          ${statCard('fas fa-shield-halved', 'Risk Score', h.risk_score?.toFixed(0) || '0', h.risk_score >= 40 ? 'bg-red-50 text-red-600' : h.risk_score >= 20 ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600')}
-        </div>
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.quality_disputes||0}</div><div class="text-gray-500">Quality</div></div>
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.delivery_disputes||0}</div><div class="text-gray-500">Delivery</div></div>
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.payment_disputes||0}</div><div class="text-gray-500">Payment</div></div>
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.documentation_disputes||0}</div><div class="text-gray-500">Docs</div></div>
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.disputes_won||0}</div><div class="text-gray-500 text-green-600">Won</div></div>
-          <div class="bg-gray-50 p-2 rounded text-center"><div class="font-bold">${h.disputes_settled||0}</div><div class="text-gray-500 text-blue-600">Settled</div></div>
-        </div>
-      </div>` : '<div class="card p-5 mb-6 text-center text-gray-400"><i class="fas fa-check-circle text-green-500 text-2xl mb-2"></i><p class="font-semibold">Clean Record</p><p class="text-sm">No dispute history found.</p></div>'}
-      <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-list mr-2 text-sgtx-500"></i>My Disputes</h3>
-      ${disputes.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">My Role</th><th class="px-4 py-3">Other Party</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Filed</th></tr></thead>
-        <tbody>${disputes.map(d => {
-          const isFiler = d.filing_party_gtid === tenant.gtid;
-          return `<tr class="border-t border-gray-50 hover:bg-gray-50 cursor-pointer" onclick="showDisputeDetail('${d.id}')">
-            <td class="px-4 py-3 font-mono text-xs">${d.id?.slice(0,8)}...</td>
-            <td class="px-4 py-3"><span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-xs">${d.dispute_type}</span></td>
-            <td class="px-4 py-3 text-xs">${isFiler ? '<span class="text-blue-600">Filer</span>' : '<span class="text-orange-600">Respondent</span>'}</td>
-            <td class="px-4 py-3 text-xs">${isFiler ? (d.respondent_name||d.respondent_gtid||'—') : (d.filing_party_name||d.filing_party_gtid)}</td>
-            <td class="px-4 py-3 text-center">${badge(d.status)}</td>
-            <td class="px-4 py-3 text-xs text-gray-400">${time(d.filed_at)}</td>
-          </tr>`;
-        }).join('')}</tbody></table></div>` : emptyState('No disputes found')}`;
-  } else {
-    // Government / Regulatory / Admin: show all entities
-    const [historyData, statsData] = await Promise.all([api('/dispute-history'), api('/dispute-history/stats')]);
-    const all = historyData.data?.all || [];
-    const flagged = historyData.data?.flagged || [];
-    const stats = statsData.data || {};
-
-    document.getElementById('content').innerHTML = `
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-        ${statCard('fas fa-balance-scale-right', 'Total Disputes', stats.total_disputes, 'bg-red-50 text-red-600')}
-        ${statCard('fas fa-clock', 'Pending', stats.pending_disputes, 'bg-yellow-50 text-yellow-600')}
-        ${statCard('fas fa-check-circle', 'Resolved', stats.resolved_disputes, 'bg-green-50 text-green-600')}
-        ${statCard('fas fa-flag', 'Flagged Entities', stats.flagged_entities, 'bg-orange-50 text-orange-600')}
-      </div>
-      ${stats.by_type?.length ? `<div class="card p-5 mb-5">
-        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>Disputes by Type</h3>
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-2">${stats.by_type.map(t => `
-          <div class="bg-gray-50 p-2 rounded text-center text-xs"><div class="font-bold text-lg">${t.count}</div><div class="text-gray-500">${t.dispute_type}</div></div>`).join('')}</div>
-      </div>` : ''}
-      ${flagged.length ? `<div class="card p-5 mb-5">
-        <h3 class="font-bold mb-3 text-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>Flagged Entities (${flagged.length})</h3>
-        <div class="text-xs text-gray-500 mb-3">Entities with risk score >= 40 or >= 3 disputes as respondent</div>
-        <div class="space-y-2">${flagged.map(f => `
-          <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-100">
-            <div>
-              <span class="font-semibold text-sm">${f.entity_name||f.entity_gtid}</span>
-              <span class="text-xs text-gray-500 ml-2 font-mono">${f.entity_gtid}</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="text-xs"><b>${f.total_disputes}</b> disputes</span>
-              <span class="text-xs text-orange-600"><b>${f.disputes_as_respondent}</b> as respondent</span>
-              <span class="px-2 py-0.5 rounded text-xs font-bold ${f.risk_score>=60?'bg-red-200 text-red-800':f.risk_score>=40?'bg-orange-200 text-orange-800':'bg-yellow-200 text-yellow-800'}">Risk: ${f.risk_score?.toFixed(0)}</span>
-            </div>
-          </div>`).join('')}</div>
-      </div>` : ''}
-      <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-list mr-2 text-sgtx-500"></i>All Entities with Dispute History (${all.length})</h3>
-      ${all.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-        <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Entity</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Total</th><th class="px-4 py-3">Filed</th><th class="px-4 py-3">Received</th><th class="px-4 py-3">Won</th><th class="px-4 py-3">Settled</th><th class="px-4 py-3">Pending</th><th class="px-4 py-3">Risk</th><th class="px-4 py-3">Last</th></tr></thead>
-        <tbody>${all.map(h => `<tr class="border-t border-gray-50 ${h.risk_score>=40?'bg-red-50':''} hover:bg-gray-50">
-          <td class="px-4 py-3"><span class="font-medium">${h.entity_name||'—'}</span><br><span class="font-mono text-[10px] text-gray-400">${h.entity_gtid}</span></td>
-          <td class="px-4 py-3 text-xs text-center">${h.entity_type||'—'}</td>
-          <td class="px-4 py-3 text-center font-bold">${h.total_disputes}</td>
-          <td class="px-4 py-3 text-center text-blue-600">${h.disputes_as_filer}</td>
-          <td class="px-4 py-3 text-center text-orange-600">${h.disputes_as_respondent}</td>
-          <td class="px-4 py-3 text-center text-green-600">${h.disputes_won}</td>
-          <td class="px-4 py-3 text-center">${h.disputes_settled}</td>
-          <td class="px-4 py-3 text-center text-yellow-600">${h.disputes_pending}</td>
-          <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${h.risk_score>=60?'bg-red-200 text-red-800':h.risk_score>=40?'bg-orange-200 text-orange-800':h.risk_score>=20?'bg-yellow-200 text-yellow-800':'bg-green-200 text-green-800'}">${h.risk_score?.toFixed(0)||0}</span></td>
-          <td class="px-4 py-3 text-xs text-gray-400">${time(h.last_dispute_at)}</td>
-        </tr>`).join('')}</tbody></table></div>` : emptyState('No dispute history recorded')}`;
-  }
 }
 
 // ─── GOVERNOR ───────────────────────────────────────────
@@ -1736,43 +1512,13 @@ async function submitKYB(e) {
   closeModal(); navigate('dashboard');
 }
 
-// ─── CONTRACT WIZARD (with Trade Selector Dropdown) ─────
-async function showContractWizard() {
-  // Fetch ongoing trades for the scroll-down selector
-  let ongoingTrades = [];
-  try {
-    const tenantParam = tenant?.id ? `?tenant_id=${tenant.id}` : '';
-    const r = await api('/trades/ongoing' + tenantParam);
-    ongoingTrades = r.data || [];
-  } catch(e) { /* fallback to manual entry */ }
-
-  const tradeOptions = ongoingTrades.length
-    ? ongoingTrades.map(t => {
-        const specs = typeof t.parsed_specs === 'string' ? JSON.parse(t.parsed_specs) : (t.parsed_specs || {});
-        const desc = specs.description || t.raw_description || 'Trade';
-        const price = t.exw_price ? ` — EXW ${usd(t.exw_price)}` : '';
-        const label = `${t.importer_name || '?'} ↔ ${t.exporter_name || '?'} | ${desc.slice(0,35)}${desc.length>35?'...':''}${price} [${t.status}]`;
-        return `<option value="${t.id}">${label}</option>`;
-      }).join('')
-    : '';
-  const hasOngoing = ongoingTrades.length > 0;
-
+// ─── CONTRACT WIZARD ────────────────────────────────────
+function showContractWizard() {
   showModal(`
     <h2 class="text-lg font-bold mb-4"><i class="fas fa-file-contract mr-2 text-sgtx-500"></i>Create Contract</h2>
     <div class="text-xs text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg"><i class="fas fa-info-circle mr-1"></i> Phase 3: Contract Genesis Pipeline — Clause Forge, Risk Oracle, Jurisdiction Harmonizer, Commission Engine. AI generates 47 legal primitives.</div>
     <form onsubmit="submitContract(event)" class="space-y-3">
-      ${hasOngoing ? `
-      <div>
-        <label class="text-sm text-gray-600 font-semibold"><i class="fas fa-list mr-1 text-sgtx-500"></i>Select Ongoing Trade</label>
-        <select id="ct-trade-select" class="w-full border rounded-lg px-3 py-2 text-sm mt-1 max-h-48 overflow-y-auto" onchange="onTradeSelected(this.value)" style="max-height:200px">
-          <option value="">— Pick an ongoing trade —</option>
-          ${tradeOptions}
-        </select>
-        <div class="text-xs text-gray-400 mt-1">Or enter a Trade Request ID manually below</div>
-      </div>
-      <div id="ct-trade-preview" class="hidden bg-green-50 border border-green-200 rounded-lg p-3 text-xs"></div>
-      ` : ''}
-      <div><label class="text-sm text-gray-600">Trade Request ID</label><input id="ct-trade" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="${hasOngoing ? 'Auto-filled from selection above, or enter manually' : 'Enter trade request ID'}" required></div>
+      <div><label class="text-sm text-gray-600">Trade Request ID</label><input id="ct-trade" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Enter trade request ID" required></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="text-sm text-gray-600">Incoterm (Incoterms 2020)</label><select id="ct-incoterm" class="w-full border rounded-lg px-3 py-2 text-sm" onchange="updateCommPayer()"><option>CFR</option><option>FOB</option><option>CIF</option><option>EXW</option><option>FCA</option><option>DAP</option><option>DDP</option><option>CPT</option><option>CIP</option><option>DPU</option><option>FAS</option></select></div>
         <div><label class="text-sm text-gray-600">Governing Law</label><select id="ct-law" class="w-full border rounded-lg px-3 py-2 text-sm"><option>English Law</option><option>New York Law</option><option>Singapore Law</option><option>UAE Federal Law</option><option>Swiss Law</option></select></div>
@@ -1792,36 +1538,6 @@ async function showContractWizard() {
       </div>
       <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm hover:bg-sgtx-600"><i class="fas fa-paper-plane mr-1"></i>Create Contract (Governor Gated)</button>
     </form>`);
-
-  // Store ongoing trades data for preview
-  window._ongoingTrades = ongoingTrades;
-}
-
-function onTradeSelected(tradeId) {
-  const input = document.getElementById('ct-trade');
-  const preview = document.getElementById('ct-trade-preview');
-  if (!tradeId) { if(input) input.value = ''; if(preview) preview.classList.add('hidden'); return; }
-  if (input) input.value = tradeId;
-  const trade = (window._ongoingTrades || []).find(t => t.id === tradeId);
-  if (trade && preview) {
-    const specs = typeof trade.parsed_specs === 'string' ? JSON.parse(trade.parsed_specs) : (trade.parsed_specs || {});
-    preview.classList.remove('hidden');
-    preview.innerHTML = `
-      <div class="font-semibold text-green-800 mb-1"><i class="fas fa-check-circle mr-1"></i>Trade Selected</div>
-      <div class="grid grid-cols-2 gap-1">
-        <div><span class="text-gray-500">Importer:</span> ${trade.importer_name || '—'}</div>
-        <div><span class="text-gray-500">Exporter:</span> ${trade.exporter_name || '—'}</div>
-        ${specs.hs_code ? `<div><span class="text-gray-500">HS Code:</span> ${specs.hs_code}</div>` : ''}
-        ${trade.exw_price ? `<div><span class="text-gray-500">EXW Price:</span> ${usd(trade.exw_price)}</div>` : ''}
-        ${specs.quantity ? `<div><span class="text-gray-500">Qty:</span> ${specs.quantity} ${specs.unit||'KG'}</div>` : ''}
-        ${trade.quote_incoterm ? `<div><span class="text-gray-500">Incoterm:</span> ${trade.quote_incoterm}</div>` : ''}
-      </div>`;
-    // Auto-set incoterm from quote if available
-    if (trade.quote_incoterm) {
-      const incotermSelect = document.getElementById('ct-incoterm');
-      if (incotermSelect) { incotermSelect.value = trade.quote_incoterm; updateCommPayer(); }
-    }
-  }
 }
 function updateCommPayer() {
   const incoterm = document.getElementById('ct-incoterm')?.value;
@@ -2002,292 +1718,4 @@ function showCreateModal() {
     <div class="grid grid-cols-2 gap-3">
       ${actions.map(a => `<button onclick="closeModal();${a.fn.includes('(') ? a.fn : a.fn+'()'}" class="card p-4 text-center hover:bg-${a.color}-50 transition"><i class="fas ${a.icon} text-xl text-${a.color}-500 mb-2"></i><div class="text-sm font-medium">${a.label}</div></button>`).join('')}
     </div>`);
-}
-
-// ═══════════════════════════════════════════════════════════
-// v6.2 GAP FEATURE PAGES
-// ═══════════════════════════════════════════════════════════
-
-// ─── SERVICE CATALOG (Logistics Portal) ──────────────────
-async function renderServiceCatalog() {
-  setTitle('Service Catalog' + roLabel(), 'Logistics services — rates, transit times, coverage');
-  const { data } = await api('/service-catalog');
-  document.getElementById('content').innerHTML = `
-    ${!isReadOnly() ? `<div class="mb-4 flex justify-end"><button onclick="showServiceCatalogForm()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Add Service</button></div>` : ''}
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Service</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Provider</th><th class="px-4 py-3">Base Rate</th><th class="px-4 py-3">Currency</th><th class="px-4 py-3">Transit (days)</th><th class="px-4 py-3">Status</th></tr></thead>
-      <tbody>${data.map(s => `<tr class="border-t border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-3 font-medium">${s.service_name}</td>
-        <td class="px-4 py-3 text-xs"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">${s.service_type}</span></td>
-        <td class="px-4 py-3 text-xs">${s.provider_name||'—'}</td>
-        <td class="px-4 py-3 text-right font-mono">${s.base_rate ? usd(s.base_rate) : '—'}</td>
-        <td class="px-4 py-3 text-center text-xs">${s.rate_currency}/${s.rate_unit}</td>
-        <td class="px-4 py-3 text-center">${s.transit_time_days_min||'?'}-${s.transit_time_days_max||'?'}</td>
-        <td class="px-4 py-3 text-center">${s.is_active ? '<span class="text-green-600"><i class="fas fa-check"></i></span>' : '<span class="text-gray-400"><i class="fas fa-times"></i></span>'}</td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No services in catalog')}`;
-}
-function showServiceCatalogForm() {
-  showModal(`<h2 class="text-lg font-bold mb-4"><i class="fas fa-th-list mr-2 text-sgtx-500"></i>Add Service</h2>
-    <form onsubmit="submitServiceCatalog(event)" class="space-y-3">
-      <div><label class="text-sm text-gray-600">Service Name</label><input id="sc-name" class="w-full border rounded-lg px-3 py-2 text-sm" required></div>
-      <div><label class="text-sm text-gray-600">Service Type</label><select id="sc-type" class="w-full border rounded-lg px-3 py-2 text-sm"><option>OCEAN_FCL</option><option>OCEAN_LCL</option><option>AIR_FREIGHT</option><option>TRUCKING</option><option>RAIL</option><option>CUSTOMS_BROKERAGE</option><option>WAREHOUSING</option><option>INSURANCE</option><option>FUMIGATION</option><option>PACKAGING</option></select></div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-sm text-gray-600">Base Rate (USD)</label><input id="sc-rate" type="number" step="0.01" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-        <div><label class="text-sm text-gray-600">Transit Days (min-max)</label><div class="flex gap-2"><input id="sc-tmin" type="number" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Min"><input id="sc-tmax" type="number" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Max"></div></div>
-      </div>
-      <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm">Add to Catalog</button>
-    </form>`);
-}
-async function submitServiceCatalog(e) {
-  e.preventDefault();
-  await apiPost('/service-catalog', { logistics_tenant_id: tenant?.id, service_name: document.getElementById('sc-name').value, service_type: document.getElementById('sc-type').value, base_rate: Number(document.getElementById('sc-rate').value), transit_time_days_min: Number(document.getElementById('sc-tmin').value), transit_time_days_max: Number(document.getElementById('sc-tmax').value) });
-  closeModal(); navigate('servicecatalog');
-}
-
-// ─── LOGISTICS RFQ (Request for Quote) ──────────────────
-async function renderLogisticsRFQ() {
-  setTitle('Logistics RFQ' + roLabel(), 'Request for quotes — bidding & award');
-  const { data } = await api('/logistics-rfq');
-  document.getElementById('content').innerHTML = `
-    ${!isReadOnly() ? `<div class="mb-4 flex justify-end"><button onclick="showRFQForm()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>New RFQ</button></div>` : ''}
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3">Route</th><th class="px-4 py-3">Requester</th><th class="px-4 py-3">Commodity</th><th class="px-4 py-3">Containers</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Actions</th></tr></thead>
-      <tbody>${data.map(r => `<tr class="border-t border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-3 font-mono text-xs">${r.id?.slice(0,8)}...</td>
-        <td class="px-4 py-3 text-xs font-medium">${r.origin_port||'?'} → ${r.destination_port||'?'}</td>
-        <td class="px-4 py-3 text-xs">${r.requester_name||'—'}</td>
-        <td class="px-4 py-3 text-xs">${r.commodity_type||'—'}</td>
-        <td class="px-4 py-3 text-center">${r.container_count||1} × ${r.container_type||'20GP'}</td>
-        <td class="px-4 py-3 text-center">${badge(r.status)}</td>
-        <td class="px-4 py-3 text-center"><button onclick="showRFQResponses('${r.id}')" class="text-xs text-sgtx-500 hover:underline">View Bids</button></td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No RFQs yet')}`;
-}
-function showRFQForm() {
-  showModal(`<h2 class="text-lg font-bold mb-4"><i class="fas fa-clipboard-list mr-2 text-sgtx-500"></i>New Logistics RFQ</h2>
-    <form onsubmit="submitRFQ(event)" class="space-y-3">
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-sm text-gray-600">Origin Port</label><input id="rfq-origin" class="w-full border rounded-lg px-3 py-2 text-sm" value="VNSGN" required></div>
-        <div><label class="text-sm text-gray-600">Destination Port</label><input id="rfq-dest" class="w-full border rounded-lg px-3 py-2 text-sm" value="EGALY" required></div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-sm text-gray-600">Container Type</label><select id="rfq-ctype" class="w-full border rounded-lg px-3 py-2 text-sm"><option>20GP</option><option>40GP</option><option>40HC</option><option>40HC_REEFER</option></select></div>
-        <div><label class="text-sm text-gray-600">Container Count</label><input id="rfq-cnt" type="number" class="w-full border rounded-lg px-3 py-2 text-sm" value="1"></div>
-      </div>
-      <div><label class="text-sm text-gray-600">Commodity</label><input id="rfq-comm" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Cotton yarn"></div>
-      <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm">Submit RFQ (Governor Gated)</button>
-    </form>`);
-}
-async function submitRFQ(e) {
-  e.preventDefault();
-  await apiPost('/logistics-rfq', { requester_tenant_id: tenant?.id, origin_port: document.getElementById('rfq-origin').value, destination_port: document.getElementById('rfq-dest').value, container_type: document.getElementById('rfq-ctype').value, container_count: Number(document.getElementById('rfq-cnt').value), commodity_type: document.getElementById('rfq-comm').value, actor_gtid: tenant?.gtid || 'system' });
-  closeModal(); navigate('logisticsrfq');
-}
-async function showRFQResponses(rfqId) {
-  const { data } = await api(`/logistics-rfq/${rfqId}/responses`);
-  showModal(`<h2 class="text-lg font-bold mb-4"><i class="fas fa-gavel mr-2 text-sgtx-500"></i>RFQ Bids</h2>
-    ${data?.length ? `<div class="space-y-3">${data.map(r => `
-      <div class="p-4 bg-gray-50 rounded-lg border">
-        <div class="flex justify-between items-center mb-2">
-          <span class="font-semibold text-sm">${r.provider_name||'Unknown Provider'}</span>
-          <span class="text-lg font-bold text-sgtx-600">${usd(r.total_price)}</span>
-        </div>
-        <div class="text-xs text-gray-500">Transit: ${r.transit_time_days||'?'} days | ${badge(r.status)}</div>
-      </div>`).join('')}</div>` : '<p class="text-gray-400 text-center py-8">No bids yet</p>'}`);
-}
-
-// ─── DRIVERS (Logistics Portal) ──────────────────────────
-async function renderDrivers() {
-  setTitle('Drivers' + roLabel(), 'Driver/carrier onboarding & status');
-  const { data } = await api('/drivers' + (tenant?.id ? `?tenant_id=${tenant.id}` : ''));
-  document.getElementById('content').innerHTML = `
-    ${!isReadOnly() ? `<div class="mb-4 flex justify-end"><button onclick="showDriverForm()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-plus mr-1"></i>Onboard Driver</button></div>` : ''}
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Name</th><th class="px-4 py-3">Phone</th><th class="px-4 py-3">License</th><th class="px-4 py-3">Vehicle</th><th class="px-4 py-3">Plate</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Onboarded</th></tr></thead>
-      <tbody>${data.map(d => `<tr class="border-t border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-3 font-medium">${d.full_name}</td>
-        <td class="px-4 py-3 text-xs">${d.phone||'—'}</td>
-        <td class="px-4 py-3 text-xs font-mono">${d.license_number||'—'}</td>
-        <td class="px-4 py-3 text-xs">${d.vehicle_type||'—'}</td>
-        <td class="px-4 py-3 text-xs font-mono">${d.vehicle_plate||'—'}</td>
-        <td class="px-4 py-3 text-center">${badge(d.status)}</td>
-        <td class="px-4 py-3 text-xs text-gray-400">${d.onboarded_via||'PORTAL'}</td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No drivers onboarded')}`;
-}
-function showDriverForm() {
-  showModal(`<h2 class="text-lg font-bold mb-4"><i class="fas fa-id-card mr-2 text-sgtx-500"></i>Onboard Driver</h2>
-    <form onsubmit="submitDriver(event)" class="space-y-3">
-      <div><label class="text-sm text-gray-600">Full Name</label><input id="dr-name" class="w-full border rounded-lg px-3 py-2 text-sm" required></div>
-      <div><label class="text-sm text-gray-600">Phone</label><input id="dr-phone" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-      <div><label class="text-sm text-gray-600">License Number</label><input id="dr-license" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="text-sm text-gray-600">Vehicle Type</label><select id="dr-vehicle" class="w-full border rounded-lg px-3 py-2 text-sm"><option>TRUCK</option><option>CONTAINER_TRAILER</option><option>VAN</option><option>REEFER_TRUCK</option></select></div>
-        <div><label class="text-sm text-gray-600">Vehicle Plate</label><input id="dr-plate" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-      </div>
-      <button type="submit" class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm">Onboard Driver</button>
-    </form>`);
-}
-async function submitDriver(e) {
-  e.preventDefault();
-  await apiPost('/drivers', { logistics_tenant_id: tenant?.id, full_name: document.getElementById('dr-name').value, phone: document.getElementById('dr-phone').value, license_number: document.getElementById('dr-license').value, vehicle_type: document.getElementById('dr-vehicle').value, vehicle_plate: document.getElementById('dr-plate').value });
-  closeModal(); navigate('drivers');
-}
-
-// ─── CREDIT ASSESSMENTS (Financier Portal) ──────────────
-async function renderCreditAssessments() {
-  setTitle('Credit Assessments' + roLabel(), 'AI-driven credit intelligence — XGBoost scoring');
-  const { data } = await api('/credit-assessments');
-  document.getElementById('content').innerHTML = `
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Entity</th><th class="px-4 py-3">GTID</th><th class="px-4 py-3">Overall Score</th><th class="px-4 py-3">Default Prob.</th><th class="px-4 py-3">Recommended Limit</th><th class="px-4 py-3">Model</th><th class="px-4 py-3">Created</th></tr></thead>
-      <tbody>${data.map(a => `<tr class="border-t border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-3 font-medium">${a.entity_name||'—'}</td>
-        <td class="px-4 py-3 font-mono text-xs">${a.entity_gtid||'—'}</td>
-        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${a.overall_score>=70?'bg-green-200 text-green-800':a.overall_score>=50?'bg-yellow-200 text-yellow-800':'bg-red-200 text-red-800'}">${a.overall_score?.toFixed(0)||'?'}</span></td>
-        <td class="px-4 py-3 text-center text-xs">${a.default_probability ? (a.default_probability*100).toFixed(1)+'%' : '—'}</td>
-        <td class="px-4 py-3 text-right font-mono">${a.recommended_limit_usd ? usd(a.recommended_limit_usd) : '—'}</td>
-        <td class="px-4 py-3 text-xs text-gray-400">${a.model_version||'—'}</td>
-        <td class="px-4 py-3 text-xs text-gray-400">${time(a.created_at)}</td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No credit assessments')}`;
-}
-
-// ─── LOGISTICS PERFORMANCE ──────────────────────────────
-async function renderLogisticsPerformance() {
-  setTitle('Logistics Performance' + roLabel(), 'Provider performance metrics — on-time delivery, damage rates');
-  const { data } = await api('/logistics-performance' + (tenant?.id ? `?tenant_id=${tenant.id}` : ''));
-  document.getElementById('content').innerHTML = `
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">Provider</th><th class="px-4 py-3">Period</th><th class="px-4 py-3">Shipments</th><th class="px-4 py-3">On-Time %</th><th class="px-4 py-3">Damage %</th><th class="px-4 py-3">Avg Transit</th><th class="px-4 py-3">ESG</th><th class="px-4 py-3">Carbon/TEU</th></tr></thead>
-      <tbody>${data.map(p => `<tr class="border-t border-gray-50 hover:bg-gray-50">
-        <td class="px-4 py-3 font-medium">${p.provider_name||'—'}</td>
-        <td class="px-4 py-3 text-xs">${p.period}</td>
-        <td class="px-4 py-3 text-center">${p.shipments_completed}</td>
-        <td class="px-4 py-3 text-center"><span class="${p.on_time_delivery_rate>=95?'text-green-600':p.on_time_delivery_rate>=85?'text-yellow-600':'text-red-600'}">${p.on_time_delivery_rate?.toFixed(1)}%</span></td>
-        <td class="px-4 py-3 text-center text-xs">${p.damage_rate?.toFixed(2)}%</td>
-        <td class="px-4 py-3 text-center">${p.avg_transit_time_days?.toFixed(1)} days</td>
-        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 rounded text-xs font-bold ${p.esg_score>=80?'bg-green-200 text-green-800':p.esg_score>=60?'bg-yellow-200 text-yellow-800':'bg-red-200 text-red-800'}">${p.esg_score?.toFixed(0)||'?'}</span></td>
-        <td class="px-4 py-3 text-center text-xs">${p.carbon_per_teu?.toFixed(1)||'—'}</td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No performance data yet')}`;
-}
-
-// ─── PACKING PLANS (Phase 2) ────────────────────────────
-async function renderPackingPlans() {
-  setTitle('Packing Plans' + roLabel(), 'Container loading optimization — pallet details & AR visualization');
-  const { data } = await api('/packing-plans');
-  document.getElementById('content').innerHTML = `
-    ${data?.length ? `<div class="card overflow-x-auto"><table class="w-full text-sm">
-      <thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left">ID</th><th class="px-4 py-3">Container Type</th><th class="px-4 py-3">Pallets</th><th class="px-4 py-3">Weight (kg)</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Created</th></tr></thead>
-      <tbody>${data.map(p => `<tr class="border-t border-gray-50 hover:bg-gray-50 cursor-pointer" onclick="showPackingDetail('${p.id}')">
-        <td class="px-4 py-3 font-mono text-xs">${p.id?.slice(0,8)}...</td>
-        <td class="px-4 py-3 text-xs">${p.container_type||'—'}</td>
-        <td class="px-4 py-3 text-center">${p.total_pallets||0}</td>
-        <td class="px-4 py-3 text-right font-mono">${p.total_weight_kg?.toLocaleString()||'0'}</td>
-        <td class="px-4 py-3 text-center">${badge(p.status)}</td>
-        <td class="px-4 py-3 text-xs text-gray-400">${time(p.created_at)}</td>
-      </tr>`).join('')}</tbody></table></div>` : emptyState('No packing plans created yet')}`;
-}
-async function showPackingDetail(id) {
-  const { data } = await api(`/packing-plans/${id}`);
-  const pallets = data?.pallets || [];
-  showModal(`<h2 class="text-lg font-bold mb-4"><i class="fas fa-boxes mr-2 text-sgtx-500"></i>Packing Plan Detail</h2>
-    <div class="grid grid-cols-3 gap-3 mb-4">
-      <div class="bg-gray-50 p-3 rounded text-center"><div class="text-2xl font-bold text-sgtx-500">${data?.total_pallets||0}</div><div class="text-xs text-gray-500">Pallets</div></div>
-      <div class="bg-gray-50 p-3 rounded text-center"><div class="text-2xl font-bold text-sgtx-500">${data?.total_weight_kg?.toLocaleString()||0}</div><div class="text-xs text-gray-500">Total Weight (kg)</div></div>
-      <div class="bg-gray-50 p-3 rounded text-center"><div class="text-2xl font-bold text-sgtx-500">${data?.container_type||'—'}</div><div class="text-xs text-gray-500">Container Type</div></div>
-    </div>
-    ${pallets.length ? `<h3 class="font-bold text-sm mb-2">Pallet Details</h3>
-    <div class="space-y-2">${pallets.map(p => `<div class="p-3 bg-gray-50 rounded border text-xs flex justify-between">
-      <span><b>Pallet #${p.pallet_number}</b> — ${p.commodity_description||'N/A'} (HS: ${p.hs_code||'?'})</span>
-      <span>${p.carton_count||0} cartons | ${p.gross_weight_kg||0} kg</span>
-    </div>`).join('')}</div>` : '<p class="text-gray-400 text-sm">No pallet details</p>'}`);
-}
-
-// ─── DIGITAL TWIN (Phase 5) ────────────────────────────
-async function renderDigitalTwin() {
-  setTitle('Digital Twin Dashboard' + roLabel(), 'Real-time shipment simulation — predictive analytics');
-  // Get all recent digital twin snapshots from active shipments
-  const shipments = await api('/shipments?status=IN_TRANSIT');
-  const active = shipments.data || [];
-  let twinData = [];
-  for (const s of active.slice(0, 5)) {
-    try {
-      const { data } = await api(`/shipments/${s.ustn}/digital-twin`);
-      if (data?.length) twinData.push({ shipment: s, snapshots: data });
-    } catch(e) {}
-  }
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-      ${statCard('fas fa-ship', 'Active Shipments', active.length, 'bg-blue-50 text-blue-600')}
-      ${statCard('fas fa-digital-tachograph', 'Twin Snapshots', twinData.reduce((s,t) => s + t.snapshots.length, 0), 'bg-purple-50 text-purple-600')}
-      ${statCard('fas fa-clock', 'With ETAs', twinData.filter(t => t.snapshots[0]?.predicted_eta).length, 'bg-green-50 text-green-600')}
-      ${statCard('fas fa-thermometer-half', 'With Temp Data', twinData.filter(t => t.snapshots[0]?.temperature_forecast && t.snapshots[0].temperature_forecast !== '{}').length, 'bg-orange-50 text-orange-600')}
-    </div>
-    ${twinData.length ? `<div class="space-y-4">${twinData.map(t => {
-      const latest = t.snapshots[0];
-      return `<div class="card p-5">
-        <div class="flex justify-between items-center mb-3">
-          <div><span class="font-bold">${t.shipment.ustn}</span><span class="ml-2 text-xs text-gray-500">${t.shipment.origin_port} → ${t.shipment.destination_port}</span></div>
-          ${badge(t.shipment.status)}
-        </div>
-        <div class="grid grid-cols-3 gap-3 text-xs">
-          <div class="bg-gray-50 p-3 rounded"><div class="font-bold mb-1">Predicted ETA</div>${latest.predicted_eta ? time(latest.predicted_eta) : 'N/A'}</div>
-          <div class="bg-gray-50 p-3 rounded"><div class="font-bold mb-1">Shelf Life</div>${latest.shelf_life_days ? latest.shelf_life_days + ' days' : 'N/A'}</div>
-          <div class="bg-gray-50 p-3 rounded"><div class="font-bold mb-1">Snapshots</div>${t.snapshots.length}</div>
-        </div>
-      </div>`;
-    }).join('')}</div>` : `<div class="card p-8 text-center text-gray-400"><i class="fas fa-satellite text-4xl mb-3"></i><p>No digital twin data available. Create snapshots for active shipments.</p></div>`}`;
-}
-
-// ─── GAP STATS (Admin — overview of all v6.2 tables) ────
-async function renderGapStats() {
-  setTitle('v6.2 Blueprint Gap Stats', 'Record counts for all newly implemented tables');
-  const [gapData, enhancedData] = await Promise.all([api('/gap-stats'), api('/enhanced-stats')]);
-  const g = gapData.data || {};
-  const e = enhancedData.data || {};
-  const tables = [
-    { name: 'Packing Plans', count: g.packing_plans, icon: 'fa-boxes', phase: '2' },
-    { name: 'Pallet Details', count: g.pallet_details, icon: 'fa-pallet', phase: '2' },
-    { name: 'Container Loading Plans', count: g.container_loading_plans, icon: 'fa-truck-loading', phase: '2' },
-    { name: 'Voice Transcripts', count: g.voice_transcripts, icon: 'fa-microphone', phase: '5/10' },
-    { name: 'Evidence Packages', count: g.evidence_packages, icon: 'fa-folder-open', phase: '10' },
-    { name: 'Digital Twin Snapshots', count: g.digital_twin_snapshots, icon: 'fa-satellite', phase: '5' },
-    { name: 'PSP Health Logs', count: g.psp_health_logs, icon: 'fa-heartbeat', phase: '9' },
-    { name: 'Secondary Market Prices', count: g.secondary_market_prices, icon: 'fa-chart-line', phase: '4' },
-    { name: 'Distressed Notifications', count: g.distressed_notifications, icon: 'fa-bell', phase: '8' },
-    { name: 'Autonomous Milestones', count: g.autonomous_milestones, icon: 'fa-robot', phase: '5' },
-    { name: 'Computer Vision Jobs', count: g.computer_vision_jobs, icon: 'fa-eye', phase: '5' },
-    { name: 'Liquidity Predictions', count: g.liquidity_predictions, icon: 'fa-chart-area', phase: '6' },
-    { name: 'Netting Circles', count: g.netting_circles, icon: 'fa-circle-nodes', phase: '6' },
-    { name: 'FX Optimization Paths', count: g.fx_optimization_paths, icon: 'fa-exchange-alt', phase: '6' },
-    { name: 'Auto Reconciliation', count: g.auto_reconciliation, icon: 'fa-check-double', phase: '6' },
-    { name: 'Predictive Escrows', count: g.predictive_escrows, icon: 'fa-lock', phase: '6' },
-    { name: 'Commission Singularity', count: g.commission_singularity, icon: 'fa-atom', phase: '6' },
-    { name: 'Settlement Paths', count: g.settlement_paths, icon: 'fa-road', phase: '6' },
-    { name: 'Payment Verification', count: g.payment_verification, icon: 'fa-receipt', phase: '9' },
-    { name: 'DeFi Transactions', count: g.defi_transactions, icon: 'fa-link', phase: '4' },
-    { name: 'Regulatory Compliance', count: g.regulatory_compliance, icon: 'fa-gavel', phase: '4' },
-    { name: 'Commission Settlements', count: g.commission_settlements, icon: 'fa-money-check', phase: '9' },
-    { name: 'Sensor Data Logs', count: g.sensor_data_logs, icon: 'fa-broadcast-tower', phase: '5' },
-    { name: 'Inspections', count: e.inspections_total, icon: 'fa-clipboard-check', phase: '5' },
-    { name: 'Service Catalog', count: e.service_catalog_items, icon: 'fa-th-list', phase: 'Logistics' },
-    { name: 'Logistics RFQs', count: e.rfqs_total, icon: 'fa-clipboard-list', phase: 'Logistics' },
-    { name: 'Drivers', count: e.drivers_total, icon: 'fa-id-card', phase: 'Logistics' },
-    { name: 'Credit Assessments', count: e.credit_assessments, icon: 'fa-chart-pie', phase: '4' },
-    { name: 'Entities w/ Disputes', count: e.entities_with_disputes, icon: 'fa-flag', phase: '10' },
-  ];
-  const total = tables.reduce((s, t) => s + (t.count || 0), 0);
-  document.getElementById('content').innerHTML = `
-    <div class="card p-5 mb-5">
-      <div class="flex justify-between items-center mb-3">
-        <h3 class="font-bold text-gray-700"><i class="fas fa-database mr-2 text-sgtx-500"></i>Blueprint v6.2 Gap Tables — ${tables.length} Tables Implemented</h3>
-        <span class="text-sm text-gray-500">Total Records: <b>${total.toLocaleString()}</b></span>
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        ${tables.map(t => `
-          <div class="bg-gray-50 p-3 rounded-lg border hover:border-sgtx-300 transition">
-            <div class="flex items-center gap-2 mb-1"><i class="fas ${t.icon} text-sgtx-400 text-xs"></i><span class="text-xs font-semibold text-gray-700">${t.name}</span></div>
-            <div class="text-xl font-bold text-sgtx-600">${t.count || 0}</div>
-            <div class="text-[10px] text-gray-400">Phase ${t.phase}</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
 }

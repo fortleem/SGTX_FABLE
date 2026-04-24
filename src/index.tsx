@@ -7,6 +7,8 @@ import trade from './routes/trade';
 import shipment from './routes/shipment';
 import finance from './routes/finance';
 import governance from './routes/governance';
+import upgrades from './routes/upgrades';
+import gaps from './routes/gaps';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -31,6 +33,8 @@ app.route('/api/v1', trade);
 app.route('/api/v1', shipment);
 app.route('/api/v1', finance);
 app.route('/api/v1', governance);
+app.route('/api/v1', upgrades);
+app.route('/api/v1', gaps);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({

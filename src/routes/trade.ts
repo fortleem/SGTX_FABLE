@@ -26,6 +26,26 @@ trade.get('/trades', async (c) => {
   return c.json({ data: results, count: results.length });
 });
 
+// ─── ONGOING TRADES FOR CONTRACT WIZARD (Trade Selector Dropdown) ──
+trade.get('/trades/ongoing', async (c) => {
+  const tenantId = c.req.query('tenant_id');
+  let sql = `
+    SELECT tr.id, tr.status, tr.raw_description, tr.parsed_specs, tr.created_at,
+           t1.legal_name as importer_name, t1.gtid as importer_gtid,
+           t2.legal_name as exporter_name, t2.gtid as exporter_gtid,
+           eq.exw_price, eq.incoterm as quote_incoterm
+    FROM trade_requests tr
+    LEFT JOIN tenants t1 ON tr.importer_tenant_id = t1.id
+    LEFT JOIN tenants t2 ON tr.assigned_exporter_id = t2.id
+    LEFT JOIN exporter_quotes eq ON eq.trade_request_id = tr.id
+    WHERE tr.status IN ('QUOTED','NEGOTIATING','PENDING_EXPORTER_RESPONSE','MATCHING','DRAFT')
+  `;
+  if (tenantId) sql += ` AND (tr.importer_tenant_id = '${tenantId}' OR tr.assigned_exporter_id = '${tenantId}')`;
+  sql += ' ORDER BY tr.created_at DESC LIMIT 50';
+  const { results } = await c.env.DB.prepare(sql).all();
+  return c.json({ data: results });
+});
+
 trade.get('/trades/:id', async (c) => {
   const t = await c.env.DB.prepare(`
     SELECT tr.*, t1.legal_name as importer_name, t1.gtid as importer_gtid, t2.legal_name as exporter_name, t2.gtid as exporter_gtid
