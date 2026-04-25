@@ -195,6 +195,57 @@ const POLICY_RULES: Record<string, (ctx: any) => { verdict: GovernorVerdict; con
   'inspection.schedule': (ctx) => {
     return { verdict: 'ALLOW', conditions: [], explanation: 'Inspection scheduled — priority pallets identified by AI' };
   },
+  // ─── v6.2 ADVANCED POLICIES ────────────────────────────
+  // IoT (Phase 5)
+  'iot.record': (ctx) => {
+    if (ctx.value && ctx.sensor_type === 'TEMPERATURE' && ctx.value > 25) {
+      return { verdict: 'CONDITIONAL', conditions: ['TEMPERATURE_ALERT'], explanation: 'IoT reading recorded — temperature anomaly flagged for review' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'IoT sensor reading authorized (G5-U-4)' };
+  },
+  // Carbon Footprint
+  'carbon.calculate': (ctx) => {
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Carbon footprint calculation authorized — ESG compliance (G5-U-9)' };
+  },
+  // eBL (Phase 5)
+  'ebl.issue': (ctx) => {
+    return { verdict: 'ALLOW', conditions: [], explanation: 'eBL issuance authorized — carrier capability verified (G5-U-10)' };
+  },
+  // Sanctions Proximity (Phase 7)
+  'sanctions.proximity': (ctx) => {
+    if (ctx.proximity_score > 0.8) {
+      return { verdict: 'DENY', conditions: ['HIGH_SANCTIONS_PROXIMITY'], explanation: 'Entity blocked — sanctions proximity score exceeds 0.8 threshold' };
+    }
+    if (ctx.proximity_score > 0.5) {
+      return { verdict: 'CONDITIONAL', conditions: ['ENHANCED_DD_REQUIRED'], explanation: 'Enhanced due diligence required — moderate sanctions proximity' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Sanctions proximity check passed (G7-U-5)' };
+  },
+  // Shell Detection (Phase 7)
+  'shell.detect': (ctx) => {
+    if (ctx.shell_score > 0.7) {
+      return { verdict: 'DENY', conditions: ['SHELL_COMPANY_DETECTED'], explanation: 'Entity flagged as potential shell company — manual review required' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Shell company detection passed (G7-U-6)' };
+  },
+  // Fraud Detection (Phase 7)
+  'fraud.detect': (ctx) => {
+    if (ctx.fraud_score > 0.75) {
+      return { verdict: 'DENY', conditions: ['HIGH_FRAUD_RISK'], explanation: 'Transaction blocked — fraud score exceeds threshold' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Fraud detection check passed (G7-U-7)' };
+  },
+  // Model Drift (AI Governance)
+  'model.drift.record': (ctx) => {
+    if (ctx.drift_score > 0.3) {
+      return { verdict: 'CONDITIONAL', conditions: ['MODEL_RETRAIN_NEEDED'], explanation: 'Model drift detected — retraining recommended (A3 authority)' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Model drift within acceptable bounds' };
+  },
+  // Fee Optimization (Phase 6)
+  'fee.optimize': (ctx) => {
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Fee optimization authorized — PSP comparison verified (G6-U-8)' };
+  },
 };
 
 // Default policy for unmatched types

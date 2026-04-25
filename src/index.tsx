@@ -9,6 +9,7 @@ import finance from './routes/finance';
 import governance from './routes/governance';
 import upgrades from './routes/upgrades';
 import gaps from './routes/gaps';
+import advanced from './routes/advanced';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -35,6 +36,7 @@ app.route('/api/v1', finance);
 app.route('/api/v1', governance);
 app.route('/api/v1', upgrades);
 app.route('/api/v1', gaps);
+app.route('/api/v1', advanced);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({

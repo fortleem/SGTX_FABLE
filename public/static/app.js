@@ -224,6 +224,7 @@ function switchPortal(portal) {
       { id: 'commissions', icon: 'fa-coins', label: 'Commission Locks' },
       { section: 'Execution & Tracking' },
       { id: 'shipments', icon: 'fa-ship', label: 'Track Shipments' },
+      { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT / Cold Chain' },
       { section: 'Finance & Payments' },
       { id: 'financing', icon: 'fa-university', label: 'Financing' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Payments' },
@@ -242,6 +243,8 @@ function switchPortal(portal) {
       { section: 'Execution' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments' },
       { id: 'barcodes', icon: 'fa-barcode', label: 'Barcode Generator' },
+      { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
+      { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
       { section: 'Discovery' },
       { id: 'buyersearch', icon: 'fa-search-dollar', label: 'Find Buyers' },
       { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
@@ -262,10 +265,16 @@ function switchPortal(portal) {
       { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
       { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Bidding' },
       { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance' },
+      { id: 'carrierprofiles', icon: 'fa-truck', label: 'Carrier Profiles' },
+      { section: 'Tracking & IoT' },
+      { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
+      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
+      { id: 'shipmentschedules', icon: 'fa-calendar-alt', label: 'Schedules' },
       { section: 'Finance' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'Service Contracts' },
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlements' },
       { id: 'commissions', icon: 'fa-coins', label: 'Commissions' },
+      { id: 'providerinvoices', icon: 'fa-file-invoice-dollar', label: 'Invoices' },
       { section: 'ESG & Network' },
       { id: 'esg', icon: 'fa-leaf', label: 'Carbon / ESG' },
       { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
@@ -291,6 +300,8 @@ function switchPortal(portal) {
       { section: 'Financing' },
       { id: 'financing', icon: 'fa-university', label: 'Active Requests' },
       { id: 'defi', icon: 'fa-link', label: 'DeFi Positions' },
+      { id: 'tokenizedassets', icon: 'fa-coins', label: 'Tokenized Assets' },
+      { id: 'blockchainverify', icon: 'fa-link', label: 'Blockchain Verify' },
       { section: 'Settlements' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Settlements' },
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlement Instructions' },
@@ -381,6 +392,22 @@ function switchPortal(portal) {
       { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
       { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
       { id: 'gapstats', icon: 'fa-database', label: 'Gap Stats' },
+      { section: 'v6.2 Advanced' },
+      { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
+      { id: 'eblmanagement', icon: 'fa-file-alt', label: 'eBL Management' },
+      { id: 'carrierprofiles', icon: 'fa-truck', label: 'Carrier Profiles' },
+      { id: 'providerinvoices', icon: 'fa-file-invoice-dollar', label: 'Provider Invoices' },
+      { id: 'sanctionsdetail', icon: 'fa-shield-alt', label: 'Sanctions/Fraud/Shell' },
+      { id: 'modeldrift', icon: 'fa-brain', label: 'Model Drift' },
+      { id: 'policysuggestions', icon: 'fa-lightbulb', label: 'Policy Suggestions' },
+      { id: 'feeoptimization', icon: 'fa-calculator', label: 'Fee Optimization' },
+      { id: 'livingquotes', icon: 'fa-sync-alt', label: 'Living Quotes' },
+      { id: 'tradecomposer', icon: 'fa-magic', label: 'Trade Composer' },
+      { id: 'tokenizedassets', icon: 'fa-coins', label: 'Tokenized Assets' },
+      { id: 'blockchainverify', icon: 'fa-link', label: 'Blockchain Verify' },
+      { id: 'smartclauses', icon: 'fa-file-code', label: 'Smart Clauses' },
+      { id: 'shipmentschedules', icon: 'fa-calendar-alt', label: 'Shipment Schedules' },
+      { id: 'advancedstats', icon: 'fa-chart-bar', label: 'Advanced Stats' },
     ],
   };
 
@@ -433,6 +460,14 @@ async function loadPage(page) {
       drivers: renderDrivers, creditassessments: renderCreditAssessments,
       logisticsperf: renderLogisticsPerformance, packingplans: renderPackingPlans,
       digitaltwin: renderDigitalTwin, gapstats: renderGapStats,
+      iotdashboard: renderIoTDashboard, eblmanagement: renderEBLManagement,
+      carrierprofiles: renderCarrierProfiles, providerinvoices: renderProviderInvoices,
+      sanctionsdetail: renderSanctionsDetail, modeldrift: renderModelDrift,
+      policysuggestions: renderPolicySuggestions, feeoptimization: renderFeeOptimization,
+      livingquotes: renderLivingQuotes, tradecomposer: renderTradeComposer,
+      tokenizedassets: renderTokenizedAssets, blockchainverify: renderBlockchainVerify,
+      smartclauses: renderSmartClauses, shipmentschedules: renderShipmentSchedules,
+      advancedstats: renderAdvancedStats,
     };
     if (pages[page]) await pages[page]();
     else content.innerHTML = '<div class="card p-12 text-center text-gray-400"><i class="fas fa-hard-hat text-4xl mb-3"></i><p>Page coming soon</p></div>';
@@ -2279,6 +2314,454 @@ async function renderGapStats() {
     <div class="card p-5 mb-5">
       <div class="flex justify-between items-center mb-3">
         <h3 class="font-bold text-gray-700"><i class="fas fa-database mr-2 text-sgtx-500"></i>Blueprint v6.2 Gap Tables — ${tables.length} Tables Implemented</h3>
+        <span class="text-sm text-gray-500">Total Records: <b>${total.toLocaleString()}</b></span>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        ${tables.map(t => `
+          <div class="bg-gray-50 p-3 rounded-lg border hover:border-sgtx-300 transition">
+            <div class="flex items-center gap-2 mb-1"><i class="fas ${t.icon} text-sgtx-400 text-xs"></i><span class="text-xs font-semibold text-gray-700">${t.name}</span></div>
+            <div class="text-xl font-bold text-sgtx-600">${t.count || 0}</div>
+            <div class="text-[10px] text-gray-400">Phase ${t.phase}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// v6.2 ADVANCED PORTAL PAGES
+// ═══════════════════════════════════════════════════════════
+
+// ─── IoT DASHBOARD (Cold Chain, Sensors — Phase 5) ──────
+async function renderIoTDashboard() {
+  setTitle('IoT Sensor Readings', 'Cold-chain monitoring, temperature, humidity, GPS tracking');
+  const data = await api('/iot-readings');
+  const readings = data.data || [];
+  const temps = readings.filter(r => r.sensor_type === 'TEMPERATURE');
+  const humids = readings.filter(r => r.sensor_type === 'HUMIDITY');
+  const anomalies = readings.filter(r => r.anomaly_flag);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-thermometer-half', 'Total Readings', readings.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-temperature-low', 'Temperature', temps.length, 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-tint', 'Humidity', humids.length, 'bg-cyan-50 text-cyan-600')}
+      ${statCard('fas fa-exclamation-triangle', 'Anomalies', anomalies.length, 'bg-yellow-50 text-yellow-600')}
+    </div>
+    ${!isReadOnly() ? `<div class="mb-4"><button onclick="showIoTForm()" class="btn-primary"><i class="fas fa-plus mr-2"></i>Record IoT Reading</button></div>` : ''}
+    ${readings.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>USTN</th><th>Sensor</th><th>Value</th><th>Unit</th><th>Device</th><th>Anomaly</th><th>Recorded</th>
+    </tr></thead><tbody>${readings.map(r => `<tr>
+      <td class="font-mono text-xs">${r.ustn || '—'}</td>
+      <td>${badge(r.sensor_type)}</td>
+      <td class="font-bold">${r.value}</td>
+      <td>${r.unit || '—'}</td>
+      <td class="text-xs">${r.device_id || '—'}</td>
+      <td>${r.anomaly_flag ? '<span class="text-red-600 font-bold">⚠ YES</span>' : '<span class="text-green-600">OK</span>'}</td>
+      <td class="text-xs">${time(r.recorded_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No IoT readings yet')}`;
+}
+
+function showIoTForm() {
+  showModal(`<h3 class="font-bold text-lg mb-4"><i class="fas fa-thermometer-half mr-2"></i>Record IoT Reading</h3>
+    <form onsubmit="submitIoT(event)">
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs font-semibold">USTN</label><input id="iot-ustn" class="input w-full" required></div>
+        <div><label class="text-xs font-semibold">Sensor Type</label><select id="iot-type" class="input w-full">
+          <option>TEMPERATURE</option><option>HUMIDITY</option><option>GPS</option><option>SHOCK</option><option>LIGHT</option>
+        </select></div>
+        <div><label class="text-xs font-semibold">Value</label><input id="iot-value" type="number" step="0.01" class="input w-full" required></div>
+        <div><label class="text-xs font-semibold">Unit</label><input id="iot-unit" class="input w-full" value="celsius"></div>
+        <div><label class="text-xs font-semibold">Device ID</label><input id="iot-device" class="input w-full"></div>
+        <div><label class="text-xs font-semibold">Battery %</label><input id="iot-battery" type="number" class="input w-full"></div>
+      </div>
+      <button type="submit" class="btn-primary mt-4 w-full">Record Reading</button>
+    </form>`);
+}
+async function submitIoT(e) {
+  e.preventDefault();
+  await apiPost('/iot-readings', { ustn: document.getElementById('iot-ustn').value, sensor_type: document.getElementById('iot-type').value, value: parseFloat(document.getElementById('iot-value').value), unit: document.getElementById('iot-unit').value, device_id: document.getElementById('iot-device').value || null, battery_pct: parseFloat(document.getElementById('iot-battery').value) || null });
+  closeModal(); navigate('iotdashboard');
+}
+
+// ─── eBL MANAGEMENT (Phase 5) ───────────────────────────
+async function renderEBLManagement() {
+  setTitle('Electronic Bill of Lading (eBL)', 'eBL issuance, transfers, and carrier capability matrix');
+  const [eblData, capData] = await Promise.all([api('/ebls'), api('/ebl-capability')]);
+  const ebls = eblData.data || [];
+  const caps = capData.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-file-alt', 'eBLs Issued', ebls.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-truck', 'Carrier Capabilities', caps.length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-exchange-alt', 'Transferred', ebls.filter(e => e.ebl_status === 'TRANSFERRED').length, 'bg-purple-50 text-purple-600')}
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="card p-5"><h4 class="font-bold mb-3"><i class="fas fa-file-alt mr-2"></i>eBL Records</h4>
+        ${ebls.length ? `<div class="space-y-2">${ebls.map(e => `<div class="bg-gray-50 p-3 rounded flex justify-between items-center">
+          <div><span class="font-mono text-xs">${e.ebl_reference || e.id?.slice(0,8)}</span> <span class="text-xs text-gray-500 ml-2">${e.shipment_ustn || ''}</span></div>
+          <div>${badge(e.ebl_status)} <span class="text-xs ml-2">${e.carrier_name || ''} / ${e.ebl_platform || ''}</span></div>
+        </div>`).join('')}</div>` : '<p class="text-gray-400 text-sm">No eBLs issued yet</p>'}
+      </div>
+      <div class="card p-5"><h4 class="font-bold mb-3"><i class="fas fa-truck mr-2"></i>Carrier Capability Matrix</h4>
+        ${caps.length ? `<div class="space-y-2">${caps.map(c => `<div class="bg-gray-50 p-3 rounded flex justify-between items-center">
+          <div><span class="font-semibold">${c.carrier_name}</span> <span class="text-xs text-gray-500 ml-2">${c.carrier_scac || ''}</span></div>
+          <div>${badge(c.status)} <span class="text-xs ml-2">${c.ebl_platform || ''}</span></div>
+        </div>`).join('')}</div>` : '<p class="text-gray-400 text-sm">No carrier capabilities registered</p>'}
+      </div>
+    </div>`;
+}
+
+// ─── CARRIER PROFILES (Phase 5) ─────────────────────────
+async function renderCarrierProfiles() {
+  setTitle('Carrier Performance Profiles', 'On-time %, dispute rates, ESG scores, risk assessments');
+  const data = await api('/carrier-profiles');
+  const profiles = data.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-truck', 'Total Carriers', profiles.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-check-circle', 'Avg On-Time', profiles.length ? (profiles.reduce((s,p) => s + (p.on_time_pct||0), 0)/profiles.length).toFixed(1)+'%' : '—', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-leaf', 'Avg ESG', profiles.length ? (profiles.reduce((s,p) => s + (p.esg_score||0), 0)/profiles.length).toFixed(0) : '—', 'bg-emerald-50 text-emerald-600')}
+      ${statCard('fas fa-exclamation-triangle', 'High Risk', profiles.filter(p => p.risk_score > 60).length, 'bg-red-50 text-red-600')}
+    </div>
+    ${profiles.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Carrier</th><th>On-Time %</th><th>Dispute Rate</th><th>ESG Score</th><th>Risk Score</th><th>Shipments</th><th>Avg Transit</th><th>Updated</th>
+    </tr></thead><tbody>${profiles.map(p => `<tr>
+      <td class="font-semibold">${p.carrier_name}</td>
+      <td><span class="${p.on_time_pct >= 90 ? 'text-green-600' : p.on_time_pct >= 75 ? 'text-yellow-600' : 'text-red-600'} font-bold">${(p.on_time_pct||0).toFixed(1)}%</span></td>
+      <td>${(p.dispute_rate||0).toFixed(2)}%</td>
+      <td>${p.esg_score||0}/100</td>
+      <td><span class="${p.risk_score > 60 ? 'text-red-600' : p.risk_score > 30 ? 'text-yellow-600' : 'text-green-600'} font-bold">${p.risk_score||0}</span></td>
+      <td>${p.total_shipments||0}</td>
+      <td>${p.avg_transit_days||0} days</td>
+      <td class="text-xs">${time(p.last_updated)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No carrier profiles yet')}`;
+}
+
+// ─── PROVIDER INVOICES (Phase 2) ────────────────────────
+async function renderProviderInvoices() {
+  setTitle('Provider Invoices', 'Logistics and service provider invoice management');
+  const data = await api('/provider-invoices');
+  const invoices = data.data || [];
+  const pending = invoices.filter(i => i.status === 'PENDING');
+  const paid = invoices.filter(i => i.status === 'PAID');
+  const totalAmount = invoices.reduce((s,i) => s + (i.amount||0), 0);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-file-invoice-dollar', 'Total Invoices', invoices.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-clock', 'Pending', pending.length, 'bg-yellow-50 text-yellow-600')}
+      ${statCard('fas fa-check-circle', 'Paid', paid.length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-dollar-sign', 'Total Amount', usd(totalAmount), 'bg-sgtx-50 text-sgtx-600')}
+    </div>
+    ${invoices.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Invoice #</th><th>Provider</th><th>Amount</th><th>Currency</th><th>Service</th><th>Status</th><th>Due Date</th>
+    </tr></thead><tbody>${invoices.map(i => `<tr>
+      <td class="font-mono text-xs">${i.invoice_number || i.id?.slice(0,8)}</td>
+      <td class="font-semibold">${i.provider_name || '—'}</td>
+      <td class="font-bold">${usd(i.amount)}</td>
+      <td>${i.currency || 'USD'}</td>
+      <td class="text-xs">${i.service_description || '—'}</td>
+      <td>${badge(i.status)}</td>
+      <td class="text-xs">${i.due_date || '—'}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No invoices yet')}`;
+}
+
+// ─── SANCTIONS / SHELL / FRAUD DETECTION (Phase 7) ──────
+async function renderSanctionsDetail() {
+  setTitle('Sanctions Proximity & Fraud Detection', 'Advanced compliance screening: sanctions proximity, shell company detection, fraud analysis');
+  const [spData, sdData, fdData] = await Promise.all([
+    api('/sanctions-proximity'), api('/shell-detection'), api('/fraud-detection')
+  ]);
+  const sanctions = spData.data || [];
+  const shells = sdData.data || [];
+  const fraud = fdData.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-shield-alt', 'Sanctions Checks', sanctions.length, 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-building', 'Shell Detections', shells.length, 'bg-orange-50 text-orange-600')}
+      ${statCard('fas fa-user-secret', 'Fraud Alerts', fraud.length, 'bg-purple-50 text-purple-600')}
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+      <div class="card p-5"><h4 class="font-bold mb-3 text-red-600"><i class="fas fa-shield-alt mr-2"></i>Sanctions Proximity</h4>
+        ${sanctions.length ? sanctions.slice(0,10).map(s => `<div class="bg-gray-50 p-3 rounded mb-2">
+          <div class="flex justify-between"><span class="font-mono text-xs">${s.target_gtid}</span><span class="font-bold ${s.proximity_score > 0.5 ? 'text-red-600' : 'text-green-600'}">${(s.proximity_score*100).toFixed(0)}%</span></div>
+          <div class="text-xs text-gray-500 mt-1">${s.sanctioned_entity_name || '—'} (${s.relationship_type})</div>
+        </div>`).join('') : '<p class="text-gray-400 text-sm">No sanctions proximity checks</p>'}
+      </div>
+      <div class="card p-5"><h4 class="font-bold mb-3 text-orange-600"><i class="fas fa-building mr-2"></i>Shell Detection</h4>
+        ${shells.length ? shells.slice(0,10).map(s => `<div class="bg-gray-50 p-3 rounded mb-2">
+          <div class="flex justify-between"><span class="font-mono text-xs">${s.target_gtid}</span><span class="font-bold ${s.shell_score > 0.5 ? 'text-red-600' : 'text-green-600'}">${(s.shell_score*100).toFixed(0)}%</span></div>
+          <div class="text-xs text-gray-500 mt-1">Employees: ${s.employee_count || 0}, Age: ${s.registration_age_days || 0}d, Physical: ${s.physical_presence ? 'Yes' : 'No'}</div>
+        </div>`).join('') : '<p class="text-gray-400 text-sm">No shell detections</p>'}
+      </div>
+      <div class="card p-5"><h4 class="font-bold mb-3 text-purple-600"><i class="fas fa-user-secret mr-2"></i>Fraud Detection</h4>
+        ${fraud.length ? fraud.slice(0,10).map(f => `<div class="bg-gray-50 p-3 rounded mb-2">
+          <div class="flex justify-between"><span class="font-mono text-xs">${f.target_gtid}</span><span class="font-bold ${f.fraud_score > 0.5 ? 'text-red-600' : 'text-green-600'}">${(f.fraud_score*100).toFixed(0)}%</span></div>
+          <div class="text-xs text-gray-500 mt-1">${f.fraud_type || '—'} — ${f.requires_investigation ? '⚠ Investigation Required' : 'Cleared'}</div>
+        </div>`).join('') : '<p class="text-gray-400 text-sm">No fraud alerts</p>'}
+      </div>
+    </div>`;
+}
+
+// ─── MODEL DRIFT (AI Governance) ────────────────────────
+async function renderModelDrift() {
+  setTitle('AI Model Drift Monitoring', 'Monitor model accuracy degradation and trigger retraining');
+  const data = await api('/model-drift');
+  const records = data.data || [];
+  const highDrift = records.filter(r => r.drift_score > 0.3);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-brain', 'Total Records', records.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-exclamation-triangle', 'High Drift', highDrift.length, 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-check', 'Healthy Models', records.length - highDrift.length, 'bg-green-50 text-green-600')}
+    </div>
+    ${records.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Model</th><th>Version</th><th>Drift Score</th><th>Drift Type</th><th>Action</th><th>Detected</th>
+    </tr></thead><tbody>${records.map(r => `<tr>
+      <td class="font-semibold">${r.model_name}</td>
+      <td>${r.model_version}</td>
+      <td><span class="font-bold ${r.drift_score > 0.3 ? 'text-red-600' : r.drift_score > 0.15 ? 'text-yellow-600' : 'text-green-600'}">${(r.drift_score*100).toFixed(1)}%</span></td>
+      <td>${badge(r.drift_type)}</td>
+      <td class="text-xs">${r.action_taken}</td>
+      <td class="text-xs">${time(r.detected_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No model drift records. All AI models are healthy.')}`;
+}
+
+// ─── POLICY SUGGESTIONS (Governance) ────────────────────
+async function renderPolicySuggestions() {
+  setTitle('Policy Suggestions', 'AI-generated governance policy change proposals');
+  const data = await api('/policy-suggestions');
+  const suggestions = data.data || [];
+  const proposed = suggestions.filter(s => s.status === 'PROPOSED');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-lightbulb', 'Total Suggestions', suggestions.length, 'bg-yellow-50 text-yellow-600')}
+      ${statCard('fas fa-clock', 'Pending Review', proposed.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-check-circle', 'Approved', suggestions.filter(s => s.status === 'APPROVED').length, 'bg-green-50 text-green-600')}
+    </div>
+    ${suggestions.length ? `<div class="space-y-3">${suggestions.map(s => `<div class="card p-5">
+      <div class="flex justify-between items-start mb-2">
+        <div><span class="font-bold">${s.policy_area || 'General'}</span> ${badge(s.status)}</div>
+        <span class="text-xs text-gray-400">${time(s.created_at)}</span>
+      </div>
+      <div class="bg-gray-50 p-3 rounded text-sm mb-2"><strong>Suggested Change:</strong> ${s.suggested_change || '—'}</div>
+      ${s.justification ? `<div class="text-xs text-gray-500"><strong>Justification:</strong> ${s.justification}</div>` : ''}
+      <div class="text-xs text-gray-400 mt-1">Confidence: ${((s.ai_confidence||0)*100).toFixed(0)}% | Triggered by: ${s.triggered_by || '—'}</div>
+    </div>`).join('')}</div>` : emptyState('No policy suggestions yet')}`;
+}
+
+// ─── FEE OPTIMIZATION (Phase 6) ─────────────────────────
+async function renderFeeOptimization() {
+  setTitle('Fee Optimization', 'PSP comparison, FX strategy, and savings analysis');
+  const data = await api('/fee-optimization');
+  const runs = data.data || [];
+  const totalSavings = runs.reduce((s,r) => s + (r.savings||0), 0);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-calculator', 'Optimization Runs', runs.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-dollar-sign', 'Total Savings', usd(totalSavings), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-chart-line', 'Avg Savings', runs.length ? usd(totalSavings/runs.length) : '—', 'bg-sgtx-50 text-sgtx-600')}
+    </div>
+    ${runs.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Trade ID</th><th>Original Fees</th><th>Optimized</th><th>Savings</th><th>Type</th><th>Created</th>
+    </tr></thead><tbody>${runs.map(r => `<tr>
+      <td class="font-mono text-xs">${(r.trade_id||'').slice(0,8)}</td>
+      <td>${usd(r.original_fees)}</td>
+      <td>${usd(r.optimized_fees)}</td>
+      <td class="font-bold text-green-600">${usd(r.savings)}</td>
+      <td>${badge(r.optimization_type || 'FULL')}</td>
+      <td class="text-xs">${time(r.created_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No fee optimization runs yet')}`;
+}
+
+// ─── LIVING QUOTES (Phase 2) ────────────────────────────
+async function renderLivingQuotes() {
+  setTitle('Living Quotes', 'Real-time price-adjusted quotes with market index tracking');
+  const data = await api('/living-quotes');
+  const quotes = data.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-sync-alt', 'Active Quotes', quotes.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-dollar-sign', 'Avg Price', quotes.length ? usd(quotes.reduce((s,q) => s + (q.current_price||0), 0)/quotes.length) : '—', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-clock', 'Expiring Soon', quotes.filter(q => q.expiry_at && new Date(q.expiry_at) < new Date(Date.now()+86400000*3)).length, 'bg-yellow-50 text-yellow-600')}
+    </div>
+    ${quotes.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Quote ID</th><th>Exporter</th><th>Current Price</th><th>Currency</th><th>Market Ref</th><th>Reason</th><th>Expiry</th><th>Updated</th>
+    </tr></thead><tbody>${quotes.map(q => `<tr>
+      <td class="font-mono text-xs">${(q.id||'').slice(0,8)}</td>
+      <td>${q.exporter_name || '—'}</td>
+      <td class="font-bold">${usd(q.current_price)}</td>
+      <td>${q.currency || 'USD'}</td>
+      <td class="text-xs">${q.market_index_ref || '—'}</td>
+      <td class="text-xs">${q.adjustment_reason || '—'}</td>
+      <td class="text-xs">${q.expiry_at || 'No expiry'}</td>
+      <td class="text-xs">${time(q.updated_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No living quotes active')}`;
+}
+
+// ─── TRADE COMPOSER (Phase 1 — AI) ──────────────────────
+async function renderTradeComposer() {
+  setTitle('AI Trade Composer', 'AI-powered trade description parsing and field extraction');
+  const data = await api('/trade-composer');
+  const interactions = data.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-magic', 'Interactions', interactions.length, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-bullseye', 'Avg Confidence', interactions.length ? ((interactions.reduce((s,i) => s + (i.ai_confidence||0), 0)/interactions.length)*100).toFixed(0)+'%' : '—', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-keyboard', 'Input Types', [...new Set(interactions.map(i => i.input_type))].length, 'bg-blue-50 text-blue-600')}
+    </div>
+    ${!isReadOnly() ? `<div class="card p-5 mb-4">
+      <h4 class="font-bold mb-3"><i class="fas fa-magic mr-2 text-purple-600"></i>Compose a Trade</h4>
+      <form onsubmit="submitTradeComposer(event)">
+        <textarea id="tc-input" class="input w-full h-24" placeholder="Describe your trade in natural language, e.g. 'I need to buy 500 MT of Egyptian oranges HS0805 CIF Hamburg, prefer letter of credit terms...'"></textarea>
+        <button type="submit" class="btn-primary mt-2"><i class="fas fa-brain mr-2"></i>Parse with AI</button>
+      </form>
+    </div>` : ''}
+    ${interactions.length ? `<div class="space-y-3">${interactions.map(i => {
+      const fields = JSON.parse(i.extracted_fields || '{}');
+      return `<div class="card p-4">
+        <div class="flex justify-between items-start mb-2">
+          <span class="text-xs text-gray-500">${i.input_type || 'TEXT'} — Confidence: ${((i.ai_confidence||0)*100).toFixed(0)}%</span>
+          <span class="text-xs text-gray-400">${time(i.created_at)}</span>
+        </div>
+        <div class="bg-gray-50 p-3 rounded text-sm mb-2">${i.raw_input || '—'}</div>
+        <div class="flex gap-2 flex-wrap">${Object.entries(fields).filter(([k,v]) => v).map(([k,v]) => `<span class="bg-sgtx-50 text-sgtx-700 px-2 py-0.5 rounded text-xs"><b>${k}:</b> ${v}</span>`).join('')}</div>
+      </div>`;
+    }).join('')}</div>` : emptyState('No trade composer interactions yet')}`;
+}
+async function submitTradeComposer(e) {
+  e.preventDefault();
+  await apiPost('/trade-composer', { tenant_id: tenant?.id, raw_input: document.getElementById('tc-input').value, input_type: 'TEXT' });
+  navigate('tradecomposer');
+}
+
+// ─── TOKENIZED ASSETS (Phase 4 — DeFi) ─────────────────
+async function renderTokenizedAssets() {
+  setTitle('Tokenized Trade Assets', 'Blockchain-tokenized trade receivables and financing instruments');
+  const data = await api('/tokenized-assets');
+  const assets = data.data || [];
+  const totalValue = assets.reduce((s,a) => s + (a.face_value||0), 0);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-coins', 'Total Assets', assets.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-dollar-sign', 'Total Face Value', usd(totalValue), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-check-circle', 'Minted', assets.filter(a => a.status === 'MINTED').length, 'bg-purple-50 text-purple-600')}
+    </div>
+    ${assets.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Asset ID</th><th>Type</th><th>Chain</th><th>Face Value</th><th>Holder</th><th>Status</th><th>Token Address</th>
+    </tr></thead><tbody>${assets.map(a => `<tr>
+      <td class="font-mono text-xs">${(a.id||'').slice(0,8)}</td>
+      <td>${badge(a.asset_type || 'TRADE_RECEIVABLE')}</td>
+      <td>${a.chain || 'ethereum'}</td>
+      <td class="font-bold">${usd(a.face_value)}</td>
+      <td class="font-mono text-xs">${(a.current_holder_gtid||'—').slice(0,16)}</td>
+      <td>${badge(a.status)}</td>
+      <td class="font-mono text-xs">${(a.token_address||'').slice(0,12)}...</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No tokenized assets yet')}`;
+}
+
+// ─── BLOCKCHAIN VERIFICATIONS (Phase 4) ─────────────────
+async function renderBlockchainVerify() {
+  setTitle('Blockchain Verifications', 'On-chain document and transaction verification records');
+  const data = await api('/blockchain-verifications');
+  const verifications = data.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-link', 'Total Verifications', verifications.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-file-alt', 'Document Hashes', verifications.filter(v => v.verification_type === 'DOCUMENT_HASH').length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-cube', 'Chains Used', [...new Set(verifications.map(v => v.chain))].length, 'bg-purple-50 text-purple-600')}
+    </div>
+    ${verifications.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Entity Type</th><th>Entity ID</th><th>Chain</th><th>TX Hash</th><th>Block</th><th>Type</th><th>Verified</th>
+    </tr></thead><tbody>${verifications.map(v => `<tr>
+      <td>${v.entity_type}</td>
+      <td class="font-mono text-xs">${(v.entity_id||'').slice(0,12)}</td>
+      <td>${v.chain}</td>
+      <td class="font-mono text-xs">${(v.tx_hash||'').slice(0,16)}...</td>
+      <td>${v.block_number||0}</td>
+      <td>${badge(v.verification_type)}</td>
+      <td class="text-xs">${time(v.verified_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No blockchain verifications yet')}`;
+}
+
+// ─── SMART CLAUSES (Phase 3) ────────────────────────────
+async function renderSmartClauses() {
+  setTitle('Smart Clause Executions', 'Auto-executing contract clauses with trigger conditions');
+  const data = await api('/smart-clauses');
+  const clauses = data.data || [];
+  const triggered = clauses.filter(c => c.trigger_met);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-file-code', 'Total Executions', clauses.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-bolt', 'Triggered', triggered.length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-pause', 'Pending', clauses.length - triggered.length, 'bg-yellow-50 text-yellow-600')}
+    </div>
+    ${clauses.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>Contract</th><th>Clause Type</th><th>Trigger Condition</th><th>Triggered</th><th>Executed</th>
+    </tr></thead><tbody>${clauses.map(c => `<tr>
+      <td class="font-mono text-xs">${(c.contract_id||'').slice(0,8)}</td>
+      <td class="font-semibold">${c.clause_type}</td>
+      <td class="text-xs">${c.trigger_condition || '—'}</td>
+      <td>${c.trigger_met ? '<span class="text-green-600 font-bold">✓ Yes</span>' : '<span class="text-gray-400">No</span>'}</td>
+      <td class="text-xs">${time(c.executed_at)}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No smart clause executions yet')}`;
+}
+
+// ─── SHIPMENT SCHEDULES (Phase 5) ───────────────────────
+async function renderShipmentSchedules() {
+  setTitle('Shipment Schedules', 'Vessel schedules, departure/arrival tracking');
+  const data = await api('/shipment-schedules');
+  const schedules = data.data || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-calendar-alt', 'Total Schedules', schedules.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-ship', 'Vessels', [...new Set(schedules.filter(s => s.vessel_name).map(s => s.vessel_name))].length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-clock', 'Avg Transit', schedules.length ? (schedules.reduce((s,x) => s + (x.transit_days||0), 0)/schedules.length).toFixed(0) + ' days' : '—', 'bg-sgtx-50 text-sgtx-600')}
+    </div>
+    ${schedules.length ? `<div class="card overflow-hidden"><table class="data-table"><thead><tr>
+      <th>USTN</th><th>Carrier</th><th>Vessel</th><th>Voyage</th><th>Origin</th><th>Destination</th><th>Departure</th><th>Arrival</th><th>Status</th>
+    </tr></thead><tbody>${schedules.map(s => `<tr>
+      <td class="font-mono text-xs">${s.shipment_ustn || '—'}</td>
+      <td>${s.carrier_name || '—'}</td>
+      <td>${s.vessel_name || '—'}</td>
+      <td>${s.voyage_number || '—'}</td>
+      <td>${s.origin_port || '—'}</td>
+      <td>${s.destination_port || '—'}</td>
+      <td class="text-xs">${s.departure_date || '—'}</td>
+      <td class="text-xs">${s.arrival_date || '—'}</td>
+      <td>${badge(s.status || 'SCHEDULED')}</td>
+    </tr>`).join('')}</tbody></table></div>` : emptyState('No shipment schedules yet')}`;
+}
+
+// ─── ADVANCED STATS (aggregate new tables) ──────────────
+async function renderAdvancedStats() {
+  setTitle('Advanced Blueprint Stats', 'Record counts for v6.2 advanced tables');
+  const data = await api('/advanced-stats');
+  const d = data.data || {};
+  const tables = [
+    { name: 'IoT Readings', count: d.iot_readings, icon: 'fa-thermometer-half', phase: '5' },
+    { name: 'eBLs', count: d.ebls, icon: 'fa-file-alt', phase: '5' },
+    { name: 'Commodity Warnings', count: d.commodity_warnings, icon: 'fa-exclamation', phase: '1' },
+    { name: 'HS Codes', count: d.hs_codes, icon: 'fa-barcode', phase: '1' },
+    { name: 'Carrier Profiles', count: d.carrier_profiles, icon: 'fa-truck', phase: '5' },
+    { name: 'Provider Invoices', count: d.provider_invoices, icon: 'fa-file-invoice-dollar', phase: '2' },
+    { name: 'Sanctions Proximity', count: d.sanctions_proximity, icon: 'fa-shield-alt', phase: '7' },
+    { name: 'Shell Detection', count: d.shell_detection, icon: 'fa-building', phase: '7' },
+    { name: 'Fraud Detection', count: d.fraud_detection, icon: 'fa-user-secret', phase: '7' },
+    { name: 'Model Drift', count: d.model_drift, icon: 'fa-brain', phase: 'AI' },
+    { name: 'Policy Suggestions', count: d.policy_suggestions, icon: 'fa-lightbulb', phase: 'Gov' },
+    { name: 'Fee Optimization', count: d.fee_optimization, icon: 'fa-calculator', phase: '6' },
+    { name: 'Living Quotes', count: d.living_quotes, icon: 'fa-sync-alt', phase: '2' },
+    { name: 'Trade Composer', count: d.trade_composer, icon: 'fa-magic', phase: '1' },
+    { name: 'Tokenized Assets', count: d.tokenized_assets, icon: 'fa-coins', phase: '4' },
+    { name: 'Blockchain Verify', count: d.blockchain_verifications, icon: 'fa-link', phase: '4' },
+    { name: 'Individual Financiers', count: d.individual_financiers, icon: 'fa-user-tie', phase: '4' },
+    { name: 'Shipment Schedules', count: d.shipment_schedules, icon: 'fa-calendar-alt', phase: '5' },
+    { name: 'Smart Clauses', count: d.smart_clauses, icon: 'fa-file-code', phase: '3' },
+  ];
+  const total = tables.reduce((s, t) => s + (t.count || 0), 0);
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-bold text-gray-700"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>v6.2 Advanced Tables — ${tables.length} Tables</h3>
         <span class="text-sm text-gray-500">Total Records: <b>${total.toLocaleString()}</b></span>
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
