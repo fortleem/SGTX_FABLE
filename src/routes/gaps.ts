@@ -266,7 +266,7 @@ gaps.get('/autonomous-milestones', async (c) => {
   const ustn = c.req.query('ustn');
   let sql = 'SELECT am.*, s.status as shipment_status FROM autonomous_milestones am LEFT JOIN shipments s ON am.shipment_ustn = s.ustn';
   if (ustn) sql += ` WHERE am.shipment_ustn = '${ustn}'`;
-  sql += ' ORDER BY am.created_at DESC LIMIT 50';
+  sql += ' ORDER BY am.id DESC LIMIT 50';
   const { results } = await c.env.DB.prepare(sql).all();
   return c.json({ data: results });
 });
