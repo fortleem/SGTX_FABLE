@@ -218,54 +218,73 @@ function switchPortal(portal) {
     importer: [
       { section: 'Importer Portal' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
+      { id: 'marketintel', icon: 'fa-chart-pie', label: 'Market Intelligence' },
       { section: 'Trade Initiation' },
       { id: 'trades', icon: 'fa-handshake', label: 'My Trade Requests' },
+      { id: 'counteroffers', icon: 'fa-comments-dollar', label: 'Counter-Offer Simulator' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'My Contracts' },
       { id: 'commissions', icon: 'fa-coins', label: 'Commission Locks' },
       { section: 'Execution & Tracking' },
-      { id: 'shipments', icon: 'fa-ship', label: 'Track Shipments' },
+      { id: 'shipments', icon: 'fa-ship', label: 'Shipments Vault' },
+      { id: 'tradelineage', icon: 'fa-project-diagram', label: 'Trade Lineage Graph' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT / Cold Chain' },
+      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Live Tracking' },
       { section: 'Finance & Payments' },
       { id: 'financing', icon: 'fa-university', label: 'Financing' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Payments' },
+      { section: 'Discovery' },
+      { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
       { section: 'Network & Disputes' },
-      { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
-      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes' },
+      { id: 'contacts', icon: 'fa-address-book', label: 'Saved Contacts' },
+      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes (Phase 10)' },
       { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
+      { section: 'AI Tools' },
+      { id: 'aiassistant', icon: 'fa-robot', label: 'AI Assistant' },
     ],
     exporter: [
       { section: 'Exporter Portal' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
       { section: 'Quotes & Trades' },
-      { id: 'trades', icon: 'fa-handshake', label: 'Incoming Trade Requests' },
+      { id: 'trades', icon: 'fa-handshake', label: 'Pending Requests' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'My Contracts' },
       { id: 'commissions', icon: 'fa-coins', label: 'Commission Locks' },
+      { section: 'Packing & Logistics' },
+      { id: 'containerisation', icon: 'fa-boxes', label: 'Containerisation & Packing' },
+      { id: 'packingplans', icon: 'fa-pallet', label: 'Packing Plans' },
+      { id: 'qcbooking', icon: 'fa-clipboard-check', label: 'QC Booking' },
+      { id: 'docfinalisation', icon: 'fa-file-signature', label: 'Document Finalisation' },
       { section: 'Execution' },
-      { id: 'shipments', icon: 'fa-ship', label: 'Shipments' },
-      { id: 'barcodes', icon: 'fa-barcode', label: 'Barcode Generator' },
-      { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
+      { id: 'shipments', icon: 'fa-ship', label: 'Shipments Vault' },
+      { id: 'barcodes', icon: 'fa-barcode', label: 'Barcode Print' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
       { section: 'Discovery' },
       { id: 'buyersearch', icon: 'fa-search-dollar', label: 'Find Buyers' },
       { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
+      { id: 'distressedfactors', icon: 'fa-globe', label: 'Distressed Factors' },
       { section: 'Network & Disputes' },
-      { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
-      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes' },
+      { id: 'contacts', icon: 'fa-address-book', label: 'Saved Contacts' },
+      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes (Phase 10)' },
       { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
+      { section: 'AI Tools' },
+      { id: 'aiassistant', icon: 'fa-robot', label: 'AI Assistant' },
     ],
     logistics: [
       { section: 'Logistics Portal' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Operations' },
+      { section: 'Shipments Vault' },
       { id: 'shipments', icon: 'fa-ship', label: 'Active Shipments' },
-      { id: 'barcodes', icon: 'fa-barcode', label: 'Scan / Track' },
-      { id: 'routes', icon: 'fa-route', label: 'Route Intelligence' },
+      { id: 'barcodes', icon: 'fa-barcode', label: 'Pallet Scanning' },
+      { id: 'routes', icon: 'fa-route', label: 'OSRM Route Intelligence' },
       { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
-      { section: 'Services' },
+      { section: 'RFQ & Services' },
+      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Inbox' },
       { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
-      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Bidding' },
-      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance' },
+      { id: 'bundlebuilder', icon: 'fa-cubes', label: 'Bundle Builder' },
+      { section: 'Role-Specific' },
       { id: 'carrierprofiles', icon: 'fa-truck', label: 'Carrier Profiles' },
+      { id: 'eblmanagement', icon: 'fa-file-alt', label: 'eBL Status' },
+      { id: 'customschecklist', icon: 'fa-clipboard-check', label: 'Customs Checklist' },
+      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance' },
       { section: 'Tracking & IoT' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
       { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
@@ -297,12 +316,17 @@ function switchPortal(portal) {
     financier: [
       { section: 'Financier Portal' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Financing' },
+      { section: 'Financing Marketplace' },
       { id: 'financing', icon: 'fa-university', label: 'Active Requests' },
+      { id: 'risksimulator', icon: 'fa-chart-area', label: 'Risk Simulator (Monte Carlo)' },
+      { section: 'Shipments Vault' },
+      { id: 'shipments', icon: 'fa-ship', label: 'Financed Shipments' },
+      { section: 'DeFi & Assets' },
       { id: 'defi', icon: 'fa-link', label: 'DeFi Positions' },
       { id: 'tokenizedassets', icon: 'fa-coins', label: 'Tokenized Assets' },
       { id: 'blockchainverify', icon: 'fa-link', label: 'Blockchain Verify' },
-      { section: 'Settlements' },
+      { section: 'Portfolio' },
+      { id: 'portfolio', icon: 'fa-briefcase', label: 'Portfolio Dashboard' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Settlements' },
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlement Instructions' },
       { section: 'Analysis' },
@@ -312,9 +336,11 @@ function switchPortal(portal) {
     qc: [
       { section: 'QC / Inspection Portal' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Inspections' },
-      { id: 'inspections', icon: 'fa-clipboard-check', label: 'My Inspections' },
+      { section: 'Shipments Vault' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments to Inspect' },
+      { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
+      { section: 'Inspections' },
+      { id: 'inspections', icon: 'fa-clipboard-check', label: 'Inspection Jobs' },
       { id: 'barcodes', icon: 'fa-barcode', label: 'Scan Items' },
       { section: 'Reports' },
       { id: 'esg', icon: 'fa-leaf', label: 'ESG Reports' },
@@ -355,10 +381,14 @@ function switchPortal(portal) {
     admin: [
       { section: 'Platform Admin' },
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Platform Overview' },
-      { section: 'Identity & Governance' },
+      { section: 'Governance (Multisig 3/5)' },
+      { id: 'policyeditor', icon: 'fa-file-code', label: 'Constitutional Policy Editor' },
+      { id: 'governor', icon: 'fa-gavel', label: 'Governor Decision Log' },
+      { id: 'psphealth', icon: 'fa-heartbeat', label: 'PSP Health Monitor' },
+      { id: 'jurisdictionmatrix', icon: 'fa-globe-americas', label: 'Global Jurisdiction Matrix' },
+      { section: 'Identity & Tenants' },
       { id: 'tenants', icon: 'fa-building', label: 'All Tenants' },
       { id: 'trust', icon: 'fa-star', label: 'Trust Scores' },
-      { id: 'governor', icon: 'fa-gavel', label: 'Governor Decisions' },
       { id: 'jurisdictions', icon: 'fa-globe', label: 'Jurisdictions' },
       { section: 'Trade & Execution' },
       { id: 'trades', icon: 'fa-handshake', label: 'All Trades' },
@@ -468,6 +498,15 @@ async function loadPage(page) {
       tokenizedassets: renderTokenizedAssets, blockchainverify: renderBlockchainVerify,
       smartclauses: renderSmartClauses, shipmentschedules: renderShipmentSchedules,
       advancedstats: renderAdvancedStats,
+      // v6.2 Gap Closure — Portal-specific features
+      counteroffers: renderCounterOffers, tradelineage: renderTradeLineage,
+      marketintel: renderMarketIntel, containerisation: renderContainerisation,
+      docfinalisation: renderDocFinalisation, qcbooking: renderQCBooking,
+      bundlebuilder: renderBundleBuilder, customschecklist: renderCustomsChecklist,
+      portfolio: renderPortfolio, risksimulator: renderRiskSimulator,
+      policyeditor: renderPolicyEditor, psphealth: renderPSPHealth,
+      jurisdictionmatrix: renderJurisdictionMatrix, aiassistant: renderAIAssistant,
+      distressedfactors: renderDistressedFactors,
     };
     if (pages[page]) await pages[page]();
     else content.innerHTML = '<div class="card p-12 text-center text-gray-400"><i class="fas fa-hard-hat text-4xl mb-3"></i><p>Page coming soon</p></div>';
@@ -2772,5 +2811,560 @@ async function renderAdvancedStats() {
             <div class="text-[10px] text-gray-400">Phase ${t.phase}</div>
           </div>`).join('')}
       </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// v6.2 GAP CLOSURE — Portal-Specific Feature Pages
+// Blueprint alignment: 6.2.1-6.2.6 complete features
+// ═══════════════════════════════════════════════════════
+
+// ─── IMPORTER: Counter-Offer Simulator (Phase 3.1) ────
+async function renderCounterOffers() {
+  setTitle('Counter-Offer Simulator', 'AI-powered negotiation bot — Phase 3.1');
+  const { data: offers } = await api('/counter-offers');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-comments-dollar', 'Counter-Offers', offers.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-robot', 'AI Recommendations', offers.filter(o => o.ai_analysis).length, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-handshake', 'Accepted', offers.filter(o => o.status === 'ACCEPTED').length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-chart-line', 'Avg Acceptance %', offers.length ? (offers.reduce((s,o) => s + (JSON.parse(o.ai_analysis || '{}').acceptance_probability || 0), 0) / offers.length * 100).toFixed(0) + '%' : '—', 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-700"><i class="fas fa-calculator mr-2 text-sgtx-500"></i>Simulate Counter-Offer</h3>
+        <button onclick="showCounterOfferForm()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-sgtx-600"><i class="fas fa-plus mr-2"></i>New Simulation</button>
+      </div>
+      <p class="text-sm text-gray-500 mb-4">Enter original and proposed prices to simulate AI negotiation outcomes. The simulator models acceptance probability, optimal price point, and estimated rounds to closure.</p>
+      ${offers.length ? `<div class="space-y-3">${offers.map(o => {
+        const analysis = JSON.parse(o.ai_analysis || '{}');
+        return `<div class="border rounded-lg p-4 hover:bg-gray-50 transition">
+          <div class="flex justify-between items-start">
+            <div><span class="font-mono text-xs text-gray-400">${o.id?.slice(0,8)}…</span> <span class="font-medium">Round ${o.round_number || 1}</span> — ${o.proposer_name || 'Unknown'}</div>
+            <div>${badge(o.status)}</div>
+          </div>
+          <div class="grid grid-cols-4 gap-3 mt-3 text-sm">
+            <div class="bg-blue-50 p-2 rounded"><span class="text-gray-500 text-xs">Proposed</span><div class="font-bold">${usd(o.proposed_price)}</div></div>
+            <div class="bg-green-50 p-2 rounded"><span class="text-gray-500 text-xs">AI Recommended</span><div class="font-bold">${usd(analysis.ai_recommended_price)}</div></div>
+            <div class="bg-purple-50 p-2 rounded"><span class="text-gray-500 text-xs">Accept Prob.</span><div class="font-bold">${((analysis.acceptance_probability || 0) * 100).toFixed(1)}%</div></div>
+            <div class="bg-orange-50 p-2 rounded"><span class="text-gray-500 text-xs">Est. Rounds</span><div class="font-bold">${analysis.estimated_rounds_to_close || '—'}</div></div>
+          </div>
+          ${analysis.analysis ? `<div class="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded"><i class="fas fa-robot mr-1 text-sgtx-400"></i>${analysis.analysis}</div>` : ''}
+        </div>`;
+      }).join('')}</div>` : emptyState('No counter-offer simulations yet')}
+    </div>`;
+}
+
+function showCounterOfferForm() {
+  showModal('Counter-Offer Simulator', `
+    <div class="space-y-4">
+      <div><label class="block text-sm font-medium mb-1">Original Price (USD)</label><input id="co-original" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="26400"></div>
+      <div><label class="block text-sm font-medium mb-1">Your Proposed Price (USD)</label><input id="co-proposed" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="24000"></div>
+      <div><label class="block text-sm font-medium mb-1">Round Number</label><input id="co-round" type="number" value="1" class="w-full border rounded px-3 py-2 text-sm"></div>
+      <button onclick="submitCounterOffer()" class="w-full bg-sgtx-500 text-white py-2 rounded-lg font-medium hover:bg-sgtx-600"><i class="fas fa-robot mr-2"></i>Run AI Simulation</button>
+    </div>`);
+}
+
+async function submitCounterOffer() {
+  const r = await apiPost('/counter-offers', {
+    original_price: parseFloat(document.getElementById('co-original').value),
+    proposed_price: parseFloat(document.getElementById('co-proposed').value),
+    round: parseInt(document.getElementById('co-round').value) || 1,
+    proposer_tenant_id: tenant?.id,
+    actor_gtid: tenant?.gtid,
+  });
+  closeModal();
+  if (r.data) { alert(`AI Analysis: ${r.data.acceptance_probability ? (r.data.acceptance_probability * 100).toFixed(1) + '% acceptance probability' : 'Simulation complete'}. Recommended: $${r.data.ai_recommended_price?.toFixed(2) || '—'}`); }
+  renderCounterOffers();
+}
+
+// ─── IMPORTER: Trade Lineage Graph ────────────────────
+async function renderTradeLineage() {
+  setTitle('Trade Lineage Graph', 'Visual resell chains for commodities — Importer Portal');
+  const tenantId = tenant?.id;
+  const { data } = await api(`/trade-lineage?tenant_id=${tenantId || ''}`);
+  const trades = data.trades || [];
+  const nodes = data.nodes || [];
+  const edges = data.edges || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-project-diagram', 'Trade Chains', trades.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-circle-nodes', 'Nodes', nodes.length, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-arrows-alt', 'Connections', edges.length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-ship', 'Active USTNs', trades.filter(t => t.ustn).length, 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold text-gray-700 mb-4"><i class="fas fa-project-diagram mr-2 text-sgtx-500"></i>Lineage Flow</h3>
+      ${trades.length ? `<div class="space-y-4">${trades.map(t => `
+        <div class="border rounded-lg p-4 hover:bg-gray-50">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><i class="fas fa-handshake text-blue-500"></i></div>
+              <div><div class="text-sm font-medium">${t.importer_name || '—'}</div><div class="text-xs text-gray-400">Importer</div></div>
+            </div>
+            <i class="fas fa-arrow-right text-gray-300"></i>
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"><i class="fas fa-store text-green-500"></i></div>
+              <div><div class="text-sm font-medium">${t.exporter_name || '—'}</div><div class="text-xs text-gray-400">Exporter</div></div>
+            </div>
+            ${t.contract_id ? `<i class="fas fa-arrow-right text-gray-300"></i>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center"><i class="fas fa-file-contract text-purple-500 text-xs"></i></div>
+              <div class="text-xs">${badge(t.contract_status || 'DRAFT')}</div>
+            </div>` : ''}
+            ${t.ustn ? `<i class="fas fa-arrow-right text-gray-300"></i>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center"><i class="fas fa-ship text-orange-500 text-xs"></i></div>
+              <div><div class="font-mono text-xs">${t.ustn}</div>${badge(t.shipment_status || 'PENDING')}</div>
+            </div>` : ''}
+            ${t.commission_usd ? `<i class="fas fa-arrow-right text-gray-300"></i>
+            <div class="bg-green-50 px-3 py-1 rounded text-xs"><i class="fas fa-coins mr-1 text-green-500"></i>${usd(t.commission_usd)} ${badge(t.lock_status)}</div>` : ''}
+          </div>
+          <div class="mt-2 text-xs text-gray-400"><i class="fas fa-clock mr-1"></i>${time(t.created_at)} — ${t.raw_description?.slice(0, 60) || t.id.slice(0, 12)}</div>
+        </div>`).join('')}</div>` : emptyState('No trade lineage data available')}
+    </div>`;
+}
+
+// ─── IMPORTER: Anonymous Market Intelligence ──────────
+async function renderMarketIntel() {
+  setTitle('Market Intelligence', 'Anonymous aggregated trade data — OpenDP differential privacy');
+  const { data } = await api('/market-intelligence');
+  document.getElementById('content').innerHTML = `
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5 text-xs text-blue-800"><i class="fas fa-shield-alt mr-2"></i><b>Privacy:</b> ${data.disclaimer}</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-dollar-sign', 'Avg EXW Price', usd(data.price_range?.avg), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-chart-line', 'Trade Count', data.price_range?.trade_count, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-percentage', 'Avg Commission', pct(data.commission_range?.avg_rate_pct), 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-globe', 'Top Corridors', data.top_corridors?.length || 0, 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-5">
+        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>Price Range (OpenDP)</h3>
+        <div class="space-y-3">
+          <div class="flex justify-between p-3 bg-gray-50 rounded"><span class="text-gray-500">Min EXW Price:</span><span class="font-bold">${usd(data.price_range?.min)}</span></div>
+          <div class="flex justify-between p-3 bg-gray-50 rounded"><span class="text-gray-500">Average EXW Price:</span><span class="font-bold">${usd(data.price_range?.avg)}</span></div>
+          <div class="flex justify-between p-3 bg-gray-50 rounded"><span class="text-gray-500">Max EXW Price:</span><span class="font-bold">${usd(data.price_range?.max)}</span></div>
+          <div class="flex justify-between p-3 bg-yellow-50 rounded"><span class="text-gray-500">Privacy Budget:</span><span class="font-bold text-yellow-600">${data.price_range?.privacy_budget}</span></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-globe mr-2 text-sgtx-500"></i>Top Trade Corridors</h3>
+        ${data.top_corridors?.length ? `<div class="space-y-2">${data.top_corridors.map(c => `
+          <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span><i class="fas fa-flag mr-1 text-sgtx-400"></i>${c.origin} → ${c.destination}</span>
+            <span class="font-bold text-sgtx-600">${c.count} trades</span>
+          </div>`).join('')}</div>` : '<p class="text-gray-400 text-sm">No corridor data yet</p>'}
+      </div>
+    </div>`;
+}
+
+// ─── EXPORTER: Containerisation & Packing (Phase 2.2) ─
+async function renderContainerisation() {
+  setTitle('Containerisation & Packing', 'AI palletisation + 3D loading guidance — Phase 2.2');
+  const { data: plans } = await api('/palletisation');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-boxes', 'Packing Plans', plans.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-pallet', 'Pallets', plans.reduce((s,p) => s + (p.pallet_count || 0), 0), 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-cubes', 'Containers', plans.reduce((s,p) => s + (p.container_count || 0), 0), 'bg-orange-50 text-orange-600')}
+      ${statCard('fas fa-robot', 'AI Optimised', plans.filter(p => p.ai_recommendation).length, 'bg-green-50 text-green-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-700"><i class="fas fa-calculator mr-2 text-sgtx-500"></i>Palletisation Calculator</h3>
+        <button onclick="showPalletisationCalc()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-calculator mr-2"></i>Calculate</button>
+      </div>
+      <div class="grid grid-cols-4 gap-4 text-sm text-center mb-4">
+        <div class="bg-blue-50 p-3 rounded-lg"><i class="fas fa-box text-blue-500 text-2xl mb-2"></i><div class="font-bold">40' HC</div><div class="text-xs text-gray-500">12.03 × 2.35 × 2.69m</div><div class="text-xs text-gray-400">26,500 kg max</div></div>
+        <div class="bg-green-50 p-3 rounded-lg"><i class="fas fa-box text-green-500 text-2xl mb-2"></i><div class="font-bold">20' DC</div><div class="text-xs text-gray-500">5.90 × 2.35 × 2.39m</div><div class="text-xs text-gray-400">21,800 kg max</div></div>
+        <div class="bg-purple-50 p-3 rounded-lg"><i class="fas fa-box text-purple-500 text-2xl mb-2"></i><div class="font-bold">40' DC</div><div class="text-xs text-gray-500">12.03 × 2.35 × 2.39m</div><div class="text-xs text-gray-400">26,500 kg max</div></div>
+        <div class="bg-orange-50 p-3 rounded-lg"><i class="fas fa-snowflake text-orange-500 text-2xl mb-2"></i><div class="font-bold">40' Reefer</div><div class="text-xs text-gray-500">11.58 × 2.29 × 2.50m</div><div class="text-xs text-gray-400">27,400 kg max</div></div>
+      </div>
+    </div>
+    ${plans.length ? `<div class="card p-5"><h4 class="font-bold mb-3"><i class="fas fa-list mr-2"></i>Existing Plans</h4><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Plan ID</th><th class="p-2">Pallets</th><th class="p-2">Containers</th><th class="p-2">Status</th><th class="p-2">AI Rec.</th></tr></thead><tbody>${plans.map(p => `<tr class="border-t hover:bg-gray-50"><td class="p-2 font-mono text-xs">${p.id?.slice(0,8)}…</td><td class="p-2 text-center">${p.pallet_count || '—'}</td><td class="p-2 text-center">${p.container_count || '—'}</td><td class="p-2 text-center">${badge(p.status || 'DRAFT')}</td><td class="p-2 text-xs text-gray-500">${p.ai_recommendation || '—'}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+}
+
+function showPalletisationCalc() {
+  showModal('Palletisation Calculator (OR-Tools)', `
+    <div class="space-y-4">
+      <div><label class="block text-sm font-medium mb-1">Container Type</label>
+        <select id="pall-container" class="w-full border rounded px-3 py-2 text-sm">
+          <option value="40HC">40' HC (12.03 × 2.35 × 2.69m)</option>
+          <option value="20DC">20' DC (5.90 × 2.35 × 2.39m)</option>
+          <option value="40DC">40' DC (12.03 × 2.35 × 2.39m)</option>
+          <option value="40REEFER">40' Reefer (11.58 × 2.29 × 2.50m)</option>
+        </select></div>
+      <div><label class="block text-sm font-medium mb-1">Total Cartons</label><input id="pall-cartons" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="500"></div>
+      <div><label class="block text-sm font-medium mb-1">Avg Weight per Carton (kg)</label><input id="pall-weight" type="number" class="w-full border rounded px-3 py-2 text-sm" placeholder="18"></div>
+      <button onclick="runPalletisation()" class="w-full bg-sgtx-500 text-white py-2 rounded-lg font-medium hover:bg-sgtx-600"><i class="fas fa-robot mr-2"></i>Calculate Palletisation</button>
+    </div>`);
+}
+
+async function runPalletisation() {
+  const qty = parseInt(document.getElementById('pall-cartons').value) || 500;
+  const wt = parseFloat(document.getElementById('pall-weight').value) || 18;
+  const r = await apiPost('/palletisation/calculate', {
+    container_type: document.getElementById('pall-container').value,
+    cartons: [{ quantity: qty, weight_kg: wt }],
+  });
+  closeModal();
+  if (r.data) {
+    const d = r.data;
+    showModal('Palletisation Result', `
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-blue-50 p-3 rounded"><span class="text-xs text-gray-500">Container</span><div class="font-bold">${d.container_type}</div></div>
+          <div class="bg-green-50 p-3 rounded"><span class="text-xs text-gray-500">Utilisation</span><div class="font-bold">${d.utilization_pct}%</div></div>
+          <div class="bg-purple-50 p-3 rounded"><span class="text-xs text-gray-500">Pallets</span><div class="font-bold">${d.max_pallets_per_container}</div></div>
+          <div class="bg-orange-50 p-3 rounded"><span class="text-xs text-gray-500">Containers Needed</span><div class="font-bold">${d.containers_needed}</div></div>
+        </div>
+        <div class="bg-sgtx-50 p-3 rounded text-sm"><i class="fas fa-robot mr-1 text-sgtx-500"></i>${d.ai_recommendation}</div>
+        <div class="text-xs text-gray-400">${d.palletisation_plan?.length || 0} pallets in plan, ${d.cartons_per_pallet} cartons each</div>
+      </div>`);
+  }
+}
+
+// ─── EXPORTER: Document Finalisation ──────────────────
+async function renderDocFinalisation() {
+  setTitle('Document Finalisation', 'Sign packing list/invoice with automatic translation — Phase 2/3');
+  const { data } = await api('/document-finalisation');
+  const docs = data.documents || [];
+  const missing = data.missing || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-file-alt', 'Documents', docs.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-check-circle', 'Completion', data.completion_pct + '%', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-exclamation-triangle', 'Missing', missing.length, missing.length > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-signature', 'Signed', docs.filter(d => d.status === 'SIGNED').length, 'bg-purple-50 text-purple-600')}
+    </div>
+    ${missing.length ? `<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-5"><h4 class="font-bold text-red-700 mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Missing Required Documents</h4><div class="flex flex-wrap gap-2">${missing.map(m => `<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">${m}</span>`).join('')}</div></div>` : '<div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-5 text-sm text-green-700"><i class="fas fa-check-circle mr-2"></i>All required documents uploaded</div>'}
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-file-alt mr-2 text-sgtx-500"></i>Document Checklist</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Type</th><th class="p-2">Status</th><th class="p-2">Uploaded</th><th class="p-2">Actions</th></tr></thead><tbody>
+      ${(data.required || []).map(type => {
+        const doc = docs.find(d => d.document_type === type);
+        return `<tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${type.replace(/_/g, ' ')}</td><td class="p-2 text-center">${doc ? badge(doc.status) : '<span class="text-red-500 text-xs font-medium">MISSING</span>'}</td><td class="p-2 text-center text-xs text-gray-400">${doc ? time(doc.uploaded_at) : '—'}</td><td class="p-2 text-center">${doc && doc.status !== 'SIGNED' ? `<button onclick="signDocument('${doc.id}')" class="bg-sgtx-500 text-white px-3 py-1 rounded text-xs">Sign</button>` : (doc ? '<span class="text-green-500 text-xs">Signed</span>' : '<button class="bg-blue-500 text-white px-3 py-1 rounded text-xs">Upload</button>')}</td></tr>`;
+      }).join('')}
+      </tbody></table></div>
+    </div>`;
+}
+
+async function signDocument(docId) {
+  await apiPost('/document-finalisation/sign', { document_id: docId, signed_by: tenant?.id });
+  renderDocFinalisation();
+}
+
+// ─── EXPORTER: QC Booking ─────────────────────────────
+async function renderQCBooking() {
+  setTitle('QC Booking', 'AI-prioritised inspection points — Phase 2');
+  const { data: bookings } = await api(`/qc-bookings?tenant_id=${tenant?.id || ''}`);
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-clipboard-check', 'Bookings', bookings.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-calendar-check', 'Scheduled', bookings.filter(b => b.status === 'SCHEDULED').length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-check-double', 'Completed', bookings.filter(b => b.status === 'COMPLETED').length, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-robot', 'AI Priority', bookings.filter(b => b.ai_recommendation).length, 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="card p-5">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-gray-700"><i class="fas fa-clipboard-check mr-2 text-sgtx-500"></i>Inspection Bookings</h3>
+        <button onclick="showQCBookingForm()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm font-medium"><i class="fas fa-plus mr-2"></i>Book Inspection</button>
+      </div>
+      ${bookings.length ? `<div class="space-y-3">${bookings.map(b => `
+        <div class="border rounded-lg p-4 hover:bg-gray-50">
+          <div class="flex justify-between"><div class="font-medium">${b.inspector_name || 'Pending Assignment'} <span class="text-xs text-gray-400">— ${b.inspection_type || 'PRE_SHIPMENT'}</span></div>${badge(b.status)}</div>
+          ${b.ustn ? `<div class="text-xs text-gray-400 mt-1">USTN: ${b.ustn}</div>` : ''}
+          ${b.ai_recommendation ? `<div class="mt-2 bg-sgtx-50 p-2 rounded text-xs"><i class="fas fa-robot mr-1 text-sgtx-500"></i>${b.ai_recommendation}</div>` : ''}
+          <div class="text-xs text-gray-400 mt-1"><i class="fas fa-calendar mr-1"></i>Scheduled: ${time(b.scheduled_date)}</div>
+        </div>`).join('')}</div>` : emptyState('No QC bookings yet — book an inspection to get AI-recommended priority pallets')}
+    </div>`;
+}
+
+function showQCBookingForm() {
+  showModal('Book QC Inspection', `
+    <div class="space-y-4">
+      <div><label class="block text-sm font-medium mb-1">Shipment ID</label><input id="qcb-shipment" class="w-full border rounded px-3 py-2 text-sm" placeholder="Shipment ID"></div>
+      <div><label class="block text-sm font-medium mb-1">Commodity HS Code</label><input id="qcb-hs" class="w-full border rounded px-3 py-2 text-sm" placeholder="0805 (Citrus)"></div>
+      <div><label class="block text-sm font-medium mb-1">Inspection Type</label>
+        <select id="qcb-type" class="w-full border rounded px-3 py-2 text-sm">
+          <option value="PRE_SHIPMENT">Pre-Shipment</option>
+          <option value="LOADING">Loading Supervision</option>
+          <option value="ARRIVAL">Arrival Inspection</option>
+        </select></div>
+      <button onclick="submitQCBooking()" class="w-full bg-sgtx-500 text-white py-2 rounded-lg font-medium"><i class="fas fa-calendar-check mr-2"></i>Book & Get AI Priority Pallets</button>
+    </div>`);
+}
+
+async function submitQCBooking() {
+  await apiPost('/qc-bookings', {
+    shipment_id: document.getElementById('qcb-shipment').value,
+    commodity_hs: document.getElementById('qcb-hs').value,
+    inspection_type: document.getElementById('qcb-type').value,
+    requested_by: tenant?.id, actor_gtid: tenant?.gtid,
+  });
+  closeModal();
+  renderQCBooking();
+}
+
+// ─── LOGISTICS: Bundle Builder / Freight Forwarder ────
+async function renderBundleBuilder() {
+  setTitle('Logistics Bundle Builder', 'AI-optimized provider combination — Freight Forwarder');
+  const { data } = await api('/logistics/bundle-builder');
+  const bundle = data.bundle || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-cubes', 'Responses', data.responses?.length || 0, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-dollar-sign', 'Optimal Cost', usd(data.total_optimal_cost), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-layer-group', 'Service Types', bundle.length, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-robot', 'On-Time Prob.', '87%', 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-magic mr-2 text-sgtx-500"></i>AI-Optimized Bundle</h3>
+      <div class="bg-sgtx-50 p-3 rounded-lg text-sm mb-4"><i class="fas fa-robot mr-1 text-sgtx-500"></i>${data.ai_recommendation || 'Bundle analysis pending'}</div>
+      ${bundle.length ? `<div class="space-y-4">${bundle.map(b => `
+        <div class="border rounded-lg p-4">
+          <div class="flex justify-between items-center mb-2"><h4 class="font-bold text-sgtx-600">${b.service_type}</h4><span class="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">Saves ${b.savings_vs_max}</span></div>
+          <div class="bg-green-50 p-3 rounded mb-2"><span class="text-sm text-gray-600">Recommended:</span> <span class="font-bold">${b.recommended?.provider_name || '—'}</span> — ${usd(b.recommended?.total_price)}</div>
+          ${b.alternatives?.length ? `<div class="text-xs text-gray-400">Alternatives: ${b.alternatives.map(a => `${a.provider_name} (${usd(a.total_price)})`).join(', ')}</div>` : ''}
+        </div>`).join('')}</div>` : emptyState('No RFQ responses yet — submit RFQs to logistics providers')}
+    </div>`;
+}
+
+// ─── LOGISTICS: Customs Broker Checklist ──────────────
+async function renderCustomsChecklist() {
+  setTitle('Customs Broker Checklist', 'AI-validated document compliance');
+  const { data } = await api('/logistics/customs-checklist');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-clipboard-check', 'Required', data.total_required, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-check-circle', 'Completed', data.completed, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-percentage', 'Compliance', data.compliance_pct + '%', 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-ship', 'Customs Ready', data.customs_ready ? 'YES' : 'NO', data.customs_ready ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600')}
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-clipboard-list mr-2 text-sgtx-500"></i>Document Compliance Checklist</h3>
+      ${data.checklist?.length ? `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Document</th><th class="p-2">Required</th><th class="p-2">AI Validated</th><th class="p-2">Status</th></tr></thead><tbody>${data.checklist.map(d => `
+        <tr class="border-t hover:bg-gray-50">
+          <td class="p-2 font-medium">${(d.document_type || '').replace(/_/g, ' ')}</td>
+          <td class="p-2 text-center">${d.required ? '<i class="fas fa-check text-green-500"></i>' : '<i class="fas fa-minus text-gray-300"></i>'}</td>
+          <td class="p-2 text-center">${d.ai_validated ? '<i class="fas fa-robot text-green-500"></i>' : '<i class="fas fa-times text-red-400"></i>'}</td>
+          <td class="p-2 text-center">${badge(d.compliance_status)}</td>
+        </tr>`).join('')}</tbody></table></div>` : emptyState('No document requirements loaded')}
+    </div>`;
+}
+
+// ─── FINANCIER: Portfolio Dashboard ───────────────────
+async function renderPortfolio() {
+  setTitle('Portfolio Dashboard', 'Active loans, tokenized assets, stablecoin health — Monte Carlo VaR');
+  const { data } = await api(`/portfolio?tenant_id=${tenant?.id || ''}`);
+  const mc = data.monte_carlo_analysis || {};
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-university', 'Active Loans', data.active_loans, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-dollar-sign', 'Total Exposure', usd(data.total_exposure), 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-coins', 'Tokenized Assets', data.tokenized_assets, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-heartbeat', 'Stablecoin', data.stablecoin_health?.status || '—', 'bg-green-50 text-green-600')}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="card p-5">
+        <h3 class="font-bold mb-3 text-red-600"><i class="fas fa-chart-area mr-2"></i>Monte Carlo Risk Analysis (${mc.simulations?.toLocaleString()} iterations)</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-gray-50 rounded"><span>Portfolio Default Prob:</span><span class="font-bold">${(mc.portfolio_default_probability * 100).toFixed(2)}%</span></div>
+          <div class="flex justify-between p-2 bg-red-50 rounded"><span>Total Expected Loss:</span><span class="font-bold text-red-600">${usd(mc.total_expected_loss)}</span></div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded"><span>VaR (95%):</span><span class="font-bold text-orange-600">${usd(mc.var_95)}</span></div>
+          <div class="flex justify-between p-2 bg-red-50 rounded"><span>VaR (99%):</span><span class="font-bold text-red-700">${usd(mc.var_99)}</span></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3 text-gray-700"><i class="fas fa-heartbeat mr-2 text-green-500"></i>Stablecoin Health</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-green-50 rounded"><span>Status:</span><span class="font-bold text-green-600">${data.stablecoin_health?.status}</span></div>
+          <div class="flex justify-between p-2 bg-gray-50 rounded"><span>Peg Deviation:</span><span class="font-bold">${data.stablecoin_health?.peg_deviation}</span></div>
+        </div>
+        <h4 class="font-bold mt-4 mb-2 text-gray-600 text-sm">Individual Loan Risk</h4>
+        ${mc.individual?.length ? `<div class="space-y-1 max-h-40 overflow-y-auto">${mc.individual.map(i => `
+          <div class="flex justify-between text-xs p-1 bg-gray-50 rounded"><span>${i.borrower || i.loan_id?.slice(0,8)}</span><span class="text-red-500">${(i.default_probability * 100).toFixed(1)}% default</span></div>`).join('')}</div>` : '<p class="text-gray-400 text-xs">No active loans</p>'}
+      </div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-list mr-2 text-sgtx-500"></i>Loan Portfolio</h3>
+      ${data.loans?.length ? `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Borrower</th><th class="p-2">Amount</th><th class="p-2">Instrument</th><th class="p-2">USTN</th><th class="p-2">Status</th></tr></thead><tbody>${data.loans.map(l => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2">${l.borrower_name || '—'}</td><td class="p-2 text-right">${usd(l.financing_amount)}</td><td class="p-2 text-center">${l.instrument_type || '—'}</td><td class="p-2 font-mono text-xs">${l.ustn || '—'}</td><td class="p-2">${badge(l.status)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No financing agreements')}
+    </div>`;
+}
+
+// ─── FINANCIER: Risk Simulator (Monte Carlo) ──────────
+async function renderRiskSimulator() {
+  setTitle('Risk Simulator', 'Monte Carlo trade outcome simulation — 10,000 iterations');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-4 text-gray-700"><i class="fas fa-chart-area mr-2 text-sgtx-500"></i>Monte Carlo Trade Risk Simulator</h3>
+      <div class="grid grid-cols-3 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">Trade Value (USD)</label><input id="rs-value" type="number" class="w-full border rounded px-3 py-2 text-sm" value="26400"></div>
+        <div><label class="block text-sm font-medium mb-1">Logistics Cost (USD)</label><input id="rs-logistics" type="number" class="w-full border rounded px-3 py-2 text-sm" value="9000"></div>
+        <div><label class="block text-sm font-medium mb-1">Market Price (USD)</label><input id="rs-market" type="number" class="w-full border rounded px-3 py-2 text-sm" value="42000"></div>
+      </div>
+      <button onclick="runRiskSim()" class="bg-sgtx-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-sgtx-600"><i class="fas fa-play mr-2"></i>Run 10,000 Simulations</button>
+    </div>
+    <div id="risk-results"></div>`;
+}
+
+async function runRiskSim() {
+  document.getElementById('risk-results').innerHTML = '<div class="flex items-center justify-center h-32"><i class="fas fa-spinner fa-spin text-2xl text-sgtx-500"></i></div>';
+  const r = await apiPost('/risk-simulator', {
+    trade_value: parseFloat(document.getElementById('rs-value').value),
+    logistics_cost: parseFloat(document.getElementById('rs-logistics').value),
+    market_price: parseFloat(document.getElementById('rs-market').value),
+  });
+  const d = r.data;
+  document.getElementById('risk-results').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-thumbs-up', 'Profitable', d.profitable_pct + '%', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-exclamation-triangle', 'Default Risk', d.default_pct + '%', 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-dollar-sign', 'Avg Profit', usd(d.avg_profit), 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-chart-line', 'Median', usd(d.median_profit), 'bg-purple-50 text-purple-600')}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card p-5">
+        <h3 class="font-bold mb-3"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>Distribution</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-red-50 rounded"><span>Worst Case (0%):</span><span class="font-bold text-red-600">${usd(d.worst_case)}</span></div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded"><span>VaR 5%:</span><span class="font-bold text-orange-600">${usd(d.var_5pct)}</span></div>
+          <div class="flex justify-between p-2 bg-blue-50 rounded"><span>Average:</span><span class="font-bold">${usd(d.avg_profit)}</span></div>
+          <div class="flex justify-between p-2 bg-green-50 rounded"><span>VaR 95%:</span><span class="font-bold text-green-600">${usd(d.var_95pct)}</span></div>
+          <div class="flex justify-between p-2 bg-green-50 rounded"><span>Best Case (100%):</span><span class="font-bold text-green-700">${usd(d.best_case)}</span></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3"><i class="fas fa-robot mr-2 text-sgtx-500"></i>AI Recommendation</h3>
+        <div class="bg-sgtx-50 p-4 rounded-lg"><span class="text-lg font-bold text-sgtx-700">${d.recommendation}</span></div>
+        <div class="mt-3 text-xs text-gray-500">${d.iterations?.toLocaleString()} iterations completed.</div>
+      </div>
+    </div>`;
+}
+
+// ─── ADMIN: Constitutional Policy Editor ──────────────
+async function renderPolicyEditor() {
+  setTitle('Constitutional Policy Editor', 'Visual Rego editor with WASM compilation — Admin Portal');
+  const { data } = await api('/admin/policies');
+  const rules = data.governance_rules || [];
+  const policies = data.policies || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-gavel', 'Total Phases', data.total_phases, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-shield-alt', 'Governance Gates', data.total_gates, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-file-code', 'Policy Updates', policies.length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-tag', 'Version', data.policy_version, 'bg-orange-50 text-orange-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-gavel mr-2 text-sgtx-500"></i>Active Governance Rules (10 Phases × 84 Gates)</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Policy ID</th><th class="p-2">Phase</th><th class="p-2">Description</th><th class="p-2">Version</th></tr></thead><tbody>${rules.map(r => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-mono text-xs text-sgtx-600">${r.id}</td><td class="p-2 text-center"><span class="bg-sgtx-100 text-sgtx-700 px-2 py-0.5 rounded-full text-xs">${r.phase}</span></td><td class="p-2">${r.description}</td><td class="p-2 text-center">${badge(r.version)}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-history mr-2 text-sgtx-500"></i>Recent Policy Changes</h3>
+      ${policies.length ? `<div class="space-y-2">${policies.map(p => `
+        <div class="flex justify-between items-center p-3 bg-gray-50 rounded"><div><span class="font-medium">${p.policy_name}</span> <span class="text-xs text-gray-400">${p.version}</span></div><div>${badge(p.status)} <span class="text-xs text-gray-400">${time(p.created_at)}</span></div></div>`).join('')}</div>` : emptyState('No policy changes recorded')}
+    </div>`;
+}
+
+// ─── ADMIN: PSP Health Monitor ────────────────────────
+async function renderPSPHealth() {
+  setTitle('PSP Health Monitor', 'Real-time health scores and fallback status — Admin Portal');
+  const { data } = await api('/admin/psp-health');
+  const summary = data.summary || {};
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-heartbeat', 'Total PSPs', summary.total, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-check-circle', 'Healthy', summary.healthy, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-exclamation-circle', 'Degraded', summary.degraded, 'bg-yellow-50 text-yellow-600')}
+      ${statCard('fas fa-times-circle', 'Down', summary.down, summary.down > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600')}
+    </div>
+    ${summary.fallback_active ? '<div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-5 text-sm text-red-700"><i class="fas fa-exclamation-triangle mr-2"></i><b>Fallback Active:</b> One or more PSPs are down. Automatic failover is engaged.</div>' : ''}
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-server mr-2 text-sgtx-500"></i>PSP Aggregators</h3>
+      ${data.aggregators?.length ? `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Name</th><th class="p-2">Country</th><th class="p-2">Avg Health</th><th class="p-2">Avg Latency</th><th class="p-2">Status</th></tr></thead><tbody>${data.aggregators.map(a => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${a.name}</td><td class="p-2 text-center">${a.country || '—'}</td><td class="p-2 text-center"><span class="${(a.avg_health || 0) >= 0.8 ? 'text-green-600' : (a.avg_health || 0) >= 0.5 ? 'text-yellow-600' : 'text-red-600'} font-bold">${((a.avg_health || 0) * 100).toFixed(0)}%</span></td><td class="p-2 text-center">${(a.avg_latency || 0).toFixed(0)}ms</td><td class="p-2 text-center">${badge(a.status)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No PSP aggregators configured')}
+    </div>`;
+}
+
+// ─── ADMIN: Global Jurisdiction Matrix ────────────────
+async function renderJurisdictionMatrix() {
+  setTitle('Global Jurisdiction Matrix', 'Visual editor with versioned changes — Admin Portal');
+  const { data } = await api('/admin/jurisdiction-matrix');
+  const jurisdictions = data.jurisdictions || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-globe', 'Jurisdictions', data.count, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-shield-alt', 'Sanctioned', jurisdictions.filter(j => j.sanctions_level === 'BLOCKED').length, 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-exclamation-triangle', 'High Risk', jurisdictions.filter(j => j.sanctions_level === 'HIGH_RISK').length, 'bg-yellow-50 text-yellow-600')}
+      ${statCard('fas fa-check-circle', 'Clear', jurisdictions.filter(j => j.sanctions_level === 'NONE' || j.sanctions_level === 'LOW').length, 'bg-green-50 text-green-600')}
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-globe mr-2 text-sgtx-500"></i>Jurisdiction Matrix (v${data.version})</h3>
+      ${jurisdictions.length ? `<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Code</th><th class="p-2 text-left">Name</th><th class="p-2">Sanctions</th><th class="p-2">KYC Tier</th><th class="p-2">CBDC</th><th class="p-2">Compliance</th></tr></thead><tbody>${jurisdictions.map(j => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-mono font-bold">${j.code}</td><td class="p-2">${j.name}</td><td class="p-2 text-center">${badge(j.sanctions_level || 'NONE')}</td><td class="p-2 text-center">${j.kyc_tier_required || '—'}</td><td class="p-2 text-center">${j.cbdc_status || '—'}</td><td class="p-2 text-center">${j.compliance_checks?.length ? `<span class="text-xs text-green-600">${j.compliance_checks.length} checks</span>` : '—'}</td></tr>`).join('')}</tbody></table></div>` : emptyState('No jurisdictions configured')}
+    </div>`;
+}
+
+// ─── AI Assistant Panel (Cross-cutting all portals) ───
+async function renderAIAssistant() {
+  setTitle('AI Assistant', 'Conversational AI over trade data — Voice commands supported');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-robot mr-2 text-sgtx-500"></i>SGTX AI Assistant</h3>
+      <p class="text-sm text-gray-500 mb-4">Type or speak commands. Examples: "Show my active shipments", "Track USTN SGTX-EG-...", "Create new trade", "File dispute"</p>
+      <div class="flex gap-2">
+        <input id="ai-input" class="flex-1 border rounded-lg px-4 py-2 text-sm" placeholder="Ask me anything about your trades..." onkeydown="if(event.key==='Enter')sendAIQuery()">
+        <button onclick="startVoiceInput()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-microphone"></i></button>
+        <button onclick="sendAIQuery()" class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+    <div id="ai-responses" class="space-y-3"></div>
+    <div class="card p-5 mt-5">
+      <h4 class="font-bold mb-3 text-gray-700"><i class="fas fa-lightbulb mr-2 text-yellow-500"></i>Suggested Commands</h4>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+        ${['Show my active shipments', 'Track USTN', 'Create new trade', 'File dispute', 'Show commissions', 'Request financing', 'View contacts', 'Check packing plans', 'Scan barcode'].map(cmd => `
+          <button onclick="document.getElementById('ai-input').value='${cmd}';sendAIQuery()" class="bg-gray-50 hover:bg-sgtx-50 border rounded-lg p-2 text-xs text-left transition">${cmd}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function sendAIQuery() {
+  const input = document.getElementById('ai-input');
+  const query = input.value.trim();
+  if (!query) return;
+  input.value = '';
+  const container = document.getElementById('ai-responses');
+  container.innerHTML = `<div class="bg-blue-50 p-3 rounded-lg text-sm"><i class="fas fa-user mr-2 text-blue-500"></i>${query}</div>` + container.innerHTML;
+  const r = await apiPost('/ai-assistant', { query, portal: currentPortal, tenant_id: tenant?.id });
+  const resp = r.data || {};
+  container.innerHTML = `<div class="bg-sgtx-50 p-3 rounded-lg text-sm"><i class="fas fa-robot mr-2 text-sgtx-500"></i>${resp.message}</div>` + container.innerHTML;
+  if (resp.type === 'navigate' && resp.target) { setTimeout(() => navigate(resp.target), 1000); }
+  if (resp.type === 'action' && resp.target && window[resp.target]) { setTimeout(() => window[resp.target](), 1000); }
+}
+
+function startVoiceInput() {
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => { document.getElementById('ai-input').value = event.results[0][0].transcript; sendAIQuery(); };
+    recognition.start();
+  } else {
+    alert('Voice recognition not supported in this browser. Use Chrome for voice commands.');
+  }
+}
+
+// ─── Distressed Cargo Country Factors (Phase 7.8) ─────
+async function renderDistressedFactors() {
+  setTitle('Distressed Cargo Factors', 'Dynamic country-specific disposal costs — Phase 7.8');
+  const { data } = await api('/distressed-factors');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-exclamation-triangle mr-2 text-orange-500"></i>Country Distressed Factors</h3>
+      <p class="text-sm text-gray-500 mb-4">Commission floor: 0.05%. Factor = 1 - estimated_local_cost_pct. Applied to distressed portion of trade.</p>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Country</th><th class="p-2">Code</th><th class="p-2">Factor</th><th class="p-2">Cost Explanation</th><th class="p-2">Sanctions</th></tr></thead><tbody>${(data || []).map(d => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${d.name}</td><td class="p-2 text-center font-mono">${d.code}</td><td class="p-2 text-center font-bold ${d.distressed_country_factor < 0.9 ? 'text-orange-600' : 'text-green-600'}">${d.distressed_country_factor}</td><td class="p-2 text-xs">${d.cost_explanation}</td><td class="p-2 text-center">${badge(d.sanctions_level || 'NONE')}</td></tr>`).join('')}</tbody></table></div>
     </div>`;
 }
