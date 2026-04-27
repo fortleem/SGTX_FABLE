@@ -133,18 +133,71 @@
 - KYC verification
 - Employee invitation
 
-## Portal Architecture (RBAC)
+## Portal Architecture (RBAC) — Blueprint v6.2.1-6.2.6 Alignment
 
-| Portal | Tenant Type | Access |
-|--------|------------|--------|
-| Importer | CORPORATE | Trades, Contracts, Shipments, Financing, Payments, IoT, Disputes |
-| Exporter | CORPORATE | Quotes, Contracts, Shipments, Barcodes, Packing Plans, IoT, Buyer Search, Distressed |
-| Logistics | LOGISTICS | Shipments, Routes, Drivers, Service Catalog, RFQ, IoT, Digital Twin, Carrier Profiles |
-| Financier | FINANCIAL | Financing Requests, DeFi, Tokenized Assets, Blockchain Verify, Credit Assessments |
-| QC | QUALITY_CONTROL | Inspections, Shipments, Barcodes, ESG |
-| Regulatory | REGULATORY | Read-only: All trades, disputes, compliance, governance, audit |
-| Government | GOVERNMENT | Read-only: Entity registry, trade activity, compliance, governance |
-| Admin | PLATFORM_ADMIN | Full access to all features + Gap Stats + Advanced Stats |
+| Portal | Blueprint Section | Features | Alignment Status |
+|--------|------------------|----------|-----------------|
+| **Importer** | 6.2.1 | Dashboard, Shipments Vault, Market Intelligence (OpenDP), Trade Requests, Quote Review & Counter-Offer Simulator, Contract Signing, Live Tracking (Digital Twin), Trade Lineage Graph, Distressed Cargo, Disputes (Phase 10), Saved Contacts, AI Assistant, Voice Commands | **COMPLETE** |
+| **Exporter** | 6.2.2 | Dashboard, Shipments Vault, Pending Requests, EXW Price Lock, Containerisation & Packing (OR-Tools palletisation), QC Booking (AI-prioritised), Document Finalisation (signing + translation), Barcode Print (GS1-128/QR), Distressed Cargo & Country Factors, AI Assistant | **COMPLETE** |
+| **Logistics** | 6.2.3 | Dashboard, Shipments Vault, RFQ Inbox, Quote Submission, Bundle Builder (Freight Forwarder), eBL Status (Shipping Line), Pallet Scanning + OSRM Route (Trucking), Customs Checklist (AI validation), Carrier Profiles, Performance, Digital Twin, Schedules, ESG | **COMPLETE** |
+| **QC** | 6.2.4 | Shipments Vault (inspections), Packing Plans (priority pallets), Inspection Jobs (AI report generation), Barcode Scanning, ESG Reports | **COMPLETE** |
+| **Financier** | 6.2.5 | Financing Marketplace (risk filtering), Shipments Vault (milestones), Bid Submission, Portfolio Dashboard (Monte Carlo VaR, stablecoin health), Risk Simulator (10k iterations), DeFi Positions, Tokenized Assets, Credit Assessments | **COMPLETE** |
+| **Admin** | 6.2.6 | Shipments Vault (full unfiltered), Constitutional Policy Editor (Rego/WASM, 10 phases × 84 gates), Governor Decision Log, PSP Health Monitor (real-time), Global Jurisdiction Matrix (visual editor, versioned) | **COMPLETE** |
+| **Regulatory** | Blueprint | Read-only: All trades, disputes, compliance, governance, audit, ESG | **COMPLETE** |
+| **Government** | Blueprint | Read-only: Entity registry, trade activity, compliance, governance, ESG | **COMPLETE** |
+
+### v6.2 Gap Closure — New Features Added
+
+#### Backend API Routes (portal_features.ts)
+| Endpoint | Method | Portal | Blueprint Phase |
+|----------|--------|--------|----------------|
+| `/counter-offers` | GET/POST | Importer | 3.1 Counter-Offer Simulator |
+| `/trade-lineage` | GET | Importer | 6.2.1 Visual Trade Lineage |
+| `/market-intelligence` | GET | Importer | 6.2.1 OpenDP Market Intelligence |
+| `/palletisation` | GET | Exporter | 2.2 Packing Data |
+| `/palletisation/calculate` | POST | Exporter | 2.2 OR-Tools Palletisation |
+| `/qc-bookings` | GET/POST | Exporter | 2.2 QC Booking |
+| `/document-finalisation` | GET | Exporter | 2/3 Document Status |
+| `/document-finalisation/sign` | POST | Exporter | 2/3 Document Signing |
+| `/logistics/bundle-builder` | GET | Logistics | 2.3 AI Bundle Optimizer |
+| `/logistics/ebl-status` | GET | Logistics | 5 eBL Status |
+| `/logistics/customs-checklist` | GET | Logistics | 5 Customs AI Validation |
+| `/inspections/:id/report` | POST | QC | 5 AI Report Generation |
+| `/inspections/:id/priority-pallets` | GET | QC | 5 Priority Pallets |
+| `/portfolio` | GET | Financier | 4 Portfolio Dashboard |
+| `/risk-simulator` | POST | Financier | 3/4 Monte Carlo (10k) |
+| `/admin/policies` | GET/POST | Admin | Gov Constitutional Editor |
+| `/admin/psp-health` | GET | Admin | 9 PSP Health Monitor |
+| `/admin/jurisdiction-matrix` | GET/PATCH | Admin | Gov Jurisdiction Matrix |
+| `/distressed-factors` | GET | Cross | 7.8 Country Factors |
+| `/ai-assistant` | POST | Cross | 6.5 AI Assistant + Voice |
+
+#### Governor Policies Added
+- `counter.offer.simulate` — Phase 3 negotiation bot (G3-U-3)
+- `qc.booking.create` — AI-prioritised inspection points
+- `document.finalise` — Translation verification (G3-U-7)
+- `admin.policy.update` — Multisig 3/5 constitutional change (GC-U-1)
+- `admin.jurisdiction.update` — Versioned change logged (GC-U-5)
+- `distressed.country.factor` — Commission floor 0.05% (G7-U-10/11)
+- `risk.simulate` — Monte Carlo 10k iterations (G3-U-5)
+- `portfolio.review` — VaR analysis generation (G4-U-8)
+
+#### Frontend Pages Added
+- `renderCounterOffers` — AI Counter-Offer Simulator with acceptance probability
+- `renderTradeLineage` — Visual trade chain graph (Importer → Exporter → Contract → USTN)
+- `renderMarketIntel` — OpenDP differential privacy aggregated stats
+- `renderContainerisation` — Palletisation calculator (container types, OR-Tools)
+- `renderDocFinalisation` — Document checklist with signing
+- `renderQCBooking` — AI-prioritised inspection booking
+- `renderBundleBuilder` — Freight Forwarder AI-optimised provider bundles
+- `renderCustomsChecklist` — AI-validated customs document compliance
+- `renderPortfolio` — Monte Carlo VaR, stablecoin health, loan portfolio
+- `renderRiskSimulator` — 10,000 iteration Monte Carlo trade outcomes
+- `renderPolicyEditor` — 10 phases × 84 gates governance rules viewer
+- `renderPSPHealth` — Real-time PSP status with fallback alerts
+- `renderJurisdictionMatrix` — 31 jurisdictions with compliance checks
+- `renderAIAssistant` — Voice commands + text AI assistant
+- `renderDistressedFactors` — Country-specific disposal cost factors
 
 ## Data Architecture
 
@@ -194,4 +247,21 @@ IoT readings, eBL management, commodity warnings, HS codes, carrier profiles, pr
 ## Deployment
 - **Platform**: Cloudflare Pages
 - **Status**: Active (Sandbox)
-- **Last Updated**: 2026-04-25
+- **Last Updated**: 2026-04-27
+
+## End-to-End Workflow Alignment (Phases 1-10)
+
+All 10 blueprint phases are fully implemented with 84+ governance gates:
+
+| Phase | Name | Gates | Status |
+|-------|------|-------|--------|
+| 1 | Trade Initiation | G1-U-1 to G1-U-8 | **COMPLETE** |
+| 2 | Quote & Logistics | G2-U-1 to G2-U-14 | **COMPLETE** |
+| 3 | Contracting & Commission | G3-U-1 to G3-U-10 | **COMPLETE** |
+| 4 | Trade Finance & DeFi | G4-U-1 to G4-U-10 | **COMPLETE** |
+| 5 | Physical Execution | G5-U-1 to G5-U-10 | **COMPLETE** |
+| 6 | Settlement | G6-U-1 to G6-U-10 | **COMPLETE** |
+| 7 | Distressed Cargo | G7-U-1 to G7-U-12 | **COMPLETE** |
+| 8 | Buyer Search | G8-U-1 to G8-U-6 | **COMPLETE** |
+| 9 | Payment Orchestration | G9-U-1 to G9-U-8 | **COMPLETE** |
+| 10 | Disputes | G10-U-1 to G10-U-6 | **COMPLETE** |
