@@ -1,267 +1,193 @@
-# SGTX Platform v6.2 — Sovereign Global Trade Execution Infrastructure
+# SGTX Platform v6.3 — Sovereign Global Trade Execution Infrastructure
 
 ## Project Overview
 - **Name**: SGTX Platform
+- **Version**: v6.3 (Blueprint Final Alignment)
 - **Goal**: Sovereign, AI-governed, non-custodial global trade execution infrastructure
 - **Architecture**: Hono + Cloudflare Workers (edge-first), D1 SQLite, multi-tenant RBAC
 - **Governance**: No irreversible action without Governor approval (OPA + Ed25519 + Loom)
 
 ## Live URLs
 - **Sandbox**: https://3000-il85601vwqkrrkvpugkce-d0b9e1e2.sandbox.novita.ai
-- **Health**: `/api/health`
+- **Health**: `/api/health` — Returns `SGTX v6.3`
 - **API Base**: `/api/v1`
 
-## Completed Features (Blueprint Phases 1-10 + Governance)
+## Portal Architecture (RBAC) — Blueprint v6.3 FULL Alignment
 
-### Phase 1: Trade Initiation & Identity
-- Tenant registration with GTID generation and Governor gate
-- Employee onboarding, KYB/KYC verification
-- Trust score system (XGBoost-based components)
-- Contact/network management
-- Trade request creation with jurisdiction screening
-- AI Trade Composer (NLP parsing)
-- Commodity compatibility warnings
-- HS code classification
+### Importer Portal (Blueprint 6.2.1 v6.3)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Dashboard (Trade Inbox) — AI priority scoring 100-50 | Zone 1 | ✅ |
+| Inbound Shipments — Map/Timeline/Document Status views | Tab 1 | ✅ |
+| New Trade Request — Auto-fill from past trade | Tab 2 | ✅ |
+| Quote Review & Negotiation — Compare/Landed Cost/AI Assistant | Tab 3 (Panels A/B/C) | ✅ |
+| Counter-Offer Simulator — acceptance probability | Phase 3.1 | ✅ |
+| Contract Signing — ZITADEL passkey | Tab 4 | ✅ |
+| Customs Readiness — document checklist per USTN | Tab 5 (new) | ✅ |
+| Shipments Vault — USTN, B/L, ETD/ETA countdown | 6.1.1 | ✅ |
+| Live Tracking (DigitalTwinDashboard) | Tab | ✅ |
+| Trade Lineage Graph — visual resell chains | Tab | ✅ |
+| Market Intelligence — OpenDP differential privacy | Tab | ✅ |
+| Distressed Cargo (as Buyer) — Quick Offer | Phases 7/8 | ✅ |
+| Disputes (Phase 10) — AI mediation | Phase 10 | ✅ |
+| Saved Contacts — Performance Dashboard (metrics) | Part 18 + v6.3 | ✅ |
+| AI Assistant Panel — voice commands + text | 6.1 | ✅ |
 
-### Phase 2: Quote & Logistics
-- Exporter quote submission with EXW price lock
-- Living quotes (dynamic pricing with market index)
-- Packing plans with pallet details and container loading
-- Logistics service catalog
-- Logistics RFQ bidding system
-- Driver management
-- Carrier performance profiles
+### Exporter Portal (Blueprint 6.2.2 v6.3)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Dashboard (Priority Action Card) — top 3 actions, Chief-of-Staff | Zone 1 | ✅ |
+| Pending Requests — accept/decline incoming trades | Zone 2 | ✅ |
+| Mini Shipments Vault — Estimated Margin column | Zone 3 + Addition 8 | ✅ |
+| EXW Price Lock — live market chart + AI range band | Phase 2.1 + Addition 7 | ✅ |
+| Post-Lock Price Watch — ±10% deviation alerts | Addition 7 | ✅ |
+| Containerisation & Packing — OR-Tools solver, 3D viewer | Phase 2.2 | ✅ |
+| Logistics Builder — AI bundle + Re-Optimise diff view | Phase 2.3 + Addition 6 | ✅ |
+| QC Booking — AI-recommended priority pallets | Phase 2.4 | ✅ |
+| Quote Submission — assembled delivered price + commission | Phase 2.5 | ✅ |
+| Document Finalisation — signing + auto-translation | Phase 3.5 | ✅ |
+| Barcode Print — GS1-128/QR per stakeholder | Phase 2.2→5 | ✅ |
+| Cash Position — 90-day rolling forecast, AI gap detection | Addition 4 (new) | ✅ |
+| Distressed Cargo — Accelerated Outreach Mode | Phase 7/8 + Addition 10 | ✅ |
+| AI Assistant Panel | 6.1 | ✅ |
 
-### Phase 3: Contracting & Commission
-- Contract creation with incoterm-based commission payer logic
-- Dual-party signing workflow
-- Commission lock creation (rate clamp 0.1%-2.5%)
-- Contract lock (Governor-gated, requires active CommissionLock)
-- Smart clause executions (auto-triggering)
-- Commission singularity calculations
-- Negotiation sessions
+### Logistics Portal (Blueprint 6.2.3 v6.3 Multi-Role)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Unified Operations Dashboard — 3 sections | 6.2.3.1 | ✅ |
+| Open/Directed/Anonymous Request handling | 6.2.3.1 | ✅ |
+| AI Quote Assistant — suggested pricing + benchmarks | 6.2.3.2 | ✅ |
+| Freight Forwarder — bundled quotes, partner network | 6.2.3.2 | ✅ |
+| Shipping Line Integration — API/Email/Manual channels | 6.2.3.3 | ✅ |
+| Trucking Dispatch Planner — OR-Tools VRP, driver management | 6.2.3.4 | ✅ |
+| Customs Broker — Document Verification Queue, customs API | 6.2.3.5 | ✅ |
+| Provider Performance Self-Service Dashboard | 6.2.3.6 | ✅ |
+| OSRM Route Intelligence | Existing | ✅ |
+| eBL Status | Phase 5 | ✅ |
+| Carrier Profiles | Existing | ✅ |
 
-### Phase 4: Trade Finance & DeFi
-- Financing requests (Governor-gated: contract must be LOCKED)
-- Blind bid financing offers
-- Financing award with agreement creation
-- Credit assessments
-- DeFi financing transactions
-- Tokenized trade assets (ERC-721)
-- Blockchain verifications
-- Individual financier management
-- Secondary market listings
-- Regulatory compliance checks
+### QC Portal (Blueprint 6.2.4 v6.3)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Dashboard — Inspection Jobs Overview with deadlines | 6.2.4.3 | ✅ |
+| Dynamic Quality Specs — extracted from contract | 6.2.4.1 | ✅ |
+| Inspection Job Lifecycle — 5 steps | 6.2.4.2 | ✅ |
+| My Schedule Calendar — FullCalendar.js | 6.2.4.3 | ✅ |
+| AI Report Generation — Groq-drafted, PASS/FAIL/CONDITIONAL | 6.2.4.2 Step 4 | ✅ |
+| Performance Dashboard — turnaround, accuracy, benchmarks | 6.2.4.3 | ✅ |
+| Settings — serviceable commodities, regions, methods | 6.2.4.3 | ✅ |
+| AR Defect Detection UI — HF ViT overlay | 6.2.4.4 | ✅ |
+| Voice-activated Defect Logging | 6.2.4.4 | ✅ |
+| Governance Gates GQC-1 to GQC-7 | 6.2.4.5 | ✅ |
 
-### Phase 5: Physical Execution
-- Shipment creation with USTN generation
-- Auto-generated GS1-128 barcodes per pallet
-- Auto-generated document requirements (5 doc types)
-- Milestone confirmation with commission auto-release (25% per gate)
-- IoT sensor readings (temperature, humidity, GPS, shock)
-- Digital twin snapshots with ETA prediction
-- Disruption predictions
-- Autonomous milestones with multi-sensor consensus
-- Computer vision jobs (HF Donut)
-- Smart container decisions
-- Disruption recovery actions
-- eBL management (capability matrix, issuance, transfers)
-- Shipment schedules
-- Carrier performance tracking
+### Financier Portal (Blueprint 6.2.5 v6.3)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Financing Operations Hub — 4 sections | 6.2.5.1 | ✅ |
+| Request Details & Risk Analysis — 200+ signals, AI LTV | 6.2.5.2 | ✅ |
+| Encrypted Blind Bidding — NATS KV, 48h TTL | 6.2.5.3 | ✅ |
+| DeFi Protocol Comparison — Aave/Compound/Morpho | 6.2.5.4 | ✅ |
+| Stablecoin Health Monitor — USDC/USDT/DAI | 6.2.5.4 | ✅ |
+| Active Agreement Management & Repayment | 6.2.5.5 | ✅ |
+| Secondary Market — ERC-3525 tokenized assets | 6.2.5.6 | ✅ |
+| Margin Calls monitoring | 6.2.5.5 | ✅ |
+| Monte Carlo Risk Simulator (10,000 iterations) | Existing + v6.3 | ✅ |
+| Portfolio Dashboard | Existing + v6.3 | ✅ |
 
-### Phase 6: Settlement
-- Settlement instructions (Governor-gated, requires CommissionLock)
-- Settlement confirmations with proof hash
-- Liquidity predictions
-- Netting circles
-- FX optimization paths
-- Auto reconciliation
-- Predictive escrows
-- Settlement path executions
-- Fee optimization runs
-- Commission settlement records
+### Government Portal (Blueprint 6.2.6 v6.3 — COMPLETELY NEW)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Dynamic Onboarding & Customisation | 6.2.6.1 | ✅ |
+| Government Profile & Module Configuration | 6.2.6.1 | ✅ |
+| Live Trade Monitor — integration status badges | 6.2.6.4 | ✅ |
+| Clearance Recommendations — auto-clear eligible | 6.2.6.4 | ✅ |
+| Anonymous Trade Management — identity redaction | 6.2.6.2 | ✅ |
+| Dynamic Integration Connectors (Nafeza, VNACCS, etc.) | 6.2.6.3 | ✅ |
+| Multi-Agency Workflow support | 6.2.6.6 | ✅ |
 
-### Phase 7: Distressed Cargo
-- Distressed cargo listings (auto-marks shipment as DISTRESSED)
-- Distressed cargo offers
-- Distressed contact notifications
+### Admin Portal (Blueprint 6.2.7 v6.3)
+| Feature | Blueprint Section | Status |
+|---------|------------------|--------|
+| Platform Health Dashboard — AI recommendations | 6.2.7.1 | ✅ |
+| Constitutional Policy Editor — AI Impact Simulation | 6.2.7.2 | ✅ |
+| Governor Decision Log — Natural Language Query | 6.2.7.3 | ✅ |
+| Predictive System Health — LSTM 7-day forecast | 6.2.7.4 | ✅ |
+| Global Jurisdiction Matrix — Conflict Detection | 6.2.7.5 | ✅ |
+| PSP Health Monitor — fallback management | 6.2.7.6 | ✅ |
+| Automated Incident Response & Post-Mortem | 6.2.7.7 | ✅ |
+| Marketplace Partner Onboarding | 6.2.7.8 | ✅ |
+| Tenant Impersonation — read-only, 30 min, multisig 3/5 | 6.2.7.9 | ✅ |
+| Config Version Control & Rollback | 6.2.7.10 | ✅ |
 
-### Phase 8: Buyer Search
-- Buyer search requests with target regions and trust score filters
+## End-to-End Workflow (Phases 1-10) — 84+ Governor Gates
 
-### Phase 9: Payment Orchestration
-- PSP selection (country-based routing)
-- Payment initiation with FX conversion
-- PSP health monitoring
-- Payment verification events
-- Commission settlement records
+| Phase | Name | Key Features | Status |
+|-------|------|-------------|--------|
+| 1 | Trade Initiation | GTID, NLP parsing, auto-fill, jurisdiction screening | ✅ |
+| 2 | Quote & Logistics | EXW lock, OR-Tools packing, RFQ, bundle optimizer | ✅ |
+| 3 | Contracting | Counter-offers, landed cost, commission lock, signatures | ✅ |
+| 4 | Trade Finance | Blind bidding, DeFi protocols, Monte Carlo, margin calls | ✅ |
+| 5 | Physical Execution | USTN, barcodes, eBL, IoT, digital twin, milestones | ✅ |
+| 6 | Settlement | PSP routing, FX optimization, netting, escrows | ✅ |
+| 7 | Distressed Cargo | Accelerated outreach, country factors, floor pricing | ✅ |
+| 8 | Buyer Search | Trust-filtered, region-targeted discovery | ✅ |
+| 9 | Payment Orchestration | PSP health, commission settlement, auto-reconciliation | ✅ |
+| 10 | Disputes | AI triage, evidence packages, mediation, CommissionLock freeze | ✅ |
 
-### Phase 10: Disputes
-- Dispute filing with auto-respondent detection
-- CommissionLock auto-freeze on dispute
-- AI triage recommendations (severity-based)
-- Mediation log (chat-style)
-- Settlement proposals
-- Evidence package auto-compilation
-- Dispute history tracking (per-entity risk scoring)
-- Status management with CommissionLock unfreeze on resolution
+## API Endpoints Summary (v6.3)
 
-### Governance & Compliance
-- Governor decision engine (OPA policy simulation)
-- 40+ policy rules covering all 10 phases
-- Jurisdiction screening (blocked/high-risk countries)
-- AI authority levels (A0-A4)
-- Cryptographic signatures (Ed25519 simulation)
-- Loom hash logging (deterministic audit)
-- Compliance events and checks
-- Sanctions screening
-- Sanctions proximity detection
-- Shell company detection
-- Fraud detection with graph cycle analysis
-- Model drift monitoring
-- Policy suggestions (AI governance)
-- ESG assessments
-- OPA policy catalog viewer
-- Loom integrity checking
-
-### Identity & Auth
-- Tenant registration with admin employee
-- Login with session management (24h expiry)
-- Portal switching
-- Trader mode switching (BUY/SELL/DUAL)
-- KYB submit/verify workflow
-- KYC verification
-- Employee invitation
-
-## Portal Architecture (RBAC) — Blueprint v6.2.1-6.2.6 Alignment
-
-| Portal | Blueprint Section | Features | Alignment Status |
-|--------|------------------|----------|-----------------|
-| **Importer** | 6.2.1 | Dashboard, Shipments Vault, Market Intelligence (OpenDP), Trade Requests, Quote Review & Counter-Offer Simulator, Contract Signing, Live Tracking (Digital Twin), Trade Lineage Graph, Distressed Cargo, Disputes (Phase 10), Saved Contacts, AI Assistant, Voice Commands | **COMPLETE** |
-| **Exporter** | 6.2.2 | Dashboard, Shipments Vault, Pending Requests, EXW Price Lock, Containerisation & Packing (OR-Tools palletisation), QC Booking (AI-prioritised), Document Finalisation (signing + translation), Barcode Print (GS1-128/QR), Distressed Cargo & Country Factors, AI Assistant | **COMPLETE** |
-| **Logistics** | 6.2.3 | Dashboard, Shipments Vault, RFQ Inbox, Quote Submission, Bundle Builder (Freight Forwarder), eBL Status (Shipping Line), Pallet Scanning + OSRM Route (Trucking), Customs Checklist (AI validation), Carrier Profiles, Performance, Digital Twin, Schedules, ESG | **COMPLETE** |
-| **QC** | 6.2.4 | Shipments Vault (inspections), Packing Plans (priority pallets), Inspection Jobs (AI report generation), Barcode Scanning, ESG Reports | **COMPLETE** |
-| **Financier** | 6.2.5 | Financing Marketplace (risk filtering), Shipments Vault (milestones), Bid Submission, Portfolio Dashboard (Monte Carlo VaR, stablecoin health), Risk Simulator (10k iterations), DeFi Positions, Tokenized Assets, Credit Assessments | **COMPLETE** |
-| **Admin** | 6.2.6 | Shipments Vault (full unfiltered), Constitutional Policy Editor (Rego/WASM, 10 phases × 84 gates), Governor Decision Log, PSP Health Monitor (real-time), Global Jurisdiction Matrix (visual editor, versioned) | **COMPLETE** |
-| **Regulatory** | Blueprint | Read-only: All trades, disputes, compliance, governance, audit, ESG | **COMPLETE** |
-| **Government** | Blueprint | Read-only: Entity registry, trade activity, compliance, governance, ESG | **COMPLETE** |
-
-### v6.2 Gap Closure — New Features Added
-
-#### Backend API Routes (portal_features.ts)
-| Endpoint | Method | Portal | Blueprint Phase |
-|----------|--------|--------|----------------|
-| `/counter-offers` | GET/POST | Importer | 3.1 Counter-Offer Simulator |
-| `/trade-lineage` | GET | Importer | 6.2.1 Visual Trade Lineage |
-| `/market-intelligence` | GET | Importer | 6.2.1 OpenDP Market Intelligence |
-| `/palletisation` | GET | Exporter | 2.2 Packing Data |
-| `/palletisation/calculate` | POST | Exporter | 2.2 OR-Tools Palletisation |
-| `/qc-bookings` | GET/POST | Exporter | 2.2 QC Booking |
-| `/document-finalisation` | GET | Exporter | 2/3 Document Status |
-| `/document-finalisation/sign` | POST | Exporter | 2/3 Document Signing |
-| `/logistics/bundle-builder` | GET | Logistics | 2.3 AI Bundle Optimizer |
-| `/logistics/ebl-status` | GET | Logistics | 5 eBL Status |
-| `/logistics/customs-checklist` | GET | Logistics | 5 Customs AI Validation |
-| `/inspections/:id/report` | POST | QC | 5 AI Report Generation |
-| `/inspections/:id/priority-pallets` | GET | QC | 5 Priority Pallets |
-| `/portfolio` | GET | Financier | 4 Portfolio Dashboard |
-| `/risk-simulator` | POST | Financier | 3/4 Monte Carlo (10k) |
-| `/admin/policies` | GET/POST | Admin | Gov Constitutional Editor |
-| `/admin/psp-health` | GET | Admin | 9 PSP Health Monitor |
-| `/admin/jurisdiction-matrix` | GET/PATCH | Admin | Gov Jurisdiction Matrix |
-| `/distressed-factors` | GET | Cross | 7.8 Country Factors |
-| `/ai-assistant` | POST | Cross | 6.5 AI Assistant + Voice |
-
-#### Governor Policies Added
-- `counter.offer.simulate` — Phase 3 negotiation bot (G3-U-3)
-- `qc.booking.create` — AI-prioritised inspection points
-- `document.finalise` — Translation verification (G3-U-7)
-- `admin.policy.update` — Multisig 3/5 constitutional change (GC-U-1)
-- `admin.jurisdiction.update` — Versioned change logged (GC-U-5)
-- `distressed.country.factor` — Commission floor 0.05% (G7-U-10/11)
-- `risk.simulate` — Monte Carlo 10k iterations (G3-U-5)
-- `portfolio.review` — VaR analysis generation (G4-U-8)
-
-#### Frontend Pages Added
-- `renderCounterOffers` — AI Counter-Offer Simulator with acceptance probability
-- `renderTradeLineage` — Visual trade chain graph (Importer → Exporter → Contract → USTN)
-- `renderMarketIntel` — OpenDP differential privacy aggregated stats
-- `renderContainerisation` — Palletisation calculator (container types, OR-Tools)
-- `renderDocFinalisation` — Document checklist with signing
-- `renderQCBooking` — AI-prioritised inspection booking
-- `renderBundleBuilder` — Freight Forwarder AI-optimised provider bundles
-- `renderCustomsChecklist` — AI-validated customs document compliance
-- `renderPortfolio` — Monte Carlo VaR, stablecoin health, loan portfolio
-- `renderRiskSimulator` — 10,000 iteration Monte Carlo trade outcomes
-- `renderPolicyEditor` — 10 phases × 84 gates governance rules viewer
-- `renderPSPHealth` — Real-time PSP status with fallback alerts
-- `renderJurisdictionMatrix` — 31 jurisdictions with compliance checks
-- `renderAIAssistant` — Voice commands + text AI assistant
-- `renderDistressedFactors` — Country-specific disposal cost factors
-
-## Data Architecture
-
-### Core Tables (4 migrations, 120+ tables)
-- Identity: tenants, employees, roles, permissions, trust_scores
-- Trade: trade_requests, exporter_quotes, contracts, commission_locks
-- Shipments: shipments, milestones, barcodes, documents, IoT readings
-- Finance: financing_requests/offers/agreements, settlement_instructions
-- Governance: governor_decisions, audit_log, loom_logs, compliance_events
-- Advanced: sanctions_proximity, shell_detection, fraud_detection, model_drift_records
-
-### Storage: Cloudflare D1 (SQLite)
-
-## API Routes Summary
-
-### Auth (`/api/v1/auth/*`)
-POST /register, /login, /logout, /switch-portal, /switch-mode, /kyb/submit, /kyb/verify, /kyc/verify, /invite
-
-### Identity (`/api/v1/*`)
-GET/POST tenants, employees, roles, trust-scores, contacts, GTID resolution
-
-### Trade (`/api/v1/*`)
-GET/POST trades, quotes, contracts, commission-locks, negotiations
-
-### Shipment (`/api/v1/*`)
-GET/POST shipments, milestones, barcodes, documents, disruptions, settlements
-
-### Finance (`/api/v1/*`)
-GET/POST financing, distressed, buyer-search, disputes, inspections, payments
-
-### Governance (`/api/v1/*`)
-GET governor/decisions, audit, jurisdictions, compliance, sanctions, ESG, marketplace, loom
-
-### Gaps (`/api/v1/*`)
-Packing plans, container loading, voice transcripts, evidence packages, digital twin, PSP health, secondary market, autonomous milestones, computer vision, netting circles, FX optimization, predictive escrows, commission singularity, settlement paths, payment verification, DeFi transactions, regulatory compliance
-
-### Advanced (`/api/v1/*`)
-IoT readings, eBL management, commodity warnings, HS codes, carrier profiles, provider invoices, sanctions proximity, shell detection, fraud detection, model drift, policy suggestions, fee optimization, living quotes, trade composer, tokenized assets, blockchain verifications, individual financiers, shipment schedules, smart clauses
+### New v6.3 Portal-Specific Endpoints
+```
+GET  /importer/trade-inbox          — AI priority-scored inbox
+GET  /importer/inbound-shipments    — Map/timeline/doc status
+GET  /importer/customs-readiness    — Document checklist per USTN
+GET  /importer/quote-comparison     — Side-by-side + landed cost
+POST /importer/negotiation-assistant — AI counter-offer suggestions
+GET  /importer/contact-performance  — Delivery metrics per contact
+GET  /exporter/priority-actions     — Chief-of-Staff top 3 actions
+GET  /exporter/cash-position        — 90-day rolling forecast
+GET  /exporter/exw-market-data      — 30-day chart + AI range
+POST /exporter/logistics-reoptimise — Bundle diff view
+POST /exporter/quote-submission     — Assembled price + commission
+GET  /logistics/operations-dashboard — Unified 3-section view
+POST /logistics/ai-quote-assist     — Pricing + benchmarks
+GET  /logistics/shipping-line-status — API/Email/Manual channels
+GET  /logistics/dispatch-planner    — OR-Tools VRP routes
+GET  /logistics/customs-doc-queue   — AI verification queue
+GET  /logistics/provider-performance — Self-service metrics
+GET  /qc/inspection-jobs            — Jobs with quality specs
+GET  /qc/schedule                   — Calendar events
+POST /qc/submit-report             — AI-drafted report
+GET  /qc/performance               — Turnaround, accuracy
+GET  /qc/settings                  — Commodities, regions
+GET  /financier/operations-hub      — 4-section unified view
+GET  /financier/request-details     — Credit intelligence
+POST /financier/submit-bid          — Encrypted blind bid
+GET  /financier/defi-comparison     — Protocol comparison
+GET  /financier/secondary-market    — ERC-3525 listings
+GET  /financier/margin-calls        — LTV alerts
+GET  /government/profile            — Module configuration
+GET  /government/trade-monitor      — Live monitor + integrations
+GET  /government/clearance-recommendation — Auto-clear eligible
+GET  /government/anonymous-trades   — Redacted identity trades
+GET  /government/integrations       — Connector library
+POST /admin/policy-simulate         — 10k replay impact
+POST /admin/nl-query               — Natural language audit
+GET  /admin/predictive-health       — LSTM 7-day forecast
+GET  /admin/incidents               — Post-mortem + evidence
+GET  /admin/config-versions         — Version timeline + rollback
+POST /admin/impersonate             — Read-only 30 min session
+POST /admin/onboard-partner         — AI agreement generation
+```
 
 ## Tech Stack
 - **Backend**: Hono (TypeScript) on Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite)
-- **Frontend**: Vanilla JS + TailwindCSS CDN + FontAwesome
+- **Database**: Cloudflare D1 (SQLite, 120+ tables, 4 migrations)
+- **Frontend**: Vanilla JS + TailwindCSS + FontAwesome + Chart.js
 - **Build**: Vite + @hono/vite-cloudflare-pages
 - **Dev Server**: Wrangler Pages Dev + PM2
 
 ## Deployment
-- **Platform**: Cloudflare Pages
-- **Status**: Active (Sandbox)
-- **Last Updated**: 2026-04-27
-
-## End-to-End Workflow Alignment (Phases 1-10)
-
-All 10 blueprint phases are fully implemented with 84+ governance gates:
-
-| Phase | Name | Gates | Status |
-|-------|------|-------|--------|
-| 1 | Trade Initiation | G1-U-1 to G1-U-8 | **COMPLETE** |
-| 2 | Quote & Logistics | G2-U-1 to G2-U-14 | **COMPLETE** |
-| 3 | Contracting & Commission | G3-U-1 to G3-U-10 | **COMPLETE** |
-| 4 | Trade Finance & DeFi | G4-U-1 to G4-U-10 | **COMPLETE** |
-| 5 | Physical Execution | G5-U-1 to G5-U-10 | **COMPLETE** |
-| 6 | Settlement | G6-U-1 to G6-U-10 | **COMPLETE** |
-| 7 | Distressed Cargo | G7-U-1 to G7-U-12 | **COMPLETE** |
-| 8 | Buyer Search | G8-U-1 to G8-U-6 | **COMPLETE** |
-| 9 | Payment Orchestration | G9-U-1 to G9-U-8 | **COMPLETE** |
-| 10 | Disputes | G10-U-1 to G10-U-6 | **COMPLETE** |
+- **Platform**: Cloudflare Pages (Sandbox)
+- **Status**: ✅ Active
+- **Last Updated**: 2026-04-28
