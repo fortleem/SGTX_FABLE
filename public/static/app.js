@@ -1,5 +1,5 @@
-// SGTX Platform v6.1 — Full Frontend Application (Portal RBAC + Multi-Tenant)
-// Based on Blueprint v6.1: Part 2 (Identity/Tenants), Part 6 (Portals), Part 3 (Workflow)
+// SGTX Platform v6.3 — Full Frontend Application (Portal RBAC + Multi-Tenant)
+// Based on Blueprint v6.3: Part 2 (Identity/Tenants), Part 6 (Portals), Part 3 (Workflow)
 const API = '/api/v1';
 let currentPage = 'dashboard';
 let currentPortal = 'dashboard';
@@ -119,7 +119,8 @@ const PORTAL_PERMISSIONS = {
     canViewGovernor: true, canViewJurisdictions: true, canViewCompliance: true,
     canViewAudit: true, canViewESG: true, canViewMarketplace: false, canViewTenants: true,
     canViewDisputeHistory: true,
-    readOnly: true,
+    // v6.3: Government portal has dynamic modules, not purely read-only
+    canApproveClearance: true, canViewAnonymousTrades: true,
   },
   admin: {
     canCreateTrade: true, canViewTrades: true, canViewContracts: true, canRequestFinancing: true,
@@ -216,48 +217,55 @@ function switchPortal(portal) {
       { id: 'jurisdictions', icon: 'fa-globe', label: 'Jurisdictions' },
     ],
     importer: [
-      { section: 'Importer Portal' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { id: 'marketintel', icon: 'fa-chart-pie', label: 'Market Intelligence' },
-      { section: 'Trade Initiation' },
-      { id: 'trades', icon: 'fa-handshake', label: 'My Trade Requests' },
+      { section: 'Importer Portal (v6.3)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard (Trade Inbox)' },
+      { id: 'inboundshipments', icon: 'fa-map-marked-alt', label: 'Inbound Shipments' },
+      { section: 'Trade Initiation (Phases 1-3)' },
+      { id: 'trades', icon: 'fa-handshake', label: 'New Trade Request' },
+      { id: 'quotereview', icon: 'fa-columns', label: 'Quote Review & Negotiation' },
       { id: 'counteroffers', icon: 'fa-comments-dollar', label: 'Counter-Offer Simulator' },
-      { id: 'contracts', icon: 'fa-file-contract', label: 'My Contracts' },
+      { id: 'contracts', icon: 'fa-file-contract', label: 'Contract Signing' },
       { id: 'commissions', icon: 'fa-coins', label: 'Commission Locks' },
-      { section: 'Execution & Tracking' },
+      { section: 'Execution & Tracking (Phases 5-7)' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments Vault' },
+      { id: 'customsreadiness', icon: 'fa-clipboard-check', label: 'Customs Readiness' },
       { id: 'tradelineage', icon: 'fa-project-diagram', label: 'Trade Lineage Graph' },
+      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Live Tracking (Digital Twin)' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT / Cold Chain' },
-      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Live Tracking' },
       { section: 'Finance & Payments' },
       { id: 'financing', icon: 'fa-university', label: 'Financing' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Payments' },
-      { section: 'Discovery' },
-      { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
+      { section: 'Discovery (Phases 7/8)' },
+      { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo (as Buyer)' },
+      { id: 'marketintel', icon: 'fa-chart-pie', label: 'Market Intelligence' },
       { section: 'Network & Disputes' },
-      { id: 'contacts', icon: 'fa-address-book', label: 'Saved Contacts' },
+      { id: 'contacts', icon: 'fa-address-book', label: 'Saved Contacts & Performance' },
       { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes (Phase 10)' },
       { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
       { section: 'AI Tools' },
       { id: 'aiassistant', icon: 'fa-robot', label: 'AI Assistant' },
     ],
     exporter: [
-      { section: 'Exporter Portal' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Quotes & Trades' },
+      { section: 'Exporter Portal (v6.3)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard (Priority Actions)' },
+      { section: 'Quotes & Trade (Phases 1-3)' },
       { id: 'trades', icon: 'fa-handshake', label: 'Pending Requests' },
+      { id: 'exwpricelock', icon: 'fa-lock', label: 'EXW Price Lock' },
       { id: 'contracts', icon: 'fa-file-contract', label: 'My Contracts' },
       { id: 'commissions', icon: 'fa-coins', label: 'Commission Locks' },
-      { section: 'Packing & Logistics' },
+      { id: 'quotesubmission', icon: 'fa-paper-plane', label: 'Quote Submission' },
+      { section: 'Packing & Logistics (Phase 2)' },
       { id: 'containerisation', icon: 'fa-boxes', label: 'Containerisation & Packing' },
       { id: 'packingplans', icon: 'fa-pallet', label: 'Packing Plans' },
+      { id: 'logisticsbuilder', icon: 'fa-cubes', label: 'Logistics Builder (Re-Optimise)' },
       { id: 'qcbooking', icon: 'fa-clipboard-check', label: 'QC Booking' },
       { id: 'docfinalisation', icon: 'fa-file-signature', label: 'Document Finalisation' },
-      { section: 'Execution' },
-      { id: 'shipments', icon: 'fa-ship', label: 'Shipments Vault' },
-      { id: 'barcodes', icon: 'fa-barcode', label: 'Barcode Print' },
+      { section: 'Execution (Phases 5-7)' },
+      { id: 'shipments', icon: 'fa-ship', label: 'Shipments Vault (+Margin)' },
+      { id: 'barcodes', icon: 'fa-barcode', label: 'Barcode Print (GS1/QR)' },
+      { id: 'cashposition', icon: 'fa-chart-line', label: 'Cash Position (90-Day)' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
-      { section: 'Discovery' },
+      { section: 'Discovery (Phases 7/8)' },
       { id: 'buyersearch', icon: 'fa-search-dollar', label: 'Find Buyers' },
       { id: 'distressed', icon: 'fa-exclamation-triangle', label: 'Distressed Cargo' },
       { id: 'distressedfactors', icon: 'fa-globe', label: 'Distressed Factors' },
@@ -269,22 +277,24 @@ function switchPortal(portal) {
       { id: 'aiassistant', icon: 'fa-robot', label: 'AI Assistant' },
     ],
     logistics: [
-      { section: 'Logistics Portal' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Shipments Vault' },
+      { section: 'Logistics Portal (v6.3 Multi-Role)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Unified Operations Dashboard' },
+      { section: 'Service Requests & RFQ' },
+      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Inbox (Open Requests)' },
+      { id: 'bundlebuilder', icon: 'fa-cubes', label: 'Bundle Builder (FF)' },
+      { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
+      { section: 'Active Shipments' },
       { id: 'shipments', icon: 'fa-ship', label: 'Active Shipments' },
       { id: 'barcodes', icon: 'fa-barcode', label: 'Pallet Scanning' },
       { id: 'routes', icon: 'fa-route', label: 'OSRM Route Intelligence' },
-      { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
-      { section: 'RFQ & Services' },
-      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'RFQ Inbox' },
-      { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
-      { id: 'bundlebuilder', icon: 'fa-cubes', label: 'Bundle Builder' },
-      { section: 'Role-Specific' },
+      { id: 'dispatchplanner', icon: 'fa-map-marked-alt', label: 'Dispatch Planner (Trucking)' },
+      { section: 'Role-Specific Tabs' },
       { id: 'carrierprofiles', icon: 'fa-truck', label: 'Carrier Profiles' },
-      { id: 'eblmanagement', icon: 'fa-file-alt', label: 'eBL Status' },
-      { id: 'customschecklist', icon: 'fa-clipboard-check', label: 'Customs Checklist' },
-      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance' },
+      { id: 'eblmanagement', icon: 'fa-file-alt', label: 'eBL Status (Shipping Line)' },
+      { id: 'customschecklist', icon: 'fa-clipboard-check', label: 'Customs Doc Queue' },
+      { id: 'shippinglineintegration', icon: 'fa-plug', label: 'Shipping Line Integration' },
+      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Performance Dashboard' },
+      { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
       { section: 'Tracking & IoT' },
       { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
       { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
@@ -296,7 +306,7 @@ function switchPortal(portal) {
       { id: 'providerinvoices', icon: 'fa-file-invoice-dollar', label: 'Invoices' },
       { section: 'ESG & Network' },
       { id: 'esg', icon: 'fa-leaf', label: 'Carbon / ESG' },
-      { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
+      { id: 'contacts', icon: 'fa-address-book', label: 'Partner Network' },
     ],
     shipper: [
       { section: 'Shipper / Carrier Portal' },
@@ -314,36 +324,44 @@ function switchPortal(portal) {
       { id: 'contacts', icon: 'fa-address-book', label: 'My Network' },
     ],
     financier: [
-      { section: 'Financier Portal' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
+      { section: 'Financier Portal (v6.3)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Financing Operations Hub' },
       { section: 'Financing Marketplace' },
-      { id: 'financing', icon: 'fa-university', label: 'Active Requests' },
+      { id: 'financing', icon: 'fa-university', label: 'Open Requests (Matching)' },
+      { id: 'financierdetails', icon: 'fa-search', label: 'Request Details & Risk' },
+      { id: 'bidsubmission', icon: 'fa-gavel', label: 'Encrypted Blind Bidding' },
       { id: 'risksimulator', icon: 'fa-chart-area', label: 'Risk Simulator (Monte Carlo)' },
-      { section: 'Shipments Vault' },
-      { id: 'shipments', icon: 'fa-ship', label: 'Financed Shipments' },
       { section: 'DeFi & Assets' },
       { id: 'defi', icon: 'fa-link', label: 'DeFi Positions' },
+      { id: 'deficomparison', icon: 'fa-exchange-alt', label: 'DeFi Protocol Comparison' },
       { id: 'tokenizedassets', icon: 'fa-coins', label: 'Tokenized Assets' },
+      { id: 'secondarymarket', icon: 'fa-store', label: 'Secondary Market' },
       { id: 'blockchainverify', icon: 'fa-link', label: 'Blockchain Verify' },
-      { section: 'Portfolio' },
+      { section: 'Active Agreements' },
       { id: 'portfolio', icon: 'fa-briefcase', label: 'Portfolio Dashboard' },
+      { id: 'shipments', icon: 'fa-ship', label: 'Financed Shipments' },
+      { id: 'margincalls', icon: 'fa-exclamation-triangle', label: 'Margin Calls' },
+      { section: 'Settlements & Analysis' },
       { id: 'payments', icon: 'fa-credit-card', label: 'Settlements' },
       { id: 'settlements', icon: 'fa-money-bill-wave', label: 'Settlement Instructions' },
-      { section: 'Analysis' },
       { id: 'trust', icon: 'fa-star', label: 'Credit Scores' },
       { id: 'creditassessments', icon: 'fa-chart-pie', label: 'Credit Assessments' },
     ],
     qc: [
-      { section: 'QC / Inspection Portal' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'My Dashboard' },
-      { section: 'Shipments Vault' },
+      { section: 'QC / Inspection Portal (v6.3)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard (Jobs Overview)' },
+      { id: 'qcschedule', icon: 'fa-calendar-alt', label: 'My Schedule Calendar' },
+      { section: 'Inspection Jobs' },
+      { id: 'inspections', icon: 'fa-clipboard-check', label: 'Inspection Jobs' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments to Inspect' },
       { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
-      { section: 'Inspections' },
-      { id: 'inspections', icon: 'fa-clipboard-check', label: 'Inspection Jobs' },
-      { id: 'barcodes', icon: 'fa-barcode', label: 'Scan Items' },
+      { id: 'barcodes', icon: 'fa-barcode', label: 'Scan Items (AR)' },
       { section: 'Reports' },
+      { id: 'qcreports', icon: 'fa-file-medical-alt', label: 'Report Generation' },
+      { id: 'qcperformance', icon: 'fa-chart-bar', label: 'Performance Dashboard' },
       { id: 'esg', icon: 'fa-leaf', label: 'ESG Reports' },
+      { section: 'Settings' },
+      { id: 'qcsettings', icon: 'fa-cog', label: 'Serviceable Commodities' },
     ],
     regulatory: [
       { section: 'Regulatory Portal (Read-Only)' },
@@ -363,13 +381,18 @@ function switchPortal(portal) {
       { id: 'jurisdictions', icon: 'fa-globe', label: 'Jurisdictions' },
     ],
     government: [
-      { section: 'Government Portal (Read-Only)' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Overview' },
-      { id: 'tenants', icon: 'fa-building', label: 'Registered Entities' },
-      { id: 'trades', icon: 'fa-handshake', label: 'Trade Activity' },
+      { section: 'Government Portal (v6.3)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dynamic Dashboard' },
+      { section: 'Trade Monitoring' },
+      { id: 'govtrademonitor', icon: 'fa-eye', label: 'Live Trade Monitor' },
+      { id: 'govclearance', icon: 'fa-check-double', label: 'Clearance Recommendations' },
       { id: 'shipments', icon: 'fa-ship', label: 'Shipments' },
-      { section: 'Dispute Oversight' },
-      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'All Disputes' },
+      { section: 'Anonymous Trade' },
+      { id: 'govanonaymous', icon: 'fa-user-secret', label: 'Anonymous Trade Requests' },
+      { section: 'Document & Compliance' },
+      { id: 'trades', icon: 'fa-handshake', label: 'Trade Activity' },
+      { id: 'tenants', icon: 'fa-building', label: 'Registered Entities' },
+      { id: 'disputes', icon: 'fa-balance-scale-right', label: 'Disputes' },
       { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
       { section: 'Governance & Compliance' },
       { id: 'governor', icon: 'fa-gavel', label: 'Governance' },
@@ -377,18 +400,26 @@ function switchPortal(portal) {
       { id: 'audit', icon: 'fa-history', label: 'Audit Trail' },
       { id: 'esg', icon: 'fa-leaf', label: 'ESG / Impact' },
       { id: 'jurisdictions', icon: 'fa-globe', label: 'Jurisdictions' },
+      { section: 'Integrations' },
+      { id: 'govintegrations', icon: 'fa-plug', label: 'Integration Connectors' },
     ],
     admin: [
-      { section: 'Platform Admin' },
-      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Platform Overview' },
-      { section: 'Governance (Multisig 3/5)' },
-      { id: 'policyeditor', icon: 'fa-file-code', label: 'Constitutional Policy Editor' },
-      { id: 'governor', icon: 'fa-gavel', label: 'Governor Decision Log' },
+      { section: 'Platform Admin (Multisig 3/5)' },
+      { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Platform Health & AI' },
+      { section: 'Constitutional Governance' },
+      { id: 'policyeditor', icon: 'fa-file-code', label: 'Policy Editor (+Simulation)' },
+      { id: 'governor', icon: 'fa-gavel', label: 'Governor Log (+NL Query)' },
       { id: 'psphealth', icon: 'fa-heartbeat', label: 'PSP Health Monitor' },
-      { id: 'jurisdictionmatrix', icon: 'fa-globe-americas', label: 'Global Jurisdiction Matrix' },
+      { id: 'jurisdictionmatrix', icon: 'fa-globe-americas', label: 'Jurisdiction Matrix (+Conflict)' },
+      { id: 'predictivehealth', icon: 'fa-chart-line', label: 'Predictive System Health' },
+      { section: 'Incident Response' },
+      { id: 'incidents', icon: 'fa-exclamation-circle', label: 'Incidents & Post-Mortem' },
+      { id: 'configversions', icon: 'fa-code-branch', label: 'Config Version Control' },
       { section: 'Identity & Tenants' },
       { id: 'tenants', icon: 'fa-building', label: 'All Tenants' },
       { id: 'trust', icon: 'fa-star', label: 'Trust Scores' },
+      { id: 'impersonate', icon: 'fa-user-secret', label: 'Tenant Impersonation' },
+      { id: 'partneronboard', icon: 'fa-handshake', label: 'Marketplace Partner Onboard' },
       { id: 'jurisdictions', icon: 'fa-globe', label: 'Jurisdictions' },
       { section: 'Trade & Execution' },
       { id: 'trades', icon: 'fa-handshake', label: 'All Trades' },
@@ -413,30 +444,10 @@ function switchPortal(portal) {
       { id: 'disputehistory', icon: 'fa-history', label: 'Dispute History' },
       { id: 'contacts', icon: 'fa-address-book', label: 'Network' },
       { id: 'routes', icon: 'fa-route', label: 'Route Intelligence' },
-      { section: 'v6.2 Gap Features' },
-      { id: 'servicecatalog', icon: 'fa-th-list', label: 'Service Catalog' },
-      { id: 'logisticsrfq', icon: 'fa-clipboard-list', label: 'Logistics RFQ' },
-      { id: 'drivers', icon: 'fa-id-card', label: 'Drivers' },
-      { id: 'creditassessments', icon: 'fa-chart-pie', label: 'Credit Assessments' },
-      { id: 'logisticsperf', icon: 'fa-chart-bar', label: 'Logistics Performance' },
-      { id: 'packingplans', icon: 'fa-boxes', label: 'Packing Plans' },
-      { id: 'digitaltwin', icon: 'fa-digital-tachograph', label: 'Digital Twin' },
-      { id: 'gapstats', icon: 'fa-database', label: 'Gap Stats' },
-      { section: 'v6.2 Advanced' },
-      { id: 'iotdashboard', icon: 'fa-thermometer-half', label: 'IoT Readings' },
-      { id: 'eblmanagement', icon: 'fa-file-alt', label: 'eBL Management' },
-      { id: 'carrierprofiles', icon: 'fa-truck', label: 'Carrier Profiles' },
-      { id: 'providerinvoices', icon: 'fa-file-invoice-dollar', label: 'Provider Invoices' },
+      { section: 'Advanced v6.3' },
       { id: 'sanctionsdetail', icon: 'fa-shield-alt', label: 'Sanctions/Fraud/Shell' },
       { id: 'modeldrift', icon: 'fa-brain', label: 'Model Drift' },
       { id: 'policysuggestions', icon: 'fa-lightbulb', label: 'Policy Suggestions' },
-      { id: 'feeoptimization', icon: 'fa-calculator', label: 'Fee Optimization' },
-      { id: 'livingquotes', icon: 'fa-sync-alt', label: 'Living Quotes' },
-      { id: 'tradecomposer', icon: 'fa-magic', label: 'Trade Composer' },
-      { id: 'tokenizedassets', icon: 'fa-coins', label: 'Tokenized Assets' },
-      { id: 'blockchainverify', icon: 'fa-link', label: 'Blockchain Verify' },
-      { id: 'smartclauses', icon: 'fa-file-code', label: 'Smart Clauses' },
-      { id: 'shipmentschedules', icon: 'fa-calendar-alt', label: 'Shipment Schedules' },
       { id: 'advancedstats', icon: 'fa-chart-bar', label: 'Advanced Stats' },
     ],
   };
@@ -507,6 +518,28 @@ async function loadPage(page) {
       policyeditor: renderPolicyEditor, psphealth: renderPSPHealth,
       jurisdictionmatrix: renderJurisdictionMatrix, aiassistant: renderAIAssistant,
       distressedfactors: renderDistressedFactors,
+      // v6.3 — Importer Portal new pages
+      inboundshipments: renderInboundShipments, customsreadiness: renderCustomsReadiness,
+      quotereview: renderQuoteReview,
+      // v6.3 — Exporter Portal new pages
+      exwpricelock: renderEXWPriceLock, cashposition: renderCashPosition,
+      logisticsbuilder: renderLogisticsBuilder, quotesubmission: renderQuoteSubmission,
+      // v6.3 — Logistics Portal new pages
+      dispatchplanner: renderDispatchPlanner, shippinglineintegration: renderShippingLineIntegration,
+      // v6.3 — QC Portal new pages
+      qcschedule: renderQCSchedule, qcreports: renderQCReports,
+      qcperformance: renderQCPerformance, qcsettings: renderQCSettings,
+      // v6.3 — Financier Portal new pages
+      financierdetails: renderFinancierDetails, bidsubmission: renderBidSubmission,
+      deficomparison: renderDeFiComparison, secondarymarket: renderSecondaryMarket,
+      margincalls: renderMarginCalls,
+      // v6.3 — Government Portal new pages
+      govtrademonitor: renderGovTradeMonitor, govclearance: renderGovClearance,
+      govanonaymous: renderGovAnonymous, govintegrations: renderGovIntegrations,
+      // v6.3 — Admin Portal new pages
+      predictivehealth: renderPredictiveHealth, incidents: renderIncidents,
+      configversions: renderConfigVersions, impersonate: renderImpersonate,
+      partneronboard: renderPartnerOnboard,
     };
     if (pages[page]) await pages[page]();
     else content.innerHTML = '<div class="card p-12 text-center text-gray-400"><i class="fas fa-hard-hat text-4xl mb-3"></i><p>Page coming soon</p></div>';
@@ -3366,5 +3399,676 @@ async function renderDistressedFactors() {
       <p class="text-sm text-gray-500 mb-4">Commission floor: 0.05%. Factor = 1 - estimated_local_cost_pct. Applied to distressed portion of trade.</p>
       <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Country</th><th class="p-2">Code</th><th class="p-2">Factor</th><th class="p-2">Cost Explanation</th><th class="p-2">Sanctions</th></tr></thead><tbody>${(data || []).map(d => `
         <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${d.name}</td><td class="p-2 text-center font-mono">${d.code}</td><td class="p-2 text-center font-bold ${d.distressed_country_factor < 0.9 ? 'text-orange-600' : 'text-green-600'}">${d.distressed_country_factor}</td><td class="p-2 text-xs">${d.cost_explanation}</td><td class="p-2 text-center">${badge(d.sanctions_level || 'NONE')}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — IMPORTER PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderInboundShipments() {
+  setTitle('Inbound Shipments', 'Map, Timeline & Document Status — Phases 5,6,7');
+  const { data } = await api('/importer/inbound-shipments');
+  const ships = data.shipments || [];
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-ship', 'Active Inbound', ships.length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-map-pin', 'On Time', ships.filter(s => s.pin_color === 'green').length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-exclamation-triangle', 'Delayed', ships.filter(s => s.is_delayed).length, 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-file-alt', 'Docs Pending', ships.filter(s => s.status === 'CUSTOMS_IMPORT').length, 'bg-amber-50 text-amber-600')}
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button class="px-4 py-2 bg-sgtx-500 text-white rounded-lg text-sm"><i class="fas fa-map mr-1"></i>Map View</button>
+      <button class="px-4 py-2 bg-gray-200 rounded-lg text-sm"><i class="fas fa-stream mr-1"></i>Timeline View</button>
+      <button class="px-4 py-2 bg-gray-200 rounded-lg text-sm"><i class="fas fa-file-alt mr-1"></i>Document Status</button>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-map-marked-alt mr-2 text-sgtx-500"></i>World Map — Active Inbound Vessels</h3>
+      <div class="bg-blue-50 rounded-lg p-6 text-center text-sm text-gray-600">
+        <i class="fas fa-globe-americas text-4xl text-blue-300 mb-3"></i>
+        <p>Interactive Leaflet map showing ${ships.length} vessel positions</p>
+        <div class="flex justify-center gap-4 mt-3 text-xs">
+          <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full"></span> On Time</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 bg-yellow-500 rounded-full"></span> Delayed &lt;24h</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 rounded-full"></span> Delayed &gt;24h</span>
+        </div>
+      </div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-table mr-2 text-sgtx-500"></i>Shipment Details</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>
+        <th class="p-2 text-left">USTN</th><th class="p-2">Vessel</th><th class="p-2">Origin</th><th class="p-2">Destination</th>
+        <th class="p-2">ETA</th><th class="p-2">Status</th><th class="p-2">Days</th><th class="p-2">Actions</th>
+      </tr></thead><tbody>${ships.map(s => `
+        <tr class="border-t hover:bg-gray-50">
+          <td class="p-2 font-mono text-xs text-sgtx-600">${s.ustn || '—'}</td>
+          <td class="p-2">${s.vessel_name || '—'}</td>
+          <td class="p-2">${s.origin_port || '—'}</td>
+          <td class="p-2">${s.destination_port || '—'}</td>
+          <td class="p-2">${s.eta ? new Date(s.eta).toLocaleDateString() : '—'}</td>
+          <td class="p-2">${badge(s.status)}</td>
+          <td class="p-2 text-center"><span class="font-bold ${s.pin_color === 'red' ? 'text-red-600' : s.pin_color === 'amber' ? 'text-yellow-600' : 'text-green-600'}">${s.days_to_eta || '—'}d</span></td>
+          <td class="p-2"><button class="text-sgtx-500 text-xs hover:underline" onclick="navigate('digitaltwin')">Track</button> <button class="text-sgtx-500 text-xs hover:underline ml-2" onclick="navigate('customsreadiness')">Docs</button></td>
+        </tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+async function renderCustomsReadiness() {
+  setTitle('Customs Readiness', 'Pre-arrival document checklist per shipment — Phase 5.3');
+  const { data } = await api('/importer/customs-readiness');
+  document.getElementById('content').innerHTML = `
+    <div class="space-y-4">${(data || []).map(s => `
+      <div class="card p-5">
+        <div class="flex justify-between items-center mb-3">
+          <div><span class="font-bold text-sgtx-600">${s.ustn || '—'}</span> <span class="text-sm text-gray-500">— ${s.vessel_name || 'Unknown Vessel'}</span></div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full ${s.traffic_light === 'green' ? 'bg-green-500' : s.traffic_light === 'red' ? 'bg-red-500' : 'bg-yellow-500'}"></span>
+            <span class="text-sm">${s.verified_count}/${s.total_required} verified</span>
+            <span class="text-xs text-gray-400">ETA: ${s.eta ? new Date(s.eta).toLocaleDateString() : '—'}</span>
+          </div>
+        </div>
+        <table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Document</th><th class="p-2">Responsible</th><th class="p-2">Status</th><th class="p-2">Action</th></tr></thead>
+        <tbody>${s.documents.map(d => `
+          <tr class="border-t"><td class="p-2 ${d.critical ? 'font-bold' : ''}">${d.critical ? '<i class="fas fa-exclamation-circle text-red-500 mr-1"></i>' : ''}${d.name}</td>
+          <td class="p-2 text-xs">${d.responsible}</td>
+          <td class="p-2"><span class="${d.status === 'VERIFIED' || d.status === 'ISSUED' ? 'text-green-600' : d.status === 'MISSING' ? 'text-red-600' : d.status === 'PENDING' ? 'text-yellow-600' : 'text-gray-400'} font-medium text-xs">${d.status}</span></td>
+          <td class="p-2">${d.status === 'PENDING' ? '<button class="text-xs bg-sgtx-500 text-white px-2 py-1 rounded">Request</button>' : d.status === 'MISSING' ? '<button class="text-xs bg-orange-500 text-white px-2 py-1 rounded">Upload</button>' : d.status === 'VERIFIED' || d.status === 'ISSUED' ? '<button class="text-xs text-sgtx-500 hover:underline">View</button>' : '—'}</td></tr>`).join('')}
+        </tbody></table>
+      </div>`).join('')}
+    </div>`;
+}
+
+async function renderQuoteReview() {
+  setTitle('Quote Review & Negotiation', 'Compare quotes, landed cost, AI negotiation — Phase 3');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-columns mr-2 text-sgtx-500"></i>Panel A — Compare Quotes Side-by-Side</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr>
+        <th class="p-2 text-left">Exporter</th><th class="p-2">Total (CFR)</th><th class="p-2">EXW</th><th class="p-2">Logistics</th><th class="p-2">Incoterm</th><th class="p-2">Trust Score</th><th class="p-2">Commission</th><th class="p-2">Action</th>
+      </tr></thead><tbody>
+        <tr class="border-t bg-green-50"><td class="p-2 font-medium">Mekong Fresh</td><td class="p-2 font-bold">$48,660</td><td class="p-2">$38,310</td><td class="p-2">$10,350</td><td class="p-2">CFR</td><td class="p-2"><span class="text-green-600 font-bold">88</span></td><td class="p-2 text-xs">55/45</td><td class="p-2"><button class="bg-sgtx-500 text-white px-3 py-1 rounded text-xs">Select</button></td></tr>
+        <tr class="border-t"><td class="p-2 font-medium">Exporter Y</td><td class="p-2">$49,200</td><td class="p-2">$39,000</td><td class="p-2">$10,200</td><td class="p-2">CFR</td><td class="p-2"><span class="text-yellow-600 font-bold">82</span></td><td class="p-2 text-xs">60/40</td><td class="p-2"><button class="bg-gray-300 px-3 py-1 rounded text-xs">Select</button></td></tr>
+        <tr class="border-t"><td class="p-2 font-medium">Exporter Z</td><td class="p-2">$47,800</td><td class="p-2">$37,500</td><td class="p-2">$10,300</td><td class="p-2">CFR</td><td class="p-2"><span class="text-orange-600 font-bold">75</span></td><td class="p-2 text-xs">50/50</td><td class="p-2"><button class="bg-gray-300 px-3 py-1 rounded text-xs">Select</button></td></tr>
+      </tbody></table></div>
+      <div class="mt-3 p-3 bg-blue-50 rounded-lg text-sm"><i class="fas fa-robot mr-2 text-blue-600"></i><b>AI Summary:</b> Mekong Fresh offers the best balance of price and trust score. Exporter Z is cheapest but has lower trust and later delivery.</div>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-calculator mr-2 text-sgtx-500"></i>Panel B — Landed Cost Breakdown</h3>
+      <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-1">
+        <div class="flex justify-between"><span>EXW value (oranges + lemons)</span><span>$38,310</span></div>
+        <div class="flex justify-between"><span>Ocean freight (3 x 40' HC Reefer)</span><span>$8,400</span></div>
+        <div class="flex justify-between"><span>Trucking (port to warehouse)</span><span>$900</span></div>
+        <div class="flex justify-between"><span>Customs clearance (import)</span><span>$600</span></div>
+        <div class="flex justify-between"><span>Insurance</span><span>$450</span></div>
+        <div class="border-t my-2"></div>
+        <div class="flex justify-between font-bold"><span>CIF value</span><span>$48,660</span></div>
+        <div class="flex justify-between text-red-600"><span>Import duty (15% of CIF)</span><span>$7,299</span></div>
+        <div class="flex justify-between text-red-600"><span>VAT (14% of CIF + duty)</span><span>$7,834</span></div>
+        <div class="border-t my-2"></div>
+        <div class="flex justify-between font-bold text-lg"><span>Total landed cost</span><span>$63,793</span></div>
+        <div class="flex justify-between text-sgtx-600"><span>SGTX commission (1.03%)</span><span>$501</span></div>
+        <div class="border-t my-2 border-sgtx-300"></div>
+        <div class="flex justify-between font-bold text-xl text-sgtx-700"><span>GRAND TOTAL</span><span>$64,294</span></div>
+      </div>
+      <div class="mt-3 p-3 bg-yellow-50 rounded-lg text-sm"><i class="fas fa-info-circle mr-2 text-yellow-600"></i>Duties for HS 0805.10 into Egypt are currently 15% ad valorem. Consult your customs broker for exact calculation.</div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-comments mr-2 text-sgtx-500"></i>Panel C — Negotiation Assistant</h3>
+      <div class="p-4 bg-sgtx-50 rounded-lg text-sm mb-3">The exporter's EXW price of $1.52/kg is 3% above the market average of $1.48/kg. A counter-offer of $1.46/kg has a 68% probability of acceptance. You could also ask for a 5% discount on trucking.</div>
+      <div class="flex gap-3">
+        <button class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-robot mr-1"></i>Apply to Bot</button>
+        <button class="bg-gray-200 px-4 py-2 rounded-lg text-sm"><i class="fas fa-pen mr-1"></i>Send Manual Counter</button>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — EXPORTER PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderEXWPriceLock() {
+  setTitle('EXW Price Lock', 'AI-recommended price range + live market chart — Phase 2.1');
+  const { data } = await api('/exporter/exw-market-data');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-tag', 'Market Price', '$' + (data.current_market_price || 0).toFixed(2) + '/kg', 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-chart-line', 'AI Range Low', '$' + (data.ai_recommended_range?.min || 0).toFixed(2), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-chart-line', 'AI Range High', '$' + (data.ai_recommended_range?.max || 0).toFixed(2), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-clock', '30-Day History', (data.price_history || []).length + ' points', 'bg-purple-50 text-purple-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-chart-line mr-2 text-sgtx-500"></i>Live Market Chart (30 Days) — ${data.commodity || 'Commodity'}</h3>
+      <div class="bg-gray-50 rounded-lg p-4 h-48 flex items-center justify-center text-gray-500">
+        <div class="text-center"><i class="fas fa-chart-area text-4xl mb-2 text-sgtx-300"></i><p class="text-sm">Chart.js line chart: ${(data.price_history || []).length} data points</p>
+        <p class="text-xs mt-1">Green band: AI recommended range. Live input line tracks your EXW price.</p></div>
+      </div>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-lock mr-2 text-sgtx-500"></i>Lock EXW Price</h3>
+      <div class="grid grid-cols-3 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">EXW Price ($/kg)</label><input type="number" class="w-full border rounded px-3 py-2" value="1.50" step="0.01"></div>
+        <div><label class="block text-sm font-medium mb-1">Commodity</label><input type="text" class="w-full border rounded px-3 py-2" value="Valencia Oranges" disabled></div>
+        <div><label class="block text-sm font-medium mb-1">HS Code</label><input type="text" class="w-full border rounded px-3 py-2" value="0805.10" disabled></div>
+      </div>
+      <div class="p-3 bg-green-50 rounded-lg text-sm mb-3"><i class="fas fa-check-circle text-green-500 mr-2"></i>Price is within AI-recommended range. No warning.</div>
+      <button class="bg-sgtx-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-sgtx-600"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-bell mr-2 text-orange-500"></i>Post-Lock Price Watch</h3>
+      <p class="text-sm text-gray-600 mb-2">After locking, a background watch triggers if the market moves ±10% from your locked price.</p>
+      <div class="p-3 bg-orange-50 rounded-lg text-sm"><i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>Market update: FAO index +12.4% since lock. Your $1.50/kg is now below market at $1.69/kg. <button class="ml-2 bg-orange-500 text-white px-3 py-1 rounded text-xs">Re-open Pricing</button></div>
+    </div>`;
+}
+
+async function renderCashPosition() {
+  setTitle('Cash Position', '90-Day Rolling Cash Forecast — Exporter Portal');
+  const { data } = await api('/exporter/cash-position');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-arrow-down', 'Total Inflows', usd(data.total_inflows), 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-arrow-up', 'Total Outflows', usd(data.total_outflows), 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-balance-scale', 'Net Position', usd(data.net_position), data.net_position >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600')}
+      ${statCard('fas fa-calendar', 'Forecast Period', '90 days', 'bg-blue-50 text-blue-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-robot mr-2 text-sgtx-500"></i>AI Cash Summary (Groq, A1)</h3>
+      <div class="p-4 ${data.has_gap ? 'bg-red-50' : 'bg-green-50'} rounded-lg text-sm">${data.ai_summary}</div>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-chart-bar mr-2 text-sgtx-500"></i>90-Day Cash Flow Timeline</h3>
+      <div class="bg-gray-50 rounded-lg p-4 h-48 flex items-center justify-center"><div class="text-center text-gray-500"><i class="fas fa-chart-bar text-4xl mb-2 text-sgtx-300"></i><p class="text-sm">${(data.events || []).length} cash events over 90 days</p><p class="text-xs">Green bars = inflows, Red bars = outflows</p></div></div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-list mr-2 text-sgtx-500"></i>Cash Event Ledger</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2">Date</th><th class="p-2">Description</th><th class="p-2">Type</th><th class="p-2">Amount</th><th class="p-2">Status</th></tr></thead>
+      <tbody>${(data.events || []).slice(0, 15).map(e => `
+        <tr class="border-t"><td class="p-2 text-xs">${e.date}</td><td class="p-2">${e.description}</td>
+        <td class="p-2"><span class="${e.type === 'INFLOW' ? 'text-green-600' : 'text-red-600'} font-bold text-xs">${e.type}</span></td>
+        <td class="p-2 font-bold ${e.type === 'INFLOW' ? 'text-green-600' : 'text-red-600'}">${usd(e.amount)}</td>
+        <td class="p-2">${badge(e.status)}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+async function renderLogisticsBuilder() {
+  setTitle('Logistics Builder', 'AI Bundle Optimiser + Re-Optimise Diff View — Phase 2.3');
+  const { data } = await api('/exporter/logistics-reoptimise', {method:'POST',body:'{}'});
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold"><i class="fas fa-cubes mr-2 text-sgtx-500"></i>Logistics Bundle Re-Optimise — Diff View</h3>
+        <button class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-sync mr-1"></i>Re-Optimise Now</button>
+      </div>
+      <div class="grid grid-cols-2 gap-6">
+        <div class="border rounded-lg p-4">
+          <h4 class="font-bold text-sm mb-3 text-gray-600">Previous Recommendation</h4>
+          ${(data?.previous_bundle?.providers || []).map(p => `
+            <div class="flex justify-between items-center p-2 border-b text-sm">
+              <div><span class="font-medium">${p.name}</span> <span class="text-xs text-gray-400">(${p.role})</span></div>
+              <div class="flex gap-3"><span>$${p.cost}</span><span class="${p.risk_score < 50 ? 'text-red-600' : p.risk_score < 80 ? 'text-yellow-600' : 'text-green-600'} font-bold">Risk: ${p.risk_score}</span></div>
+            </div>`).join('')}
+          <div class="mt-3 text-sm"><b>Total:</b> $${data?.previous_bundle?.total_cost} | <b>On-time:</b> ${data?.previous_bundle?.on_time_probability}%</div>
+        </div>
+        <div class="border-2 border-sgtx-300 rounded-lg p-4 bg-sgtx-50">
+          <h4 class="font-bold text-sm mb-3 text-sgtx-600">New Recommendation</h4>
+          ${(data?.recommended_bundle?.providers || []).map(p => `
+            <div class="flex justify-between items-center p-2 border-b text-sm">
+              <div><span class="font-medium">${p.name}</span> <span class="text-xs text-gray-400">(${p.role})</span></div>
+              <div class="flex gap-3"><span>$${p.cost}</span><span class="${p.risk_score < 50 ? 'text-red-600' : p.risk_score < 80 ? 'text-yellow-600' : 'text-green-600'} font-bold">Risk: ${p.risk_score}</span></div>
+            </div>`).join('')}
+          <div class="mt-3 text-sm"><b>Total:</b> $${data?.recommended_bundle?.total_cost} | <b>On-time:</b> ${data?.recommended_bundle?.on_time_probability}%</div>
+        </div>
+      </div>
+      <div class="flex justify-between mt-4 p-3 bg-gray-50 rounded-lg text-sm">
+        <span>Cost delta: <b class="${data?.cost_delta < 0 ? 'text-green-600' : 'text-red-600'}">$${data?.cost_delta}</b></span>
+        <span>On-time delta: <b>${data?.on_time_delta > 0 ? '+' : ''}${data?.on_time_delta}%</b></span>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button class="bg-sgtx-500 text-white px-6 py-2 rounded-lg text-sm font-medium">Switch to New Bundle</button>
+        <button class="bg-gray-200 px-6 py-2 rounded-lg text-sm">Keep Current</button>
+      </div>
+    </div>`;
+}
+
+async function renderQuoteSubmission() {
+  setTitle('Quote Submission', 'Assemble total delivered price — Phase 2.5');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-4"><i class="fas fa-paper-plane mr-2 text-sgtx-500"></i>Assemble & Submit Final Quote</h3>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">EXW Total (USD)</label><input type="number" class="w-full border rounded px-3 py-2" value="38310"></div>
+        <div><label class="block text-sm font-medium mb-1">Logistics Total (USD)</label><input type="number" class="w-full border rounded px-3 py-2" value="9790"></div>
+        <div><label class="block text-sm font-medium mb-1">Insurance (USD)</label><input type="number" class="w-full border rounded px-3 py-2" value="450"></div>
+        <div><label class="block text-sm font-medium mb-1">Incoterm</label><select class="w-full border rounded px-3 py-2"><option>CFR</option><option>CIF</option><option>FOB</option><option>EXW</option></select></div>
+      </div>
+      <div class="bg-sgtx-50 rounded-lg p-4 mb-4 font-mono text-sm space-y-1">
+        <div class="flex justify-between"><span>EXW Total</span><span>$38,310.00</span></div>
+        <div class="flex justify-between"><span>Logistics</span><span>$9,790.00</span></div>
+        <div class="flex justify-between"><span>Insurance</span><span>$450.00</span></div>
+        <div class="border-t my-2"></div>
+        <div class="flex justify-between font-bold text-lg"><span>Total Delivered Price (CFR)</span><span>$48,550.00</span></div>
+        <div class="flex justify-between text-sgtx-600"><span>Commission Preview (1.03%)</span><span>$500.07</span></div>
+      </div>
+      <button class="bg-sgtx-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-sgtx-600"><i class="fas fa-paper-plane mr-2"></i>Submit Quote to Importer</button>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — LOGISTICS PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderDispatchPlanner() {
+  setTitle('Dispatch Planner', 'OR-Tools VRP optimised daily routes — Trucking Portal');
+  const { data } = await api('/logistics/dispatch-planner');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      ${statCard('fas fa-truck', 'Pending Pickups', (data.pending_pickups || []).length, 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-id-card', 'Available Drivers', (data.drivers || []).filter(d => d.status === 'AVAILABLE').length, 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-route', 'Optimised Routes', (data.optimised_routes || []).length, 'bg-purple-50 text-purple-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-map-marked-alt mr-2 text-sgtx-500"></i>Pending Pickups</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2">Container</th><th class="p-2">Location</th><th class="p-2">Weight</th><th class="p-2">Window</th><th class="p-2">Driver</th></tr></thead>
+      <tbody>${(data.pending_pickups || []).map(p => `<tr class="border-t"><td class="p-2 font-mono">${p.container}</td><td class="p-2">${p.port}</td><td class="p-2">${p.weight_kg} kg</td><td class="p-2">${p.window}</td><td class="p-2">${p.assigned_driver || '<span class="text-red-500">Unassigned</span>'}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-route mr-2 text-sgtx-500"></i>Optimised Routes (OR-Tools VRP)</h3>
+      ${(data.optimised_routes || []).map(r => `
+        <div class="p-3 bg-green-50 rounded-lg mb-2 flex justify-between items-center">
+          <div><b>${r.driver}</b>: ${r.stops.join(' → ')}</div>
+          <div class="text-sm">${r.distance_km} km | ${r.estimated_time_min} min | Empty miles: ${r.empty_miles} km</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function renderShippingLineIntegration() {
+  setTitle('Shipping Line Integration', 'API / Email / Manual channel status — Shipping Line Portal');
+  const { data } = await api('/logistics/shipping-line-status');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-plug mr-2 text-sgtx-500"></i>Integration Channel Status</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Shipping Line</th><th class="p-2">Channel</th><th class="p-2">Status</th><th class="p-2">Latency</th><th class="p-2">Bookings</th><th class="p-2">Last Check</th></tr></thead>
+      <tbody>${(data.integrations || []).map(i => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${i.name}</td>
+        <td class="p-2"><span class="bg-gray-100 px-2 py-0.5 rounded text-xs">${i.channel}</span></td>
+        <td class="p-2">${badge(i.status)}</td>
+        <td class="p-2">${i.latency_ms ? i.latency_ms + 'ms' : '—'}</td>
+        <td class="p-2 text-center font-bold">${i.bookings_processed}</td>
+        <td class="p-2 text-xs">${time(i.last_check)}</td></tr>`).join('')}</tbody></table></div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3">Channel Selection Logic (Per Request)</h3>
+      <div class="space-y-2 text-sm">
+        <div class="p-3 bg-green-50 rounded-lg"><b>1. API</b> — Preferred. Auto-submit booking, receive instant confirmation. Health-checked every 5 min.</div>
+        <div class="p-3 bg-yellow-50 rounded-lg"><b>2. Email</b> — Fallback. Structured email sent, HF Donut extracts PDF response. Auto-confirm if confidence ≥80%.</div>
+        <div class="p-3 bg-red-50 rounded-lg"><b>3. Manual Portal</b> — Last resort. Human operator enters booking confirmation manually.</div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — QC PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderQCSchedule() {
+  setTitle('My Schedule Calendar', 'Inspection job calendar — QC Portal');
+  const { data } = await api('/qc/schedule');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-calendar-alt mr-2 text-sgtx-500"></i>Upcoming Inspections</h3>
+      <div class="space-y-3">${(data || []).map(e => `
+        <div class="p-4 border rounded-lg flex justify-between items-center hover:bg-gray-50">
+          <div><span class="font-bold">${e.date}</span> — ${e.type === 're-inspection' ? '<span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs">Re-Inspection</span>' : '<span class="bg-sgtx-100 text-sgtx-700 px-2 py-0.5 rounded text-xs">Inspection</span>'} <span class="text-sm text-gray-600 ml-2">${e.product}</span></div>
+          <div class="text-sm text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i>${e.location}</div>
+        </div>`).join('')}</div>
+    </div>`;
+}
+
+async function renderQCReports() {
+  setTitle('Report Generation', 'AI-drafted inspection reports with digital signing — QC Portal');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-file-medical-alt mr-2 text-sgtx-500"></i>AI Report Generator</h3>
+      <p class="text-sm text-gray-600 mb-4">After inspection completion, Groq (A1) auto-generates a draft report from collected data (defects, photos, measurements).</p>
+      <div class="bg-gray-50 rounded-lg p-4 text-sm font-mono mb-4">
+        <div class="font-bold mb-2">DRAFT INSPECTION REPORT</div>
+        <div>USTN: SGTX-EG-20260615-ABC-V1 | Date: 14 Jun 2026</div>
+        <div>Container: MAEU8901234 | Seal: SGTX-SEAL-001 (Intact)</div>
+        <div class="mt-2">Sampling: 5/22 pallets inspected (random). 2 high-priority (AI-recommended).</div>
+        <div class="mt-2 text-red-600">Defects: Pallet OR-019 — mould on 4 cartons (exceeds 0% limit). Severity: MEDIUM.</div>
+        <div class="mt-2 font-bold">Verdict: FAIL</div>
+        <div>Recommendation: Replace affected cartons before loading.</div>
+      </div>
+      <div class="flex gap-3">
+        <button class="bg-sgtx-500 text-white px-4 py-2 rounded-lg text-sm"><i class="fas fa-signature mr-1"></i>Sign & Submit Report</button>
+        <button class="bg-gray-200 px-4 py-2 rounded-lg text-sm"><i class="fas fa-edit mr-1"></i>Edit Draft</button>
+      </div>
+    </div>`;
+}
+
+async function renderQCPerformance() {
+  setTitle('Performance Dashboard', 'Turnaround, accuracy, benchmarks — QC Portal');
+  const { data } = await api('/qc/performance');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      ${statCard('fas fa-clock', 'Avg Turnaround', data.avg_turnaround_days + ' days', 'bg-blue-50 text-blue-600')}
+      ${statCard('fas fa-bullseye', 'Detection Accuracy', data.defect_detection_accuracy + '%', 'bg-green-50 text-green-600')}
+      ${statCard('fas fa-clipboard-check', 'Inspections Done', data.inspections_completed, 'bg-purple-50 text-purple-600')}
+      ${statCard('fas fa-exclamation-triangle', 'Dispute Rate', data.dispute_rate + '%', 'bg-yellow-50 text-yellow-600')}
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-robot mr-2 text-sgtx-500"></i>AI Performance Summary</h3>
+      <div class="p-4 bg-green-50 rounded-lg text-sm">${data.ai_summary}</div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3">Benchmarks (Anonymised, OpenDP)</h3>
+      <div class="space-y-3">
+        <div class="flex justify-between p-3 bg-gray-50 rounded"><span>Peer Avg Turnaround</span><span class="font-bold">${data.benchmarks?.peer_turnaround} days</span></div>
+        <div class="flex justify-between p-3 bg-gray-50 rounded"><span>Peer Dispute Rate</span><span class="font-bold">${data.benchmarks?.peer_dispute_rate}%</span></div>
+        <div class="flex justify-between p-3 bg-gray-50 rounded"><span>Peer Detection Accuracy</span><span class="font-bold">${data.benchmarks?.peer_accuracy}%</span></div>
+      </div>
+    </div>`;
+}
+
+async function renderQCSettings() {
+  setTitle('Serviceable Commodities & Regions', 'QC provider profile settings');
+  const { data } = await api('/qc/settings');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-leaf mr-2 text-green-500"></i>Serviceable Commodities</h3>
+      <div class="space-y-2">${(data.serviceable_commodities || []).map(c => `<div class="p-3 bg-gray-50 rounded flex justify-between"><span>${c.description}</span><span class="font-mono text-xs text-gray-500">HS ${c.hs_range}</span></div>`).join('')}</div>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-globe mr-2 text-blue-500"></i>Serviceable Regions</h3>
+      <div class="flex gap-2 flex-wrap">${(data.serviceable_regions || []).map(r => `<span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">${r}</span>`).join('')}</div>
+    </div>
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-microscope mr-2 text-purple-500"></i>Inspection Methods</h3>
+      <div class="flex gap-2 flex-wrap">${(data.inspection_methods || []).map(m => `<span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm">${m.replace(/_/g, ' ')}</span>`).join('')}</div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-certificate mr-2 text-yellow-500"></i>Certifications</h3>
+      <div class="flex gap-2 flex-wrap">${(data.certifications || []).map(c => `<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm">${c}</span>`).join('')}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — FINANCIER PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderFinancierDetails() {
+  setTitle('Request Details & Risk Analysis', 'Credit intelligence + AI recommended LTV — Financier Portal');
+  const { data } = await api('/financier/request-details');
+  const ci = data.credit_intelligence || {};
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-3 gap-6">
+      <div class="card p-5">
+        <h3 class="font-bold mb-3">Request Summary</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span>USTN:</span><span class="font-mono text-sgtx-600">${data.request?.ustn}</span></div>
+          <div class="flex justify-between"><span>Amount:</span><span class="font-bold">${usd(data.request?.amount)}</span></div>
+          <div class="flex justify-between"><span>Tenor:</span><span>${data.request?.tenor_days} days</span></div>
+          <div class="flex justify-between"><span>Type:</span><span>${data.request?.financing_type}</span></div>
+          <div class="flex justify-between"><span>Collateral:</span><span>${data.request?.collateral_type}</span></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3">AI Credit Intelligence (A2)</h3>
+        <div class="text-center mb-3"><span class="text-4xl font-bold text-sgtx-600">${ci.credit_score}</span><span class="text-sm text-gray-500">/100</span></div>
+        <div class="space-y-1 text-xs">${Object.entries(ci.breakdown || {}).map(([k,v]) => `<div class="flex justify-between"><span>${k.replace(/_/g, ' ')}</span><span class="font-bold">${v}</span></div>`).join('')}</div>
+        <div class="mt-3 p-2 bg-yellow-50 rounded text-xs">Default Prob: <b>${ci.default_probability}%</b> (Monte Carlo ${ci.monte_carlo_iterations?.toLocaleString()} iterations)</div>
+        <div class="mt-2 p-2 bg-green-50 rounded text-xs">Recommended LTV: <b>${ci.recommended_ltv}%</b> (max ${usd(ci.max_financing)})</div>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-bold mb-3">Submit Bid</h3>
+        <div class="space-y-3">
+          <div><label class="block text-xs font-medium mb-1">APR (%)</label><input type="number" class="w-full border rounded px-3 py-2 text-sm" value="5.2" step="0.1"></div>
+          <div><label class="block text-xs font-medium mb-1">Collateral Req.</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" value="Goods"></div>
+          <div><label class="block text-xs font-medium mb-1">Conditions</label><textarea class="w-full border rounded px-3 py-2 text-sm" rows="2"></textarea></div>
+          <button class="w-full bg-sgtx-500 text-white py-2 rounded-lg text-sm font-medium"><i class="fas fa-lock mr-1"></i>Submit Encrypted Bid</button>
+        </div>
+        <div class="mt-3 text-center"><span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">Match Score: ${data.match_score}</span></div>
+      </div>
+    </div>
+    <div class="card p-5 mt-5">
+      <div class="p-4 bg-blue-50 rounded-lg text-sm">${ci.ai_explanation || 'AI analysis pending...'}</div>
+    </div>`;
+}
+
+async function renderBidSubmission() {
+  setTitle('Encrypted Blind Bidding', 'Submit encrypted bids — Financier Portal');
+  document.getElementById('content').innerHTML = `<div class="card p-5"><h3 class="font-bold mb-3"><i class="fas fa-lock mr-2 text-sgtx-500"></i>Encrypted Blind Bidding</h3><p class="text-sm text-gray-600">Bids are encrypted with the borrower's public key. Even SGTX cannot read the bid. Stored in NATS JetStream KV with 48h TTL.</p><div class="mt-4 p-4 bg-sgtx-50 rounded-lg text-sm"><i class="fas fa-shield-alt mr-2 text-sgtx-600"></i>Select a financing request from "Open Requests" to submit an encrypted bid.</div></div>`;
+}
+
+async function renderDeFiComparison() {
+  setTitle('DeFi Protocol Comparison', 'Available protocols + stablecoin health — Financier Portal');
+  const { data } = await api('/financier/defi-comparison');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-exchange-alt mr-2 text-sgtx-500"></i>Available DeFi Protocols</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Protocol</th><th class="p-2">Chain</th><th class="p-2">Risk</th><th class="p-2">TVL</th><th class="p-2">Audit</th><th class="p-2">APY</th><th class="p-2">Gas</th></tr></thead>
+      <tbody>${(data.protocols || []).map(p => `<tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${p.name}</td><td class="p-2">${p.chain}</td><td class="p-2 font-bold ${p.risk_score >= 90 ? 'text-green-600' : 'text-yellow-600'}">${p.risk_score}</td><td class="p-2">${p.tvl}</td><td class="p-2 text-xs">${p.audit_status}</td><td class="p-2 font-bold">${p.apy}%</td><td class="p-2">$${p.gas_cost}</td></tr>`).join('')}</tbody></table></div>
+      <div class="mt-3 p-3 bg-blue-50 rounded-lg text-sm"><i class="fas fa-robot mr-2"></i>${data.ai_recommendation}</div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-coins mr-2 text-sgtx-500"></i>Stablecoin Health Monitor</h3>
+      <div class="grid grid-cols-3 gap-4">${Object.entries(data.stablecoin_health || {}).map(([k,v]) => `
+        <div class="p-4 border rounded-lg text-center"><div class="font-bold text-lg">${k}</div><div class="text-2xl font-bold ${v.status === 'HEALTHY' ? 'text-green-600' : 'text-red-600'}">$${v.price}</div><div class="text-xs">${badge(v.status)}</div></div>`).join('')}</div>
+    </div>`;
+}
+
+async function renderSecondaryMarket() {
+  setTitle('Secondary Market', 'Tokenized asset listings (ERC-3525) — Financier Portal');
+  const { data } = await api('/financier/secondary-market');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-store mr-2 text-sgtx-500"></i>Active Listings</h3>
+      <div class="space-y-3">${(data.listings || []).map(l => `
+        <div class="p-4 border rounded-lg"><div class="flex justify-between"><span class="font-bold">${l.token_type}</span><span>${badge(l.status)}</span></div>
+        <div class="grid grid-cols-4 gap-3 mt-3 text-sm">
+          <div><span class="text-gray-500">Principal:</span> <b>${usd(l.remaining_principal)}</b></div>
+          <div><span class="text-gray-500">AI Price:</span> <b>${usd(l.ai_suggested_price)}</b></div>
+          <div><span class="text-gray-500">Asking:</span> <b>${usd(l.asking_price)}</b></div>
+          <div><span class="text-gray-500">Maturity:</span> <b>${l.time_to_maturity_days}d</b></div>
+        </div>
+        <div class="text-xs mt-2 text-gray-500">${l.commodity} — ${l.trade_progress}</div></div>`).join('')}</div>
+      <div class="mt-3 text-xs text-gray-400">Commission: ${(data.commission_rate * 100).toFixed(1)}% per transaction</div>
+    </div>`;
+}
+
+async function renderMarginCalls() {
+  setTitle('Margin Calls', 'LTV monitoring and margin call alerts — Financier Portal');
+  const { data } = await api('/financier/margin-calls');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>Active Margin Calls</h3>
+      ${(data || []).length === 0 ? emptyState('No active margin calls') : (data || []).map(m => `
+        <div class="p-4 border-2 border-red-300 rounded-lg bg-red-50 mb-3">
+          <div class="font-bold text-red-700 mb-2">LTV ${m.ltv_at_call}% exceeds threshold ${m.threshold_ltv}%</div>
+          <div class="text-sm">${m.ai_explanation}</div>
+          <div class="flex justify-between mt-3 text-sm">
+            <span>Required: <b class="text-red-600">${usd(m.required_amount_usd)}</b></span>
+            <span>Deadline: <b>${time(m.deadline)}</b></span>
+            <span>Action: <b>${m.required_action}</b></span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — GOVERNMENT PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderGovTradeMonitor() {
+  setTitle('Live Trade Monitor', 'Dynamic trade monitoring with integration status — Government Portal');
+  const { data } = await api('/government/trade-monitor');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-eye mr-2 text-sgtx-500"></i>Live Trade Monitor</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">USTN</th><th class="p-2">Origin</th><th class="p-2">ETA</th><th class="p-2">Risk</th><th class="p-2">Docs</th><th class="p-2">Declaration</th><th class="p-2">Integration</th><th class="p-2">Action</th></tr></thead>
+      <tbody>${(data || []).map(t => `
+        <tr class="border-t hover:bg-gray-50 ${t.is_anonymous ? 'bg-purple-50' : ''}"><td class="p-2 font-mono text-xs">${t.is_anonymous ? '🔒 ' : ''}${(t.ustn || '').slice(0,20)}...</td>
+        <td class="p-2">${t.origin_port || '—'}</td><td class="p-2">${t.eta ? new Date(t.eta).toLocaleDateString() : '—'}</td>
+        <td class="p-2"><span class="${t.risk_score < 30 ? 'text-green-600' : t.risk_score < 70 ? 'text-yellow-600' : 'text-red-600'} font-bold">${t.risk_score}</span></td>
+        <td class="p-2">${t.docs_status}</td><td class="p-2 text-xs">${t.declaration_status}</td><td class="p-2 text-xs">${t.integration}</td>
+        <td class="p-2">${t.risk_score < 30 ? '<button class="bg-green-500 text-white px-2 py-1 rounded text-xs">Clear</button>' : '<button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs">Hold</button>'}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+async function renderGovClearance() {
+  setTitle('Clearance Recommendations', 'AI-powered clearance decisions — Government Portal');
+  const { data } = await api('/government/clearance-recommendation');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-check-double mr-2 text-sgtx-500"></i>Clearance Recommendation</h3>
+      <div class="p-4 ${data.auto_clearance_eligible ? 'bg-green-50' : 'bg-yellow-50'} rounded-lg mb-4">
+        <div class="text-lg font-bold ${data.auto_clearance_eligible ? 'text-green-700' : 'text-yellow-700'}">${data.recommended_action}</div>
+        <div class="text-sm mt-2">Risk Score: <b>${data.risk_score}</b> | Documents: ${data.documents_verified}/${data.documents_total} verified</div>
+        ${data.declaration_status ? `<div class="text-sm mt-1">Declaration: ${data.declaration_status}</div>` : ''}
+      </div>
+      <div class="flex gap-3">
+        <button class="bg-green-500 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-check mr-1"></i>Approve Clearance</button>
+        <button class="bg-yellow-500 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-search mr-1"></i>Manual Review</button>
+      </div>
+    </div>`;
+}
+
+async function renderGovAnonymous() {
+  setTitle('Anonymous Trade Requests', 'High-confidentiality government trades — Government Portal');
+  const { data } = await api('/government/anonymous-trades');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-user-secret mr-2 text-purple-500"></i>Anonymous Trade Management</h3>
+      <p class="text-sm text-gray-600 mb-4">Anonymous trades hide exporter/importer identities from all parties except counterparty governments and compliance auditors.</p>
+      <div class="space-y-3">${(data || []).map(t => `
+        <div class="p-4 border-2 border-purple-300 rounded-lg bg-purple-50">
+          <div class="flex justify-between mb-2"><span class="font-mono text-sm">${t.anonymous_ustn}</span><span>${badge(t.status)}</span></div>
+          <div class="grid grid-cols-3 gap-3 text-sm">
+            <div>Counterparty: <b>${t.counterparty?.name}</b></div>
+            <div>Commodity: <b>${t.commodity?.description}</b> (HS ${t.commodity?.hs_code})</div>
+            <div>Created: ${time(t.created_at)}</div>
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button class="text-xs bg-purple-500 text-white px-3 py-1 rounded">View Full Details</button>
+            <button class="text-xs bg-gray-300 px-3 py-1 rounded">Audit Log</button>
+            <button class="text-xs bg-red-500 text-white px-3 py-1 rounded">Revoke Anonymity (A3)</button>
+          </div>
+        </div>`).join('')}</div>
+    </div>`;
+}
+
+async function renderGovIntegrations() {
+  setTitle('Integration Connectors', 'Dynamic per-country government system integrations');
+  const { data } = await api('/government/integrations');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-plug mr-2 text-green-500"></i>Active Integrations</h3>
+      ${(data.active_integrations || []).map(i => `
+        <div class="p-3 bg-green-50 rounded-lg flex justify-between mb-2"><span class="font-medium">${i.name} — ${badge(i.status)}</span><span class="text-sm">Avg latency: ${i.avg_latency_ms}ms | Error rate: ${(i.error_rate*100).toFixed(1)}%</span></div>`).join('')}
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-th-list mr-2 text-sgtx-500"></i>Available Connectors Library</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Connector</th><th class="p-2">Countries</th><th class="p-2">Method</th><th class="p-2">Action</th></tr></thead>
+      <tbody>${(data.available_connectors || []).map(c => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${c.name}</td><td class="p-2 text-xs">${c.countries.join(', ')}</td><td class="p-2 text-xs">${c.method}</td><td class="p-2"><button class="bg-sgtx-500 text-white px-3 py-1 rounded text-xs">Enable</button></td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// v6.3 — ADMIN PORTAL NEW PAGES
+// ═══════════════════════════════════════════════════════════════
+
+async function renderPredictiveHealth() {
+  setTitle('Predictive System Health', 'LSTM-based forecasting for resource exhaustion — Admin Portal');
+  const { data } = await api('/admin/predictive-health');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5 mb-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-robot mr-2 text-sgtx-500"></i>AI Health Prediction</h3>
+      <div class="p-4 bg-blue-50 rounded-lg text-sm">${data.ai_summary}</div>
+    </div>
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-chart-line mr-2 text-sgtx-500"></i>System Metrics & Predictions</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-2 text-left">Metric</th><th class="p-2">Current</th><th class="p-2">Predicted</th><th class="p-2">Threshold</th><th class="p-2">Status</th><th class="p-2">Action</th></tr></thead>
+      <tbody>${(data.metrics || []).map(m => `
+        <tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${m.metric}</td>
+        <td class="p-2 text-center">${m.current}</td>
+        <td class="p-2 text-center font-bold">${m.predicted_7d || m.predicted_24h || m.predicted_6h || m.predicted_1h}</td>
+        <td class="p-2 text-center">${m.alert_threshold}</td>
+        <td class="p-2 text-center">${badge(m.status)}</td>
+        <td class="p-2 text-xs">${m.action || '—'}</td></tr>`).join('')}</tbody></table></div>
+    </div>`;
+}
+
+async function renderIncidents() {
+  setTitle('Incidents & Post-Mortem', 'Automated evidence collection + AI-drafted post-mortems — Admin Portal');
+  const { data } = await api('/admin/incidents');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-exclamation-circle mr-2 text-red-500"></i>Incidents</h3>
+      ${(data || []).map(i => `
+        <div class="p-4 border-l-4 ${i.severity === 'CRITICAL' ? 'border-red-500 bg-red-50' : 'border-yellow-500 bg-yellow-50'} rounded-lg mb-4">
+          <div class="flex justify-between"><span class="font-bold">${i.id}</span><span>${badge(i.status)}</span></div>
+          <div class="font-bold text-lg mt-1">${i.title}</div>
+          <div class="grid grid-cols-2 gap-3 mt-3 text-sm">
+            <div><b>Impact:</b> ${i.impact}</div>
+            <div><b>Root Cause:</b> ${i.root_cause}</div>
+            <div><b>Resolution:</b> ${i.resolution}</div>
+            <div><b>Duration:</b> ${i.start_time} — ${i.end_time}</div>
+          </div>
+          <div class="mt-3 p-3 bg-white rounded text-sm"><b>AI Post-Mortem:</b> ${i.ai_post_mortem}</div>
+          <div class="flex gap-2 mt-3">
+            <button class="bg-sgtx-500 text-white px-4 py-1 rounded text-xs">Publish to Status Page</button>
+            <button class="bg-gray-200 px-4 py-1 rounded text-xs">Edit Post-Mortem</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+async function renderConfigVersions() {
+  setTitle('Configuration Version Control', 'Track all platform config changes with rollback — Admin Portal');
+  const { data } = await api('/admin/config-versions');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-code-branch mr-2 text-sgtx-500"></i>Configuration Versions</h3>
+      <div class="space-y-3">${(data || []).map(v => `
+        <div class="p-4 border rounded-lg flex justify-between items-center hover:bg-gray-50">
+          <div><span class="font-bold text-sgtx-600">v${v.version}</span> <span class="text-sm text-gray-500">— ${v.description}</span>
+            <div class="text-xs text-gray-400 mt-1">By: ${v.changed_by} | ${time(v.timestamp)}</div>
+            <div class="text-xs mt-1">${v.components.map(c => `<span class="bg-gray-100 px-2 py-0.5 rounded mr-1">${c}</span>`).join('')}</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="bg-gray-200 px-3 py-1 rounded text-xs">Diff</button>
+            <button class="bg-red-500 text-white px-3 py-1 rounded text-xs">Rollback (Multisig)</button>
+          </div>
+        </div>`).join('')}</div>
+    </div>`;
+}
+
+async function renderImpersonate() {
+  setTitle('Tenant Impersonation', 'Read-only support mode with multisig 3/5 approval — Admin Portal');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-user-secret mr-2 text-sgtx-500"></i>Tenant Impersonation (Support Mode)</h3>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm"><i class="fas fa-exclamation-triangle text-red-500 mr-2"></i><b>Highly Restricted:</b> Requires multisig 3/5 approval. Read-only. 30 min max. Tenant notified after session ends.</div>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">Tenant ID / GTID</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="SGTX-EG-TRD-000123"></div>
+        <div><label class="block text-sm font-medium mb-1">Reason for Impersonation</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="Support ticket #12345"></div>
+      </div>
+      <button class="bg-red-500 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-user-secret mr-2"></i>Request Impersonation (Multisig Required)</button>
+    </div>`;
+}
+
+async function renderPartnerOnboard() {
+  setTitle('Marketplace Partner Onboarding', 'AI-generated agreements + risk escalation — Admin Portal');
+  document.getElementById('content').innerHTML = `
+    <div class="card p-5">
+      <h3 class="font-bold mb-3"><i class="fas fa-handshake mr-2 text-sgtx-500"></i>Onboard New Marketplace Partner</h3>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div><label class="block text-sm font-medium mb-1">Partner Legal Name</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="TradeBridge Inc."></div>
+        <div><label class="block text-sm font-medium mb-1">Jurisdiction</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="US"></div>
+        <div><label class="block text-sm font-medium mb-1">Contact Email</label><input type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="partner@example.com"></div>
+        <div><label class="block text-sm font-medium mb-1">Revenue Split (%)</label><input type="number" class="w-full border rounded px-3 py-2 text-sm" value="0.5" step="0.1"></div>
+      </div>
+      <button class="bg-sgtx-500 text-white px-6 py-2 rounded-lg font-medium"><i class="fas fa-magic mr-2"></i>Generate AI Agreement & Onboard</button>
+      <div class="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-500">The system will auto-generate a custom revenue-share agreement using Clause Forge + Groq. If revenue split >2% or jurisdiction risk >70, escalation to A3 (manual legal review) is required.</div>
     </div>`;
 }

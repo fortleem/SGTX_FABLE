@@ -11,6 +11,7 @@ import upgrades from './routes/upgrades';
 import gaps from './routes/gaps';
 import advanced from './routes/advanced';
 import portalFeatures from './routes/portal_features';
+import portalV63 from './routes/portal_v63';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -39,11 +40,12 @@ app.route('/api/v1', upgrades);
 app.route('/api/v1', gaps);
 app.route('/api/v1', advanced);
 app.route('/api/v1', portalFeatures);
+app.route('/api/v1', portalV63);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
   status: 'operational',
-  platform: 'SGTX v6.1',
+  platform: 'SGTX v6.3',
   description: 'Sovereign, AI-Governed, Non-Custodial Global Trade Execution Infrastructure',
   governance_invariant: 'No irreversible action without Governor approval',
   timestamp: new Date().toISOString(),
