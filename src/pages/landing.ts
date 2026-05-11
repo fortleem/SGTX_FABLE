@@ -152,7 +152,8 @@ export function landingPageHTML(): string {
 <!-- LEGAL -->
 <section class="py-12 px-6 border-t border-sgtx-700">
   <div class="max-w-5xl mx-auto text-center">
-    <p class="text-xs text-sgtx-400 mb-4"><i class="fas fa-balance-scale mr-1"></i> <b>SGTX Platform Inc.</b>, New Jersey, USA. Non-custodial platform. We do NOT hold funds, process payments, or act as a financial institution. Users bear 100% compliance responsibility. Max liability = commissions paid in last 12 months.</p>
+    <p class="text-xs text-sgtx-400 mb-2"><i class="fas fa-balance-scale mr-1"></i> <b>SGTX is a non-custodial execution platform, not a marketplace.</b></p>
+    <p class="text-xs text-sgtx-400 mb-4"><b>SGTX Platform Inc.</b>, New Jersey, USA. We do NOT hold funds, take title to goods, or broker introductions. Users bear 100% compliance responsibility. Max liability = SGTX fees paid in last 12 months.</p>
     <div class="flex justify-center gap-6 text-xs text-sgtx-500">
       <span>AML/KYC Compliant</span><span>&middot;</span>
       <span>GDPR Data Residency</span><span>&middot;</span>
@@ -160,7 +161,7 @@ export function landingPageHTML(): string {
       <span>UCP 600</span><span>&middot;</span>
       <span>FATF Travel Rule</span>
     </div>
-    <p class="text-xs text-sgtx-600 mt-6">&copy; 2026 SGTX Platform Inc. All rights reserved. Blueprint v6.1</p>
+    <p class="text-xs text-sgtx-600 mt-6">&copy; 2026 SGTX Platform Inc. All rights reserved. Blueprint v6.3</p>
   </div>
 </section>
 

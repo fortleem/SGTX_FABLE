@@ -1,234 +1,165 @@
--- ============================================================
--- SGTX PLATFORM v6.1 — Complete Seed Data (Blueprint v6.1)
--- ============================================================
+-- Seed data for SGTX Platform v6.3 — Blueprint Parts 0-2 Aligned
+-- Creates base tenants, employees, and essential reference data
+-- Uses proper GTID format with CRC32 checksums, lifecycle states, etc.
+PRAGMA foreign_keys = OFF;
 
--- Jurisdictions (Part 23: Global Coverage & Settlement Matrix — 14 primary + blocked + high-risk)
-INSERT OR IGNORE INTO jurisdictions (code, name, sanctions_level, regulatory_body, kyc_tier_required, cbdc_status, psp_partners, reporting_requirements) VALUES
-('US', 'United States', 'NONE', 'OFAC/FinCEN', 2, 'RESEARCH', '["Stripe","Mercury","Wise"]', '{"ctr_threshold":10000,"sar_required":true}'),
-('DE', 'Germany', 'NONE', 'BaFin', 2, 'PILOT', '["Stripe","Adyen","SEPA"]', '{"vat_report":true}'),
-('AE', 'United Arab Emirates', 'NONE', 'CBUAE', 2, 'PILOT', '["Payoneer","Network Intl"]', '{"ubo_required":true}'),
-('CN', 'China', 'NONE', 'SAFE/PBOC', 3, 'ACTIVE', '["Alipay","UnionPay"]', '{"safe_reporting":true}'),
-('GB', 'United Kingdom', 'NONE', 'FCA', 2, 'RESEARCH', '["Stripe","Adyen"]', '{"hmrc_report":true}'),
-('EG', 'Egypt', 'NONE', 'CBE', 2, 'NONE', '["Fawry","Payoneer"]', '{"cbe_notification":true}'),
-('IN', 'India', 'NONE', 'RBI', 2, 'PILOT', '["RazorpayX","UPI"]', '{"rbi_report":true}'),
-('BR', 'Brazil', 'NONE', 'BCB', 2, 'ACTIVE', '["PIX","Stripe"]', '{"bacen_report":true}'),
-('NG', 'Nigeria', 'NONE', 'CBN', 3, 'ACTIVE', '["Flutterwave","Paystack"]', '{"cbn_report":true}'),
-('KE', 'Kenya', 'NONE', 'CBK', 2, 'NONE', '["M-Pesa","Flutterwave"]', '{"cbk_report":true}'),
-('SA', 'Saudi Arabia', 'NONE', 'SAMA', 2, 'PILOT', '["STC Pay","Payoneer"]', '{"zatca_report":true}'),
-('SG', 'Singapore', 'NONE', 'MAS', 2, 'RESEARCH', '["Stripe","Adyen"]', '{"mas_report":true}'),
-('ZA', 'South Africa', 'NONE', 'SARB', 2, 'RESEARCH', '["Payfast","Flutterwave"]', '{"sarb_report":true}'),
-('TR', 'Turkey', 'NONE', 'BRSA', 2, 'RESEARCH', '["Iyzico","Stripe"]', '{"bddk_report":true}'),
-('ID', 'Indonesia', 'NONE', 'OJK/BI', 2, 'RESEARCH', '["GoPay","Xendit"]', '{"ojk_report":true}'),
-('VN', 'Vietnam', 'NONE', 'SBV', 2, 'NONE', '["VNPay","Payoneer"]', '{"sbv_report":true}'),
-('JP', 'Japan', 'NONE', 'FSA', 2, 'RESEARCH', '["Stripe","Adyen"]', '{"fsa_report":true}'),
-('AU', 'Australia', 'NONE', 'ASIC', 2, 'RESEARCH', '["Stripe","Adyen"]', '{"austrac_report":true}'),
-('CH', 'Switzerland', 'NONE', 'FINMA', 2, 'NONE', '["Stripe","Adyen"]', '{"finma_report":true}'),
-('HK', 'Hong Kong', 'NONE', 'HKMA', 2, 'RESEARCH', '["Stripe","Adyen"]', '{"hkma_report":true}'),
--- Blocked (auto-blocked per blueprint G-1.4)
-('KP', 'North Korea', 'BLOCKED', 'N/A', 4, 'NONE', '[]', '{}'),
-('IR', 'Iran', 'BLOCKED', 'CBI', 4, 'NONE', '[]', '{}'),
-('SY', 'Syria', 'BLOCKED', 'CBS', 4, 'NONE', '[]', '{}'),
-('CU', 'Cuba', 'BLOCKED', 'BCC', 4, 'NONE', '[]', '{}'),
-('RU', 'Russia', 'BLOCKED', 'CBR', 4, 'NONE', '[]', '{}'),
-('BY', 'Belarus', 'BLOCKED', 'NBRB', 4, 'NONE', '[]', '{}'),
--- High-risk (bank-only + enhanced DD)
-('IQ', 'Iraq', 'HIGH_RISK', 'CBI', 3, 'NONE', '["Bank only"]', '{"enhanced_dd":true}'),
-('AF', 'Afghanistan', 'HIGH_RISK', 'DAB', 3, 'NONE', '["Bank only"]', '{"enhanced_dd":true}'),
-('YE', 'Yemen', 'HIGH_RISK', 'CBY', 3, 'NONE', '["Bank only"]', '{"enhanced_dd":true}'),
-('LB', 'Lebanon', 'HIGH_RISK', 'BDL', 3, 'NONE', '["Bank only"]', '{"enhanced_dd":true}'),
-('PK', 'Pakistan', 'HIGH_RISK', 'SBP', 3, 'NONE', '["Bank only","JazzCash"]', '{"enhanced_dd":true}');
+-- ═══════════════════════════════════════════════════════════════════
+-- 1. Seed Tenants (with lifecycle_state, proper GTIDs)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, kyb_tier, cryptographic_hash, risk_score, sanctions_cleared, operating_mode, default_trader_mode, lifecycle_state, sandbox_mode, onboarding_completed, created_at, updated_at)
+VALUES
+  ('tenant-001', 'SGTX-EG-TRD-000001-A1B2', 'Cairo Trading Co.', 'EG', 'CORPORATE', 'VERIFIED', 3, 'sha256:imp001', 15.5, 1, 'ADVANCED', 'BUY', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
+  ('tenant-002', 'SGTX-VN-TRD-000002-C3D4', 'Vietnam Exports Ltd.', 'VN', 'CORPORATE', 'VERIFIED', 3, 'sha256:exp001', 12.3, 1, 'ADVANCED', 'SELL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
+  ('tenant-003', 'SGTX-GB-FIN-000001-E5F6', 'Global Finance Bank', 'GB', 'FINANCIAL', 'VERIFIED', 4, 'sha256:fin001', 8.1, 1, 'ENTERPRISE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
+  ('tenant-004', 'SGTX-EG-GOV-000001-G7H8', 'Egyptian Customs Authority', 'EG', 'GOVERNMENT', 'VERIFIED', 4, 'sha256:gov001', 5.0, 1, 'ENTERPRISE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
+  ('tenant-005', 'SGTX-CH-LOG-000001-I9J0', 'Mediterranean Shipping Co.', 'CH', 'LOGISTICS', 'VERIFIED', 3, 'sha256:log001', 10.0, 1, 'SIMPLE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
+  ('tenant-006', 'SGTX-CH-QC-000001-K1L2', 'SGS Inspection Services', 'CH', 'QUALITY_CONTROL', 'VERIFIED', 3, 'sha256:qc001', 7.5, 1, 'SIMPLE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now'));
 
--- Payment Aggregators (Part 10: PSP Priority by region)
-INSERT OR IGNORE INTO payment_aggregators (id, name, country_codes, supported_currencies, supports_split, uptime_score, is_active) VALUES
-('psp-stripe', 'Stripe', '["US","GB","DE","SG","JP","BR","AU","CH","HK"]', '["USD","GBP","EUR","SGD","JPY","BRL","AUD","CHF"]', 1, 0.9995, 1),
-('psp-adyen', 'Adyen', '["DE","GB","SG","AE","JP","FR","NL","HK","AU"]', '["EUR","GBP","SGD","AED","JPY","AUD","HKD"]', 1, 0.9990, 1),
-('psp-fawry', 'Fawry', '["EG"]', '["EGP","USD"]', 1, 0.9950, 1),
-('psp-payoneer', 'Payoneer', '["AE","EG","VN","SA","NG","TR"]', '["USD","AED","EGP","VND","SAR","TRY"]', 1, 0.9970, 1),
-('psp-flutterwave', 'Flutterwave', '["NG","KE","ZA","GH"]', '["NGN","KES","ZAR","GHS","USD"]', 1, 0.9940, 1),
-('psp-razorpay', 'RazorpayX', '["IN"]', '["INR","USD"]', 1, 0.9980, 1),
-('psp-mpesa', 'M-Pesa', '["KE","TZ","MZ"]', '["KES","TZS"]', 0, 0.9930, 1),
-('psp-mercury', 'Mercury', '["US"]', '["USD"]', 1, 0.9990, 1);
+-- ═══════════════════════════════════════════════════════════════════
+-- 2. Seed Lifecycle History
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO tenant_lifecycle_history (id, tenant_id, from_state, to_state, reason, changed_at)
+VALUES
+  ('tlh-001', 'tenant-001', 'NONE', 'REGISTERED', 'Tenant registration', datetime('now', '-30 days')),
+  ('tlh-002', 'tenant-001', 'REGISTERED', 'ONBOARDING', 'Started onboarding', datetime('now', '-29 days')),
+  ('tlh-003', 'tenant-001', 'ONBOARDING', 'KYB_PENDING', 'KYB submitted', datetime('now', '-28 days')),
+  ('tlh-004', 'tenant-001', 'KYB_PENDING', 'VERIFIED', 'KYB approved tier 3', datetime('now', '-25 days')),
+  ('tlh-005', 'tenant-002', 'NONE', 'REGISTERED', 'Tenant registration', datetime('now', '-30 days')),
+  ('tlh-006', 'tenant-002', 'REGISTERED', 'VERIFIED', 'Fast-track verification', datetime('now', '-28 days'));
 
--- Legal Disclaimer (Part 8)
-INSERT OR IGNORE INTO legal_disclaimers (id, disclaimer_text, version, effective_date) VALUES
-('ld-001', 'SGTX is a non-custodial platform headquartered in New Jersey, USA. We do NOT hold funds, process payments, or act as a financial institution. Users bear 100% compliance responsibility. Maximum liability is limited to commissions paid in the last 12 months.', '1.0', '2026-04-13');
+-- ═══════════════════════════════════════════════════════════════════
+-- 3. Seed Roles
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO roles (id, tenant_id, name, permissions, created_at)
+VALUES
+  ('role-admin-001', 'tenant-001', 'TENANT_ADMIN', '["*"]', datetime('now')),
+  ('role-admin-002', 'tenant-002', 'TENANT_ADMIN', '["*"]', datetime('now')),
+  ('role-admin-003', 'tenant-003', 'TENANT_ADMIN', '["*"]', datetime('now')),
+  ('role-trader-001', 'tenant-001', 'Trader', '["trade.create","trade.view","contract.sign","shipment.milestone.confirm"]', datetime('now')),
+  ('role-trader-002', 'tenant-002', 'Trader', '["trade.create","trade.view","contract.sign","quote.submit","packing.plan"]', datetime('now'));
 
--- ============================================================
--- DEMO TENANTS (all 5 per login page + 2 additional)
--- ============================================================
-INSERT OR IGNORE INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, kyb_tier, cryptographic_hash, risk_score, sanctions_cleared, default_trader_mode) VALUES
-('t-001', 'SGTX-EG-TRD-000001-A1B2', 'Cairo Imports Co.', 'EG', 'CORPORATE', 'VERIFIED', 2, 'sha256:demo1', 25.50, 1, 'BUY'),
-('t-002', 'SGTX-VN-TRD-000002-C3D4', 'Saigon Textiles Export JSC', 'VN', 'CORPORATE', 'VERIFIED', 2, 'sha256:demo2', 15.30, 1, 'SELL'),
-('t-003', 'SGTX-SG-FIN-000003-E5F6', 'Asia Trade Finance Pte Ltd', 'SG', 'FINANCIAL', 'VERIFIED', 3, 'sha256:demo3', 10.00, 1, 'DUAL'),
-('t-004', 'SGTX-DE-LOG-000004-G7H8', 'Hamburg Logistics GmbH', 'DE', 'LOGISTICS', 'VERIFIED', 2, 'sha256:demo4', 12.00, 1, 'DUAL'),
-('t-005', 'SGTX-US-TRD-000005-I9J0', 'SGTX Platform Inc.', 'US', 'CORPORATE', 'VERIFIED', 3, 'sha256:platform', 5.00, 1, 'DUAL'),
-('t-006', 'SGTX-AE-TRD-000006-K1L2', 'Dubai Fresh Produce LLC', 'AE', 'CORPORATE', 'VERIFIED', 2, 'sha256:demo6', 18.00, 1, 'BUY'),
-('t-007', 'SGTX-GB-QC-000007-M3N4', 'London QC Services Ltd', 'GB', 'QUALITY_CONTROL', 'VERIFIED', 2, 'sha256:demo7', 8.50, 1, 'DUAL');
+-- ═══════════════════════════════════════════════════════════════════
+-- 4. Seed Employees (with active_trader_mode_context, kyc_tier)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO employees (id, tenant_id, email, full_name, role_id, kyc_status, kyc_tier, status, default_trader_mode, active_trader_mode_context, mfa_enabled, password_hash, created_at)
+VALUES
+  -- Passwords: emp-001=Admin123!, emp-002=Trade456!, emp-003=Export789!, emp-004=Sell321!, emp-005=Finance000!
+  ('emp-001', 'tenant-001', 'ahmed@cairotrading.eg', 'Ahmed Hassan', 'role-admin-001', 'VERIFIED', 3, 'ACTIVE', 'BUY', 'BUY', 1, 'sha256:3eb3fe66b31e3b4d10fa70b5cad49c7112294af6ae4e476a1c405155d45aa121', datetime('now')),
+  ('emp-002', 'tenant-001', 'fatima@cairotrading.eg', 'Fatima Al-Rashid', 'role-trader-001', 'VERIFIED', 2, 'ACTIVE', 'BUY', 'BUY', 0, 'sha256:b8368aec041b0cf86d2b3e5bf8f78fb61c2505f3811f9d44330d5cbf0c7353a0', datetime('now')),
+  ('emp-003', 'tenant-002', 'nguyen@vnexports.vn', 'Nguyen Van Minh', 'role-admin-002', 'VERIFIED', 3, 'ACTIVE', 'SELL', 'SELL', 1, 'sha256:81744ae472f04ebe1a8ebaf82b1b461f9ea23e3e9c5486f73f552ad32319693f', datetime('now')),
+  ('emp-004', 'tenant-002', 'tran@vnexports.vn', 'Tran Thi Lan', 'role-trader-002', 'VERIFIED', 2, 'ACTIVE', 'SELL', 'SELL', 0, 'sha256:2ef8d032b480343dbaa0f930caeebbcd6a4e5f32892846e21caba777de09f4f6', datetime('now')),
+  ('emp-005', 'tenant-003', 'james@globalfinance.gb', 'James Richardson', 'role-admin-003', 'VERIFIED', 4, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:c5273983a35239ebefd4218daeaf8b045c72f207d666b14e1cda9d6795b4a81e', datetime('now'));
 
--- Demo Employees (password: password123 → sha256:ef92b778bafe...)
-INSERT OR IGNORE INTO employees (id, tenant_id, email, full_name, kyc_status, status, mfa_enabled, password_hash, role_id) VALUES
-('e-001', 't-001', 'ahmed@cairoimports.eg', 'Ahmed Hassan', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-001'),
-('e-002', 't-002', 'nguyen@saigontex.vn', 'Nguyen Van Minh', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-002'),
-('e-003', 't-003', 'chen@asiafinance.sg', 'Sarah Chen', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-003'),
-('e-004', 't-004', 'muller@hamburg-log.de', 'Klaus Muller', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-004'),
-('e-005', 't-005', 'admin@sgtx.us', 'SGTX Admin', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-005'),
-('e-006', 't-006', 'omar@dubaifresh.ae', 'Omar Al-Rashid', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-006'),
-('e-007', 't-007', 'james@londonqc.co.uk', 'James Powell', 'VERIFIED', 'ACTIVE', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', 'r-007');
+-- ═══════════════════════════════════════════════════════════════════
+-- 5. Seed Employee Permissions (Part 2.3: OPA-style)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO employee_permissions (employee_id, permission, grant_type, trader_mode_context, granted_by, granted_at)
+VALUES
+  ('emp-001', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
+  ('emp-002', 'trade.create', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
+  ('emp-002', 'trade.view', 'ALLOW', '["BUY","SELL"]', 'emp-001', datetime('now')),
+  ('emp-002', 'contract.sign', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
+  ('emp-002', 'shipment.milestone.confirm', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
+  ('emp-003', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
+  ('emp-004', 'trade.create', 'ALLOW', '["SELL"]', 'emp-003', datetime('now')),
+  ('emp-004', 'quote.submit', 'ALLOW', '["SELL"]', 'emp-003', datetime('now')),
+  ('emp-005', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now'));
 
--- Demo Roles (per blueprint Part 2: Human Authority Hierarchy)
-INSERT OR IGNORE INTO roles (id, tenant_id, name, permissions) VALUES
-('r-001', 't-001', 'TENANT_ADMIN', '["*"]'),
-('r-002', 't-002', 'TENANT_ADMIN', '["*"]'),
-('r-003', 't-003', 'TENANT_ADMIN', '["*"]'),
-('r-004', 't-004', 'TENANT_ADMIN', '["*"]'),
-('r-005', 't-005', 'PLATFORM_ADMIN', '["*"]'),
-('r-006', 't-006', 'TENANT_ADMIN', '["*"]'),
-('r-007', 't-007', 'TENANT_ADMIN', '["*"]');
+-- ═══════════════════════════════════════════════════════════════════
+-- 6. Seed Data Scopes (Part 2.3)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO data_scopes (employee_id, country_access, document_types, max_transaction_value, custom_filters, hidden_cost_components, allow_role_switching)
+VALUES
+  ('emp-001', '["*"]', '["*"]', NULL, '{}', '[]', 1),
+  ('emp-002', '["EG","VN","GB","CH"]', '["INVOICE","BL","PACKING_LIST"]', 500000, '{}', '[]', 0),
+  ('emp-003', '["*"]', '["*"]', NULL, '{}', '[]', 1),
+  ('emp-004', '["VN","EG","AE"]', '["INVOICE","CERTIFICATE_OF_ORIGIN","PACKING_LIST"]', 300000, '{}', '[]', 0),
+  ('emp-005', '["*"]', '["*"]', NULL, '{}', '["PLATFORM_FEE"]', 1);
 
--- Trust Scores (Part 11: AI Intelligence Layer)
-INSERT OR IGNORE INTO trust_scores (gtid, score, model_version, components, buy_mode_score, sell_mode_score) VALUES
-('SGTX-EG-TRD-000001-A1B2', 82.00, 'xgboost-v1.0', '{"payment_history":88,"delivery_record":79,"dispute_rate":85,"document_accuracy":76}', 82.00, 0),
-('SGTX-VN-TRD-000002-C3D4', 91.00, 'xgboost-v1.0', '{"payment_history":93,"delivery_record":92,"dispute_rate":88,"document_accuracy":91}', 0, 91.00),
-('SGTX-SG-FIN-000003-E5F6', 95.00, 'xgboost-v1.0', '{"regulatory_compliance":98,"capital_adequacy":94,"response_time":93}', 0, 0),
-('SGTX-DE-LOG-000004-G7H8', 88.00, 'xgboost-v1.0', '{"on_time_delivery":90,"damage_rate":92,"communication":82}', 0, 0),
-('SGTX-US-TRD-000005-I9J0', 99.00, 'xgboost-v1.0', '{"platform_operator":100,"compliance":99,"governance":98}', 99.00, 99.00),
-('SGTX-AE-TRD-000006-K1L2', 79.00, 'xgboost-v1.0', '{"payment_history":75,"delivery_record":82,"dispute_rate":80}', 79.00, 0),
-('SGTX-GB-QC-000007-M3N4', 92.00, 'xgboost-v1.0', '{"inspection_accuracy":95,"report_quality":90,"turnaround":91}', 0, 0);
+-- ═══════════════════════════════════════════════════════════════════
+-- 7. Seed Trust Scores (gtid is PK, no id/tenant_id columns)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO trust_scores (gtid, score, model_version, components, buy_mode_score, sell_mode_score, updated_at)
+VALUES
+  ('SGTX-EG-TRD-000001-A1B2', 85.5, 'xgboost-v1.0', '{"kyb":90,"trade_history":82,"dispute_record":95,"payment_history":88,"delivery_record":80,"document_accuracy":85}', 87.0, 72.0, datetime('now')),
+  ('SGTX-VN-TRD-000002-C3D4', 91.2, 'xgboost-v1.0', '{"kyb":95,"trade_history":90,"dispute_record":98,"payment_history":92,"delivery_record":85,"document_accuracy":88}', 75.0, 93.0, datetime('now')),
+  ('SGTX-GB-FIN-000001-E5F6', 96.0, 'xgboost-v1.0', '{"kyb":99,"trade_history":95,"dispute_record":100,"payment_history":98,"delivery_record":90,"document_accuracy":95}', 96.0, 96.0, datetime('now')),
+  ('SGTX-EG-GOV-000001-G7H8', 99.0, 'xgboost-v1.0', '{"kyb":100,"trade_history":0,"dispute_record":100,"payment_history":0}', 99.0, 99.0, datetime('now')),
+  ('SGTX-CH-LOG-000001-I9J0', 88.0, 'xgboost-v1.0', '{"kyb":92,"trade_history":85,"dispute_record":97,"payment_history":80,"delivery_record":92}', 88.0, 88.0, datetime('now')),
+  ('SGTX-CH-QC-000001-K1L2', 93.0, 'xgboost-v1.0', '{"kyb":95,"trade_history":88,"dispute_record":100,"payment_history":92}', 93.0, 93.0, datetime('now'));
 
--- Tenant Contacts / Network (Part 18: auto-populated from trades)
-INSERT OR IGNORE INTO tenant_contacts (tenant_id, contact_gtid, relationship_type, trade_count, total_value, first_interaction, last_interaction, is_favorite) VALUES
-('t-001', 'SGTX-VN-TRD-000002-C3D4', 'EXPORTER', 12, 1250000.00, '2025-01-15', '2026-04-10', 1),
-('t-001', 'SGTX-DE-LOG-000004-G7H8', 'LOGISTICS', 8, 0, '2025-03-01', '2026-04-08', 0),
-('t-001', 'SGTX-SG-FIN-000003-E5F6', 'FINANCIER', 4, 580000.00, '2025-06-01', '2026-04-05', 0),
-('t-002', 'SGTX-EG-TRD-000001-A1B2', 'IMPORTER', 12, 1250000.00, '2025-01-15', '2026-04-10', 1),
-('t-002', 'SGTX-AE-TRD-000006-K1L2', 'IMPORTER', 3, 450000.00, '2025-09-20', '2026-03-15', 0),
-('t-006', 'SGTX-VN-TRD-000002-C3D4', 'EXPORTER', 3, 450000.00, '2025-09-20', '2026-03-15', 0);
+-- ═══════════════════════════════════════════════════════════════════
+-- 8. Seed Jurisdictions (code is PK)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO jurisdictions (code, name, sanctions_level, kyc_tier_required, cbdc_status, psp_partners, distressed_sale_allowed, distressed_country_factor)
+VALUES
+  ('EG', 'Egypt', 'NONE', 2, 'PILOT', '["STRIPE","FLUTTERWAVE","FAWRY"]', 1, 0.85),
+  ('VN', 'Vietnam', 'NONE', 2, 'NONE', '["STRIPE","VNPAY"]', 1, 0.80),
+  ('GB', 'United Kingdom', 'NONE', 1, 'PILOT', '["STRIPE","WISE","SWIFT_GPI"]', 1, 1.0),
+  ('CH', 'Switzerland', 'NONE', 1, 'NONE', '["STRIPE","SWIFT_GPI","SIX"]', 1, 1.0),
+  ('AE', 'United Arab Emirates', 'NONE', 1, 'ACTIVE', '["STRIPE","NOON_PAY","SWIFT_GPI"]', 1, 1.0),
+  ('NG', 'Nigeria', 'NONE', 2, 'ACTIVE', '["FLUTTERWAVE","PAYSTACK"]', 1, 0.75),
+  ('KE', 'Kenya', 'NONE', 2, 'NONE', '["FLUTTERWAVE","MPESA"]', 1, 0.70),
+  ('US', 'United States', 'NONE', 1, 'NONE', '["STRIPE","SWIFT_GPI","FEDWIRE"]', 1, 1.0),
+  ('CN', 'China', 'NONE', 3, 'ACTIVE', '["ALIPAY","WECHAT_PAY","SWIFT_GPI"]', 1, 0.90),
+  ('BR', 'Brazil', 'NONE', 2, 'PILOT', '["PIX","STRIPE","SWIFT_GPI"]', 1, 0.85);
 
--- ============================================================
--- SAMPLE TRADE WORKFLOW (complete pipeline demo)
--- ============================================================
+-- ═══════════════════════════════════════════════════════════════════
+-- 9. Seed Tenant Contacts (with enrichment fields)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO tenant_contacts (tenant_id, contact_gtid, relationship_type, trade_count, total_value, first_interaction, last_interaction, is_favorite, is_blocked, auto_saved, trust_snapshot, relationship_health_score, smart_labels)
+VALUES
+  ('tenant-001', 'SGTX-VN-TRD-000002-C3D4', 'TRADE_PARTNER', 12, 2450000.00, datetime('now', '-180 days'), datetime('now', '-2 days'), 1, 0, 0, '{"score":91.2,"trend":"STABLE"}', 0.92, '["RELIABLE","AGRICULTURAL","HIGH_VOLUME"]'),
+  ('tenant-001', 'SGTX-GB-FIN-000001-E5F6', 'FINANCIER', 5, 1800000.00, datetime('now', '-120 days'), datetime('now', '-5 days'), 0, 0, 1, '{"score":96.0,"trend":"IMPROVING"}', 0.95, '["PREFERRED_LENDER","UK_BASED"]'),
+  ('tenant-002', 'SGTX-EG-TRD-000001-A1B2', 'TRADE_PARTNER', 12, 2450000.00, datetime('now', '-180 days'), datetime('now', '-2 days'), 1, 0, 0, '{"score":85.5,"trend":"IMPROVING"}', 0.88, '["REPEAT_BUYER","EGYPT"]'),
+  ('tenant-002', 'SGTX-CH-LOG-000001-I9J0', 'LOGISTICS_PROVIDER', 8, 320000.00, datetime('now', '-150 days'), datetime('now', '-7 days'), 0, 0, 1, '{"score":88.0}', 0.85, '["MSC","CONTAINER_SHIPPING"]');
 
--- Governor Decisions for seed data
-INSERT OR IGNORE INTO governor_decisions (decision_id, decision_type, actor_gtid, verdict, conditions, policy_version, confidence, loom_hash, cryptographic_signature, created_at) VALUES
-('gov-seed-001', 'trade.request.create', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-001', 'sig:seed-001', '2026-04-13 10:00:00'),
-('gov-seed-002', 'quote.submit', 'SGTX-VN-TRD-000002-C3D4', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-002', 'sig:seed-002', '2026-04-13 12:00:00'),
-('gov-seed-003', 'contract.create', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-003', 'sig:seed-003', '2026-04-13 14:00:00'),
-('gov-seed-004', 'contract.lock', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-004', 'sig:seed-004', '2026-04-13 15:00:00'),
-('gov-seed-005', 'commission.calculate', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-005', 'sig:seed-005', '2026-04-13 15:00:01'),
-('gov-seed-006', 'shipment.create', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-006', 'sig:seed-006', '2026-04-14 08:00:00'),
-('gov-seed-007', 'shipment.milestone.confirm', 'SGTX-DE-LOG-000004-G7H8', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-007', 'sig:seed-007', '2026-04-15 10:00:00'),
-('gov-seed-008', 'financing.request', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-008', 'sig:seed-008', '2026-04-14 09:00:00'),
-('gov-seed-009', 'settlement.execute', 'SGTX-EG-TRD-000001-A1B2', 'ALLOW', '[]', 'v6.1', 0.95, 'sha256:seed-loom-009', 'sig:seed-009', '2026-04-16 12:00:00');
+-- ═══════════════════════════════════════════════════════════════════
+-- 10. Seed Payment Aggregators
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO payment_aggregators (id, name, country_codes, supported_currencies, api_endpoint, uptime_score, is_active, api_type, fee_structure, avg_settlement_hours)
+VALUES
+  ('psp-001', 'Stripe Connect', 'US,GB,EU,EG,AE', 'USD,GBP,EUR,EGP,AED', 'https://api.stripe.com', 99.95, 1, 'REST', '{"percentage":2.9,"fixed":0.30}', 2),
+  ('psp-002', 'Flutterwave', 'NG,GH,KE,EG,ZA', 'NGN,GHS,KES,EGP,ZAR', 'https://api.flutterwave.com', 99.2, 1, 'REST', '{"percentage":1.4,"fixed":0}', 24),
+  ('psp-003', 'SWIFT GPI', 'GLOBAL', 'USD,EUR,GBP,JPY,CHF', 'https://swift.com/gpi', 99.99, 1, 'ISO20022', '{"fixed":25}', 4);
 
--- Loom Logs for governor decisions
-INSERT OR IGNORE INTO loom_logs (id, governor_decision_id, loom_hash, agent_reasoning, logged_at) VALUES
-('loom-seed-001', 'gov-seed-001', 'sha256:seed-loom-001', '{"policy":"trade.request.create","result":"ALLOW"}', '2026-04-13 10:00:00'),
-('loom-seed-002', 'gov-seed-002', 'sha256:seed-loom-002', '{"policy":"quote.submit","result":"ALLOW"}', '2026-04-13 12:00:00'),
-('loom-seed-003', 'gov-seed-003', 'sha256:seed-loom-003', '{"policy":"contract.create","result":"ALLOW"}', '2026-04-13 14:00:00'),
-('loom-seed-004', 'gov-seed-004', 'sha256:seed-loom-004', '{"policy":"contract.lock","result":"ALLOW"}', '2026-04-13 15:00:00'),
-('loom-seed-005', 'gov-seed-005', 'sha256:seed-loom-005', '{"policy":"commission.calculate","result":"ALLOW"}', '2026-04-13 15:00:01'),
-('loom-seed-006', 'gov-seed-006', 'sha256:seed-loom-006', '{"policy":"shipment.create","result":"ALLOW"}', '2026-04-14 08:00:00'),
-('loom-seed-007', 'gov-seed-007', 'sha256:seed-loom-007', '{"policy":"shipment.milestone.confirm","result":"ALLOW"}', '2026-04-15 10:00:00');
+-- ═══════════════════════════════════════════════════════════════════
+-- 11. Seed DeFi Protocols
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO defi_protocols (id, protocol_name, chain, tvl, apy_range, audit_status, supported_stablecoins, active)
+VALUES
+  ('defi-001', 'Aave V3', 'Polygon', 5000000000, '{"min":3.2,"max":8.5}', 'CERTIFIED', '["USDC","USDT","DAI"]', 1),
+  ('defi-002', 'Compound V3', 'Ethereum', 3000000000, '{"min":2.8,"max":6.2}', 'CERTIFIED', '["USDC","USDT"]', 1),
+  ('defi-003', 'Maple Finance', 'Ethereum', 800000000, '{"min":6.0,"max":12.0}', 'CERTIFIED', '["USDC"]', 1);
 
--- Trade Request (Phase 1: Organic cotton yarn VN→EG)
-INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, exporter_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, governor_decision_id, created_by, created_at, updated_at) VALUES
-('trade-001', 't-001', 't-002', 't-002', 'Organic cotton yarn 32s, GOTS certified, 5000kg', '{"hs_code":"520512","incoterm":"CFR","description":"Organic cotton yarn 32s, GOTS certified, 5000kg","qc_preference":"THIRD_PARTY","quantity":5000,"unit":"KG","certifications":["GOTS"]}', '{"product":"Organic cotton yarn 32s","certifications":["GOTS"],"quantity":5000,"unit":"KG"}', 'CONTRACTED', 'gov-seed-001', 'e-001', '2026-04-13 10:00:00', '2026-04-13 15:00:00');
+-- ═══════════════════════════════════════════════════════════════════
+-- 12. Seed Tenant Onboarding States
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO tenant_onboarding_state (id, tenant_id, current_step, total_steps, sandbox_active, completed_at, created_at, updated_at)
+VALUES
+  ('onb-001', 'tenant-001', 6, 6, 0, datetime('now', '-25 days'), datetime('now', '-30 days'), datetime('now', '-25 days')),
+  ('onb-002', 'tenant-002', 6, 6, 0, datetime('now', '-28 days'), datetime('now', '-30 days'), datetime('now', '-28 days'));
 
--- Trade Channel
-INSERT OR IGNORE INTO trade_channels (channel_id, trade_request_id, importer_tenant_id, exporter_tenant_id, jurisdiction_rules_snapshot, current_phase, creation_governor_decision_id) VALUES
-('ch-001', 'trade-001', 't-001', 't-002', '{"importer":"EG","exporter":"VN","strictest":"NONE"}', 5, 'gov-seed-001');
+-- ═══════════════════════════════════════════════════════════════════
+-- 13. Seed Marketplace Partners
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO marketplace_partners (id, partner_name, api_key_hash, commission_split_percent, status, partner_type, contact_email, country, created_at)
+VALUES
+  ('mp-001', 'TradeFlow Connect', 'hash-mp-001', 15.0, 'ACTIVE', 'REFERRAL', 'api@tradeflow.io', 'AE', datetime('now')),
+  ('mp-002', 'AgriConnect Platform', 'hash-mp-002', 12.5, 'ACTIVE', 'MARKETPLACE', 'partners@agriconnect.com', 'KE', datetime('now'));
 
--- Exporter Quote (Phase 2: EXW price lock)
-INSERT OR IGNORE INTO exporter_quotes (id, trade_request_id, exporter_tenant_id, exw_price, exw_currency, exw_locked_at, incoterm, validity_days, status, governor_decision_id, created_at) VALUES
-('quote-001', 'trade-001', 't-002', 35000.00, 'USD', '2026-04-13 12:00:00', 'CFR', 15, 'ACCEPTED', 'gov-seed-002', '2026-04-13 12:00:00');
+-- ═══════════════════════════════════════════════════════════════════
+-- 14. Seed Platform Governance Proposals (Part 1.3 — multisig)
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO platform_governance_proposals (id, proposal_type, description, proposed_by, required_signatures, total_signers, current_signatures, signers, status, expires_at, created_at)
+VALUES
+  ('pgp-001', 'POLICY_UPDATE', 'Increase commission ceiling from 2.5% to 3.0% for high-risk jurisdictions', 'SGTX-EG-TRD-000001-A1B2', 3, 5, 2, '["SGTX-EG-TRD-000001-A1B2","SGTX-GB-FIN-000001-E5F6"]', 'PENDING', datetime('now', '+5 days'), datetime('now', '-2 days'));
 
--- Contract (Phase 3: with commission lock)
-INSERT OR IGNORE INTO contracts (id, trade_request_id, contract_type, incoterm, incoterm_rules, clauses, governing_law, dispute_resolution, status, commission_responsibility, commission_allocation, commission_lock_id, importer_signature, exporter_signature, signed_at, locked_at, governor_decision_id, created_at) VALUES
-('contract-001', 'trade-001', 'SINGLE_SHIPMENT', 'CFR', '{"version":"Incoterms 2020"}', '[{"id":"cl-1","text":"Force Majeure per ICC 2020"},{"id":"cl-2","text":"Payment within 30 days of delivery"}]', 'English Law', 'ICC Arbitration', 'LOCKED', '{"default_payer":"EXPORTER"}', '{"importer":50,"exporter":50}', 'lock-001', 'sig-ahmed-001', 'sig-nguyen-001', '2026-04-13 14:30:00', '2026-04-13 15:00:00', 'gov-seed-003', '2026-04-13 14:00:00');
+-- ═══════════════════════════════════════════════════════════════════
+-- 15. Seed Legal Disclaimer
+-- ═══════════════════════════════════════════════════════════════════
+INSERT OR IGNORE INTO legal_disclaimers (id, disclaimer_text, version, effective_date, displayed_count)
+VALUES
+  ('ld-001', 'SGTX Platform is a non-custodial trade facilitation infrastructure. All financial transactions are governed by the constitutional AI Governor. No irreversible action occurs without Governor approval (Part 0.3). Commission rates are clamped between 0.1% and 2.5% (Part 0.5). All actions are Loom-hashed for immutable auditability.', '6.3.0', datetime('now'), 0);
 
--- Commission Lock (Phase 3: ACTIVE after contract lock)
-INSERT OR IGNORE INTO commission_locks (lock_id, contract_id, trade_id, commission_rate_pct, commission_usd, currency, status, release_conditions, released_pct, responsible_tenant_id, governor_decision_id, locked_at) VALUES
-('lock-001', 'contract-001', 'trade-001', 0.012, 522.00, 'USD', 'PARTIALLY_RELEASED', '{"milestones":["LOADED","DEPARTED","ARRIVED","DELIVERED"],"release_per_milestone":25}', 50, 't-002', 'gov-seed-004', '2026-04-13 15:00:00');
-
--- Commission Calculation
-INSERT OR IGNORE INTO commission_calculations (id, trade_request_id, effective_margin_pct, base_rate_pct, country_boost_pct, seasonality_pct, geopolitical_risk_pct, volume_discount_pct, perishability_surcharge_pct, anomaly_correction_pct, final_rate_pct, commission_usd, explanation, governor_decision_id, created_at) VALUES
-('calc-001', 'trade-001', 20.0, 0.009, 0.003, 0.0, 0.001, 0.001, 0.0, 0.0, 0.012, 522.00, 'Commission: 1.20% of $43,500 (VN→EG corridor)', 'gov-seed-005', '2026-04-13 15:00:01');
-
--- Shipment (Phase 5: USTN tracking)
-INSERT OR IGNORE INTO shipments (id, ustn, contract_id, contract_sequence_number, origin_port, destination_port, vessel_name, imo_number, status, current_milestone, governor_decision_id, created_at) VALUES
-('ship-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'contract-001', 1, 'VNSGN', 'EGALY', 'MV Saigon Express', 'IMO9876543', 'IN_TRANSIT', 'DEPARTED', 'gov-seed-006', '2026-04-14 08:00:00');
-
--- Shipment Barcodes (Phase 21: GS1-128 per pallet)
-INSERT OR IGNORE INTO shipment_barcodes (id, shipment_ustn, barcode_type, barcode_data, pallet_number, sscc) VALUES
-('bc-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'GS1-128', '{"ustn":"SGTX-EG-20260414080000-AB12CD34-V1","pallet":1,"commodity":"520512"}', 1, '00031234567890123456'),
-('bc-002', 'SGTX-EG-20260414080000-AB12CD34-V1', 'GS1-128', '{"ustn":"SGTX-EG-20260414080000-AB12CD34-V1","pallet":2,"commodity":"520512"}', 2, '00031234567890123457'),
-('bc-003', 'SGTX-EG-20260414080000-AB12CD34-V1', 'QR', '{"ustn":"SGTX-EG-20260414080000-AB12CD34-V1","pallet":3,"commodity":"520512"}', 3, '00031234567890123458'),
-('bc-004', 'SGTX-EG-20260414080000-AB12CD34-V1', 'GS1-128', '{"ustn":"SGTX-EG-20260414080000-AB12CD34-V1","pallet":4,"commodity":"520512"}', 4, '00031234567890123459');
-
--- Document Requirements (Phase 5: auto-generated)
-INSERT OR IGNORE INTO shipment_document_requirements (id, shipment_ustn, document_type, status) VALUES
-('docreq-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'COMMERCIAL_INVOICE', 'UPLOADED'),
-('docreq-002', 'SGTX-EG-20260414080000-AB12CD34-V1', 'PACKING_LIST', 'UPLOADED'),
-('docreq-003', 'SGTX-EG-20260414080000-AB12CD34-V1', 'BILL_OF_LADING', 'UPLOADED'),
-('docreq-004', 'SGTX-EG-20260414080000-AB12CD34-V1', 'CERTIFICATE_OF_ORIGIN', 'PENDING'),
-('docreq-005', 'SGTX-EG-20260414080000-AB12CD34-V1', 'CUSTOMS_DECLARATION', 'PENDING');
-
--- Shipment Milestones (confirmed milestones)
-INSERT OR IGNORE INTO shipment_milestones (id, ustn, milestone, confirmed_at, confirmed_by, confirmation_method, governor_decision_id) VALUES
-('ms-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'GATE_IN', '2026-04-14 09:00:00', 'e-004', 'MANUAL', 'gov-seed-007'),
-('ms-002', 'SGTX-EG-20260414080000-AB12CD34-V1', 'LOADED', '2026-04-14 16:00:00', 'e-004', 'BARCODE_SCAN', 'gov-seed-007'),
-('ms-003', 'SGTX-EG-20260414080000-AB12CD34-V1', 'DEPARTED', '2026-04-15 06:00:00', 'e-004', 'AIS_SIGNAL', 'gov-seed-007');
-
--- Financing Request (Phase 4: post-contract)
-INSERT OR IGNORE INTO financing_requests (id, contract_id, requester_tenant_id, amount, currency, tenor_days, financing_type, collateral, status, governor_decision_id, created_at) VALUES
-('fin-001', 'contract-001', 't-001', 30000.00, 'USD', 60, 'LC', '{"type":"trade_receivable","value":43500}', 'BIDDING', 'gov-seed-008', '2026-04-14 09:00:00');
-
--- Financing Offer (blind bid from financier)
-INSERT OR IGNORE INTO financing_offers (id, financing_request_id, financier_tenant_id, effective_apr, all_in_cost, conditions, bid_encrypted, status, submitted_at) VALUES
-('fo-001', 'fin-001', 't-003', 8.50, 9.25, '{"min_trust_score":70,"insurance_required":true}', 1, 'SUBMITTED', '2026-04-14 14:00:00');
-
--- Settlement Instruction (Phase 6)
-INSERT OR IGNORE INTO settlement_instructions (id, ustn, instruction_type, payload, status, governor_decision_id, created_at) VALUES
-('settle-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'PRINCIPAL_PAYMENT', '{"amount":43500,"currency":"USD","beneficiary":"t-002","method":"SWIFT"}', 'PENDING', 'gov-seed-009', '2026-04-16 12:00:00');
-
--- ESG Assessment
-INSERT OR IGNORE INTO esg_assessments (id, entity_gtid, assessment_type, esg_score, environmental_score, social_score, governance_score, carbon_intensity, model_version) VALUES
-('esg-001', 'SGTX-DE-LOG-000004-G7H8', 'CARRIER', 78.5, 72.0, 85.0, 78.5, '125.4 gCO2/tkm', 'lightgbm-v1.0'),
-('esg-002', 'SGTX-VN-TRD-000002-C3D4', 'FULL', 81.0, 79.0, 82.0, 82.0, NULL, 'lightgbm-v1.0'),
-('esg-003', 'SGTX-EG-TRD-000001-A1B2', 'FULL', 74.0, 70.0, 78.0, 74.0, NULL, 'lightgbm-v1.0');
-
--- Compliance Events
-INSERT OR IGNORE INTO compliance_events (id, event_type, entity_gtid, details, severity, resolved, created_at) VALUES
-('ce-001', 'SANCTIONS_SCREENING', 'SGTX-EG-TRD-000001-A1B2', '{"result":"CLEAR","lists_checked":["OFAC","EU","UN"]}', 'LOW', 1, '2026-04-13 10:05:00'),
-('ce-002', 'KYB_VERIFICATION', 'SGTX-VN-TRD-000002-C3D4', '{"result":"VERIFIED","registry":"Vietnam Business Registry"}', 'LOW', 1, '2026-04-13 10:10:00'),
-('ce-003', 'AML_SCREENING', 'SGTX-AE-TRD-000006-K1L2', '{"result":"REVIEW","trigger":"High-value corridor AE-VN"}', 'MEDIUM', 0, '2026-04-14 08:30:00');
-
--- Compliance Checks
-INSERT OR IGNORE INTO compliance_checks (id, check_type, result, flags, checked_at) VALUES
-('cc-001', 'SANCTIONS', 'PASS', '["OFAC","EU","UN"]', '2026-04-13 10:05:00'),
-('cc-002', 'PEP', 'PASS', '[]', '2026-04-13 10:10:00'),
-('cc-003', 'AML', 'REVIEW', '["high_value_corridor"]', '2026-04-14 08:30:00');
-
--- Audit Log entries
-INSERT OR IGNORE INTO audit_log (table_name, record_id, action, before_data, after_data, changed_by, changed_at) VALUES
-('tenants', 't-001', 'REGISTER', NULL, '{"gtid":"SGTX-EG-TRD-000001-A1B2"}', 'system', '2026-04-13 09:00:00'),
-('trade_requests', 'trade-001', 'CREATE', NULL, '{"status":"PENDING_EXPORTER_RESPONSE"}', 'e-001', '2026-04-13 10:00:00'),
-('exporter_quotes', 'quote-001', 'CREATE', NULL, '{"exw_price":35000,"incoterm":"CFR"}', 'e-002', '2026-04-13 12:00:00'),
-('contracts', 'contract-001', 'CREATE', NULL, '{"status":"DRAFT","incoterm":"CFR"}', 'e-001', '2026-04-13 14:00:00'),
-('contracts', 'contract-001', 'LOCK', '{"status":"DRAFT"}', '{"status":"LOCKED","commission_lock_id":"lock-001"}', 'e-001', '2026-04-13 15:00:00'),
-('shipments', 'ship-001', 'CREATE', NULL, '{"ustn":"SGTX-EG-20260414080000-AB12CD34-V1"}', 'e-001', '2026-04-14 08:00:00'),
-('shipment_milestones', 'ms-001', 'CREATE', NULL, '{"milestone":"GATE_IN"}', 'e-004', '2026-04-14 09:00:00'),
-('shipment_milestones', 'ms-002', 'CREATE', NULL, '{"milestone":"LOADED"}', 'e-004', '2026-04-14 16:00:00'),
-('shipment_milestones', 'ms-003', 'CREATE', NULL, '{"milestone":"DEPARTED"}', 'e-004', '2026-04-15 06:00:00');
-
--- Payment Attempt
-INSERT OR IGNORE INTO payment_attempts (id, commission_lock_id, aggregator_id, buyer_country, payment_method, amount_local, currency_local, amount_usd, fx_rate, commission_amount_usd, exporter_amount, psp_fee_usd, status, governor_decision_id, created_at) VALUES
-('pay-001', 'lock-001', 'psp-fawry', 'EG', 'BANK_TRANSFER', 43500.00, 'USD', 43500.00, 1.0, 522.00, 42978.00, 8.70, 'COMPLETED', 'gov-seed-009', '2026-04-16 14:00:00');
-
--- Disruption Prediction
-INSERT OR IGNORE INTO disruption_predictions (id, ustn, prediction_type, probability, affected_route, predicted_delay_days, recommendation, ai_model_version, created_at) VALUES
-('dp-001', 'SGTX-EG-20260414080000-AB12CD34-V1', 'PORT_CONGESTION', 0.35, 'EGALY', 2, 'Monitor Suez Canal traffic. Alternative: Port Said routing.', 'gdacs-v1.0', '2026-04-15 08:00:00');
-
--- Marketplace Partner
-INSERT OR IGNORE INTO marketplace_partners (id, partner_name, api_key_hash, commission_split_percent, active) VALUES
-('mp-001', 'TradeWind B2B', 'sha256:tradewind-key', 0.5, 1);
+PRAGMA foreign_keys = ON;

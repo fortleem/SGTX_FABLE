@@ -92,6 +92,7 @@ tailwind.config = {
   <div class="modal-content" id="modal-body"></div>
 </div>
 <script src="/static/app.js"></script>
+<script src="/static/trade_forms.js"></script>
 </body>
 </html>`;
 }

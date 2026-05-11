@@ -1,4 +1,4 @@
-// SGTX Platform v6.1 — Main Application Entry
+// SGTX Platform v6.3 — Main Application Entry (Full Blueprint Alignment)
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import auth from './routes/auth';
@@ -12,6 +12,28 @@ import gaps from './routes/gaps';
 import advanced from './routes/advanced';
 import portalFeatures from './routes/portal_features';
 import portalV63 from './routes/portal_v63';
+import operations from './routes/operations';
+import marketplace from './routes/marketplace';
+import payments from './routes/payments';
+import defi from './routes/defi';
+import ai from './routes/ai_layer';
+import government from './routes/government';
+import qc from './routes/qc';
+// v6.3 Gap Alignment Modules
+import smartInbox from './routes/smart_inbox';
+import tenantExperience from './routes/tenant_experience';
+import workflowRecovery from './routes/workflow_recovery';
+import tradeAdvanced from './routes/trade_advanced';
+import financeAdvanced from './routes/finance_advanced';
+import commodityIntel from './routes/commodity_intel';
+// Phase 1-10 End-to-End Workflow
+import phases from './routes/phases';
+// Reference Data (Countries, Ports, Commodities, HS Codes)
+import refData from './routes/reference_data';
+// Part 3: Contracting, Negotiation & SGTX Fee Collection (Steps 3.1-3.10)
+import contracting from './routes/contracting';
+// Part 6: Settlement & Payment Orchestration (Steps 6.1-6.8 + Part 10)
+import settlement from './routes/settlement';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -41,13 +63,45 @@ app.route('/api/v1', gaps);
 app.route('/api/v1', advanced);
 app.route('/api/v1', portalFeatures);
 app.route('/api/v1', portalV63);
+app.route('/api/v1', operations);
+app.route('/api/v1', marketplace);
+app.route('/api/v1', payments);
+app.route('/api/v1', defi);
+app.route('/api/v1', ai);
+app.route('/api/v1', government);
+app.route('/api/v1', qc);
+// v6.3 Gap Alignment Routes
+app.route('/api/v1', smartInbox);
+app.route('/api/v1', tenantExperience);
+app.route('/api/v1', workflowRecovery);
+app.route('/api/v1', tradeAdvanced);
+app.route('/api/v1', financeAdvanced);
+app.route('/api/v1', commodityIntel);
+// Phase 1-10 End-to-End Workflow Routes
+app.route('/api/v1', phases);
+// Reference Data Routes
+app.route('/api/v1', refData);
+// Part 3: Contracting & Fee Collection Routes
+app.route('/api/v1', contracting);
+// Part 6: Settlement & Payment Orchestration Routes
+app.route('/api/v1', settlement);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
   status: 'operational',
   platform: 'SGTX v6.3',
+  version: '6.3.0',
   description: 'Sovereign, AI-Governed, Non-Custodial Global Trade Execution Infrastructure',
   governance_invariant: 'No irreversible action without Governor approval',
+  modules: [
+    'auth', 'identity', 'trade', 'shipment', 'finance', 'governance',
+    'marketplace', 'payments', 'defi', 'ai_layer', 'government', 'qc',
+    'operations', 'portal_features', 'portal_v63', 'advanced', 'gaps', 'upgrades',
+    'smart_inbox', 'tenant_experience', 'workflow_recovery',
+    'trade_advanced', 'finance_advanced', 'commodity_intel',
+    'phases_1_to_10', 'reference_data',
+    'contracting_part3', 'settlement_part6'
+  ],
   timestamp: new Date().toISOString(),
 }));
 
