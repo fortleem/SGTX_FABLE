@@ -34,11 +34,14 @@ import refData from './routes/reference_data';
 import contracting from './routes/contracting';
 // Part 6: Settlement & Payment Orchestration (Steps 6.1-6.8 + Part 10)
 import settlement from './routes/settlement';
+// Part 3 Phase 1: Advanced Trade Request Form (HS code auto-fill, packaging, weight calc, port selection)
+import tradeRequestForm from './routes/trade_request_form';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
 import { loginHTML } from './pages/login';
 import { registerHTML } from './pages/register';
+import { tradeRequestFormHTML } from './pages/trade_request';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -50,6 +53,7 @@ app.get('/', (c) => c.html(landingPageHTML()));
 app.get('/login', (c) => c.html(loginHTML()));
 app.get('/register', (c) => c.html(registerHTML()));
 app.get('/app', (c) => c.html(appHTML()));
+app.get('/trade-request', (c) => c.html(tradeRequestFormHTML()));
 
 // ─── API Routes ───────────────────────────────────────────
 app.route('/api/v1/auth', auth);
@@ -85,6 +89,8 @@ app.route('/api/v1', refData);
 app.route('/api/v1', contracting);
 // Part 6: Settlement & Payment Orchestration Routes
 app.route('/api/v1', settlement);
+// Part 3 Phase 1: Advanced Trade Request Form Routes
+app.route('/api/v1', tradeRequestForm);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
@@ -100,7 +106,7 @@ app.get('/api/health', (c) => c.json({
     'smart_inbox', 'tenant_experience', 'workflow_recovery',
     'trade_advanced', 'finance_advanced', 'commodity_intel',
     'phases_1_to_10', 'reference_data',
-    'contracting_part3', 'settlement_part6'
+    'contracting_part3', 'settlement_part6', 'trade_request_form'
   ],
   timestamp: new Date().toISOString(),
 }));
