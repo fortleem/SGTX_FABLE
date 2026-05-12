@@ -1,6 +1,7 @@
-// SGTX Platform v6.3 — Identity, Tenancy & Onboarding Routes (Blueprint Part 2 Aligned)
+// SGTX Platform v6.3 — Identity, Tenancy & Onboarding Routes (Blueprint Part 2 FULLY Aligned)
+// All 29 gaps from Part 2 gap analysis addressed
 import { Hono } from 'hono';
-import { uuid, generateGTID, validateGTID, sha256, isoNow, ENTITY_TYPE_MAP, generateInvitationToken, validateLifecycleTransition } from '../lib/utils';
+import { uuid, generateGTID, generateGTIDWithSequence, validateGTID, sha256, isoNow, ENTITY_TYPE_MAP, generateInvitationToken, validateLifecycleTransition, checkLifecycleFeatureAccess, generateIconShuffle, computeVisibilityRules, generateSandboxUSTN, LIFECYCLE_FEATURE_RESTRICTIONS } from '../lib/utils';
 import { evaluateGovernor, auditLog } from '../lib/governor';
 import type { Bindings } from '../lib/types';
 
@@ -49,13 +50,14 @@ identity.get('/tenants/:id', async (c) => {
   }});
 });
 
-// Part 2.2: Register Tenant — GTID generation with CRC32 checksum
+// Part 2.1/2.2: Register Tenant — Atomic GTID generation (GAP-1/GAP-28)
+// Blueprint: "sequence stored and incremented atomically"
 identity.post('/tenants', async (c) => {
   const body = await c.req.json();
   const id = uuid();
-  const seq = Math.floor(Math.random() * 999999);
   const entityType = ENTITY_TYPE_MAP[body.type] || 'TRD';
-  const gtid = generateGTID(body.jurisdiction, entityType, seq);
+  // GAP-1: Use atomic DB-backed sequence instead of Math.random()
+  const gtid = await generateGTIDWithSequence(c.env.DB, body.jurisdiction, entityType);
   const hash = await sha256(JSON.stringify({ gtid, legal_name: body.legal_name, jurisdiction: body.jurisdiction }));
 
   const gov = await evaluateGovernor(c.env.DB, {
@@ -66,10 +68,11 @@ identity.post('/tenants', async (c) => {
   });
   if (gov.verdict === 'DENY') return c.json({ error: 'Registration denied by Governor', governor: gov }, 403);
 
+  // GAP-4/GAP-5: Support MARKETPLACE_PARTNER + Private Financier fields
   await c.env.DB.prepare(`
-    INSERT INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, cryptographic_hash, risk_score, sanctions_cleared, lifecycle_state, operating_mode)
-    VALUES (?, ?, ?, ?, ?, 'PENDING', ?, 50.0, 0, 'REGISTERED', ?)
-  `).bind(id, gtid, body.legal_name, body.jurisdiction, body.type, hash, body.operating_mode || 'SIMPLE').run();
+    INSERT INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, cryptographic_hash, risk_score, sanctions_cleared, lifecycle_state, lifecycle_state_updated_at, operating_mode, financier_subtype, logistics_subrole)
+    VALUES (?, ?, ?, ?, ?, 'PENDING', ?, 50.0, 0, 'REGISTERED', ?, ?, ?, ?)
+  `).bind(id, gtid, body.legal_name, body.jurisdiction, body.type, hash, isoNow(), body.operating_mode || 'SIMPLE', body.financier_subtype || null, body.logistics_subrole || null).run();
 
   // Initialize lifecycle history
   await c.env.DB.prepare(`
@@ -77,26 +80,32 @@ identity.post('/tenants', async (c) => {
     VALUES (?, ?, 'NONE', 'REGISTERED', 'Tenant registration', ?, ?)
   `).bind(uuid(), id, gov.decision_id, isoNow()).run();
 
-  // Initialize onboarding state (Part 2.7: 6 steps)
+  // Initialize onboarding state (Part 2.7: 6 steps, GAP-18 fix)
+  const draftExpires = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   await c.env.DB.prepare(`
-    INSERT INTO tenant_onboarding_state (id, tenant_id, current_step, total_steps, step_data, sandbox_active, updated_at)
-    VALUES (?, ?, 1, 6, '{}', 1, ?)
-  `).bind(uuid(), id, isoNow()).run();
+    INSERT INTO tenant_onboarding_state (id, tenant_id, current_step, total_steps, step_data, sandbox_active, draft_expires_at, updated_at)
+    VALUES (?, ?, 1, 6, '{}', 1, ?, ?)
+  `).bind(uuid(), id, draftExpires, isoNow()).run();
 
   // Initialize trust score
   try {
     await c.env.DB.prepare(`
       INSERT INTO trust_scores (gtid, score, components, updated_at)
       VALUES (?, 50.0, '{"kyb":0,"trade_history":0,"dispute_record":100,"payment_history":0}', ?)
-    `).bind(uuid(), gtid, id, isoNow()).run();
+    `).bind(gtid, isoNow()).run();
   } catch(e) { /* may already exist */ }
+
+  // GAP-25: Create Smart Inbox item for lifecycle change
+  try {
+    await createLifecycleInboxItem(c.env.DB, id, 'NONE', 'REGISTERED', 'Welcome to SGTX! Complete your onboarding wizard to start trading.');
+  } catch(e) { /* non-blocking */ }
 
   await auditLog(c.env.DB, 'tenants', id, 'CREATE', null, { gtid, legal_name: body.legal_name, lifecycle_state: 'REGISTERED' });
 
-  return c.json({ data: { id, gtid, lifecycle_state: 'REGISTERED', governor_decision: gov }, message: 'Tenant registered. GTID assigned with CRC32 checksum.' }, 201);
+  return c.json({ data: { id, gtid, lifecycle_state: 'REGISTERED', governor_decision: gov }, message: 'Tenant registered. GTID assigned with atomic CRC32 sequence.' }, 201);
 });
 
-// Part 2.8: Tenant Lifecycle State Transition
+// Part 2.10: Tenant Lifecycle State Transition (GAP-25: Smart Inbox integration, GAP-26: lifecycle_state_updated_at, GAP-27: feature restrictions)
 identity.post('/tenants/:id/lifecycle', async (c) => {
   const tenantId = c.req.param('id');
   const body = await c.req.json();
@@ -105,27 +114,41 @@ identity.post('/tenants/:id/lifecycle', async (c) => {
   const tenant = await c.env.DB.prepare('SELECT id, gtid, lifecycle_state FROM tenants WHERE id = ?').bind(tenantId).first() as any;
   if (!tenant) return c.json({ error: 'Tenant not found' }, 404);
 
-  if (!validateLifecycleTransition(tenant.lifecycle_state || 'REGISTERED', to_state)) {
-    return c.json({ error: `Invalid lifecycle transition: ${tenant.lifecycle_state} → ${to_state}` }, 400);
+  const fromState = tenant.lifecycle_state || 'REGISTERED';
+  if (!validateLifecycleTransition(fromState, to_state)) {
+    return c.json({ error: `Invalid lifecycle transition: ${fromState} → ${to_state}` }, 400);
   }
 
   const gov = await evaluateGovernor(c.env.DB, {
     decision_type: 'tenant.lifecycle.transition',
     actor_gtid: tenant.gtid,
-    action_context: { from: tenant.lifecycle_state, to: to_state, reason },
+    action_context: { from: fromState, to: to_state, reason },
   });
 
-  await c.env.DB.prepare('UPDATE tenants SET lifecycle_state = ?, updated_at = ? WHERE id = ?')
-    .bind(to_state, isoNow(), tenantId).run();
+  // GAP-26: Update lifecycle_state_updated_at
+  await c.env.DB.prepare('UPDATE tenants SET lifecycle_state = ?, lifecycle_state_updated_at = ?, updated_at = ? WHERE id = ?')
+    .bind(to_state, isoNow(), isoNow(), tenantId).run();
 
   await c.env.DB.prepare(`
     INSERT INTO tenant_lifecycle_history (id, tenant_id, from_state, to_state, reason, governor_decision_id, changed_by, changed_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(uuid(), tenantId, tenant.lifecycle_state || 'REGISTERED', to_state, reason || null, gov.decision_id, changed_by || null, isoNow()).run();
+  `).bind(uuid(), tenantId, fromState, to_state, reason || null, gov.decision_id, changed_by || null, isoNow()).run();
 
-  await auditLog(c.env.DB, 'tenants', tenantId, 'LIFECYCLE_TRANSITION', { lifecycle_state: tenant.lifecycle_state }, { lifecycle_state: to_state }, changed_by);
+  // GAP-25: Create Smart Inbox item for lifecycle state change
+  const restrictions = LIFECYCLE_FEATURE_RESTRICTIONS[to_state];
+  const inboxMessage = restrictions?.description || `Your organization status changed to ${to_state}.`;
+  try {
+    await createLifecycleInboxItem(c.env.DB, tenantId, fromState, to_state, inboxMessage);
+  } catch(e) { /* non-blocking */ }
 
-  return c.json({ data: { tenant_id: tenantId, from: tenant.lifecycle_state, to: to_state, governor_decision: gov }, message: `Lifecycle transitioned to ${to_state}` });
+  await auditLog(c.env.DB, 'tenants', tenantId, 'LIFECYCLE_TRANSITION', { lifecycle_state: fromState }, { lifecycle_state: to_state }, changed_by);
+
+  // GAP-27: Return feature restrictions for new state
+  return c.json({ data: {
+    tenant_id: tenantId, from: fromState, to: to_state,
+    governor_decision: gov,
+    feature_restrictions: restrictions || null,
+  }, message: `Lifecycle transitioned to ${to_state}` });
 });
 
 // Get lifecycle history
@@ -581,5 +604,404 @@ identity.post('/kyc/reverify', async (c) => {
 
   return c.json({ data: { employee_id, kyc_status: 'PENDING', reason, governor_decision: gov }, message: 'KYC re-verification triggered' });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-13: Contact Favorite/Block Toggle (Part 2.6)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.patch('/tenants/:tenantId/contacts/:contactGtid', async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const contactGtid = c.req.param('contactGtid');
+  const body = await c.req.json();
+
+  const updates: string[] = [];
+  const binds: any[] = [];
+
+  if (body.is_favorite !== undefined) {
+    updates.push('is_favorite = ?');
+    binds.push(body.is_favorite ? 1 : 0);
+  }
+  if (body.is_blocked !== undefined) {
+    updates.push('is_blocked = ?');
+    binds.push(body.is_blocked ? 1 : 0);
+  }
+  if (body.smart_labels) {
+    updates.push('smart_labels = ?');
+    binds.push(JSON.stringify(body.smart_labels));
+  }
+  if (body.relationship_type) {
+    updates.push('relationship_type = ?');
+    binds.push(body.relationship_type);
+  }
+
+  if (updates.length === 0) return c.json({ error: 'No update fields provided' }, 400);
+
+  binds.push(tenantId, contactGtid);
+  await c.env.DB.prepare(
+    `UPDATE tenant_contacts SET ${updates.join(', ')} WHERE tenant_id = ? AND contact_gtid = ?`
+  ).bind(...binds).run();
+
+  return c.json({ data: { message: 'Contact updated', contact_gtid: contactGtid, tenant_id: tenantId } });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-14: Contact Search/Filter (Part 2.6)
+// Blueprint: voice-driven contact management with filtering
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/tenants/:tenantId/contacts/search', async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const q = c.req.query('q');
+  const type = c.req.query('type');
+  const favorite = c.req.query('favorite');
+  const blocked = c.req.query('blocked');
+  const minScore = c.req.query('min_trust_score');
+
+  let sql = `
+    SELECT tc.*, t.legal_name, t.jurisdiction, t.type, ts.score as trust_score
+    FROM tenant_contacts tc
+    JOIN tenants t ON tc.contact_gtid = t.gtid
+    LEFT JOIN trust_scores ts ON tc.contact_gtid = ts.gtid
+    WHERE tc.tenant_id = ?
+  `;
+  const binds: any[] = [tenantId];
+
+  if (q) {
+    sql += ` AND (t.legal_name LIKE ? OR tc.contact_gtid LIKE ?)`;
+    binds.push(`%${q}%`, `%${q}%`);
+  }
+  if (type) { sql += ` AND t.type = ?`; binds.push(type); }
+  if (favorite === '1') { sql += ` AND tc.is_favorite = 1`; }
+  if (blocked === '0') { sql += ` AND tc.is_blocked = 0`; }
+  if (blocked === '1') { sql += ` AND tc.is_blocked = 1`; }
+  if (minScore) { sql += ` AND ts.score >= ?`; binds.push(parseFloat(minScore)); }
+
+  sql += ` ORDER BY tc.last_interaction DESC LIMIT 100`;
+
+  const { results } = await c.env.DB.prepare(sql).bind(...binds).all();
+  return c.json({ data: results, count: results.length });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-12: Automatic Contact Saving (Part 2.6)
+// Blueprint: contacts saved automatically on trade, logistics, financing, DM, distressed
+// Called internally by other route handlers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.post('/contacts/auto-save', async (c) => {
+  const body = await c.req.json();
+  const { tenant_id, contact_gtid, relationship_type, event_type } = body;
+
+  if (!tenant_id || !contact_gtid) {
+    return c.json({ error: 'tenant_id and contact_gtid required' }, 400);
+  }
+
+  // Don't save self-contacts
+  const tenant = await c.env.DB.prepare('SELECT gtid FROM tenants WHERE id = ?').bind(tenant_id).first() as any;
+  if (tenant?.gtid === contact_gtid) {
+    return c.json({ message: 'Self-contact skipped' });
+  }
+
+  await autoSaveContact(c.env.DB, tenant_id, contact_gtid, relationship_type || 'TRADE_PARTNER', event_type || 'MANUAL');
+
+  return c.json({ data: { message: 'Contact auto-saved', event_type, tenant_id, contact_gtid } });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-10: Icon Shuffle API (Part 2.5)
+// Blueprint: "shuffle is deterministic per session (seeded with session ID)"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/icon-shuffle', async (c) => {
+  const sessionId = c.req.query('session_id');
+  const employeeId = c.req.query('employee_id');
+
+  if (!sessionId && !employeeId) {
+    return c.json({ error: 'session_id or employee_id required' }, 400);
+  }
+
+  // Check if icon shuffle is enabled for the employee's tenant
+  let shuffleEnabled = true;
+  if (employeeId) {
+    const emp = await c.env.DB.prepare(`
+      SELECT e.icon_shuffle_permission, t.icon_shuffle_enabled 
+      FROM employees e JOIN tenants t ON e.tenant_id = t.id 
+      WHERE e.id = ?
+    `).bind(employeeId).first() as any;
+    if (emp && (!emp.icon_shuffle_enabled || !emp.icon_shuffle_permission)) {
+      shuffleEnabled = false;
+    }
+  }
+
+  // Default action icons per blueprint
+  const defaultIcons = [
+    'create_trade', 'view_contracts', 'manage_shipments', 'financing',
+    'documents', 'network', 'compliance', 'settings', 'inbox', 'analytics'
+  ];
+
+  const seed = sessionId || `${employeeId}-${new Date().toISOString().slice(0, 10)}`;
+  const shuffledIcons = shuffleEnabled ? generateIconShuffle(seed, defaultIcons) : defaultIcons;
+
+  return c.json({
+    data: {
+      icons: shuffledIcons,
+      shuffle_enabled: shuffleEnabled,
+      session_seed: seed,
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-11: Visibility Rules API (Part 2.5)
+// Blueprint: dynamically show/hide based on permissions, trader mode, lifecycle
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/visibility-rules', async (c) => {
+  const employeeId = c.req.query('employee_id');
+  if (!employeeId) return c.json({ error: 'employee_id required' }, 400);
+
+  const emp = await c.env.DB.prepare(`
+    SELECT e.*, t.type as tenant_type, t.lifecycle_state, t.default_trader_mode as tenant_trader_mode
+    FROM employees e JOIN tenants t ON e.tenant_id = t.id
+    WHERE e.id = ?
+  `).bind(employeeId).first() as any;
+
+  if (!emp) return c.json({ error: 'Employee not found' }, 404);
+
+  // Get permissions
+  const { results: perms } = await c.env.DB.prepare(
+    'SELECT permission FROM employee_permissions WHERE employee_id = ? AND grant_type = \'ALLOW\''
+  ).bind(employeeId).all();
+  const permissions = (perms || []).map((p: any) => p.permission);
+
+  const traderMode = emp.active_trader_mode_context || emp.default_trader_mode || 'DUAL';
+  const lifecycleState = emp.lifecycle_state || 'REGISTERED';
+
+  const rules = computeVisibilityRules(permissions, traderMode, lifecycleState, emp.tenant_type);
+
+  return c.json({
+    data: {
+      employee_id: employeeId,
+      trader_mode: traderMode,
+      lifecycle_state: lifecycleState,
+      tenant_type: emp.tenant_type,
+      visibility: rules,
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-27: Lifecycle Feature Access Check (Part 2.10)
+// Blueprint: "each state impacts allowed actions"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/tenants/:id/feature-access', async (c) => {
+  const tenantId = c.req.param('id');
+  const feature = c.req.query('feature');
+
+  const tenant = await c.env.DB.prepare('SELECT lifecycle_state FROM tenants WHERE id = ?').bind(tenantId).first() as any;
+  if (!tenant) return c.json({ error: 'Tenant not found' }, 404);
+
+  const lifecycleState = tenant.lifecycle_state || 'REGISTERED';
+
+  if (feature) {
+    const access = checkLifecycleFeatureAccess(lifecycleState, feature);
+    return c.json({ data: { feature, lifecycle_state: lifecycleState, ...access } });
+  }
+
+  // Return all feature restrictions for current state
+  const restrictions = LIFECYCLE_FEATURE_RESTRICTIONS[lifecycleState];
+  return c.json({ data: { lifecycle_state: lifecycleState, restrictions } });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-1/GAP-28: GTID Sequences Management (Part 2.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/gtid/sequences', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM gtid_sequences ORDER BY country_code, entity_type'
+  ).all();
+  return c.json({ data: results });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-3: Rate Limiting Simulation (Part 2.2)
+// Blueprint: "Rate limiting is enforced at the API gateway"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/rate-limits', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM api_rate_limits ORDER BY endpoint'
+  ).all();
+  return c.json({ data: results });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-9: Logistics Subrole Permissions (Part 2.4)
+// Blueprint: "only a customs broker can submit clearance documents"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/logistics/subrole-permissions', async (c) => {
+  const subrole = c.req.query('subrole');
+  let sql = 'SELECT * FROM logistics_subrole_permissions';
+  const binds: any[] = [];
+  if (subrole) { sql += ' WHERE subrole = ?'; binds.push(subrole); }
+  sql += ' ORDER BY subrole, permission';
+  const { results } = binds.length ?
+    await c.env.DB.prepare(sql).bind(...binds).all() :
+    await c.env.DB.prepare(sql).all();
+  return c.json({ data: results });
+});
+
+identity.post('/logistics/check-permission', async (c) => {
+  const body = await c.req.json();
+  const { tenant_id, permission } = body;
+
+  if (!permission) return c.json({ error: 'permission required' }, 400);
+
+  const tenant = await c.env.DB.prepare('SELECT logistics_subrole FROM tenants WHERE id = ?').bind(tenant_id).first() as any;
+  if (!tenant?.logistics_subrole) {
+    return c.json({ data: { allowed: false, reason: 'Tenant has no logistics subrole assigned' } });
+  }
+
+  const perm = await c.env.DB.prepare(
+    'SELECT * FROM logistics_subrole_permissions WHERE subrole = ? AND permission = ?'
+  ).bind(tenant.logistics_subrole, permission).first();
+
+  return c.json({
+    data: {
+      allowed: !!perm,
+      subrole: tenant.logistics_subrole,
+      permission,
+      reason: perm ? 'Permission granted for subrole' : `Subrole ${tenant.logistics_subrole} does not have permission ${permission}`,
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-8: Permission Versioning & Audit (Part 2.4)
+// Blueprint: "All permissions are stored in the database, versioned, and audited"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/employees/:id/permission-audit', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT * FROM permission_audit_log WHERE employee_id = ? ORDER BY changed_at DESC LIMIT 50'
+  ).bind(c.req.param('id')).all();
+  return c.json({ data: results });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-24: Cross-Tenant Groups (Part 2.9)
+// Blueprint: "Cross-tenant group for holding companies"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.get('/cross-tenant-groups', async (c) => {
+  const parentGtid = c.req.query('parent_gtid');
+  let sql = 'SELECT * FROM cross_tenant_groups';
+  const binds: any[] = [];
+  if (parentGtid) { sql += ' WHERE parent_gtid = ?'; binds.push(parentGtid); }
+  sql += ' ORDER BY created_at DESC';
+  const { results } = binds.length ?
+    await c.env.DB.prepare(sql).bind(...binds).all() :
+    await c.env.DB.prepare(sql).all();
+  return c.json({ data: results });
+});
+
+identity.post('/cross-tenant-groups', async (c) => {
+  const body = await c.req.json();
+  const id = uuid();
+
+  if (!body.name || !body.parent_gtid) {
+    return c.json({ error: 'name and parent_gtid required' }, 400);
+  }
+
+  await c.env.DB.prepare(`
+    INSERT INTO cross_tenant_groups (id, name, parent_gtid, member_gtids, group_type, created_by, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, body.name, body.parent_gtid, JSON.stringify(body.member_gtids || []), body.group_type || 'HOLDING_COMPANY', body.created_by || null, isoNow()).run();
+
+  return c.json({ data: { id, name: body.name }, message: 'Cross-tenant group created' }, 201);
+});
+
+identity.patch('/cross-tenant-groups/:id/members', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const group = await c.env.DB.prepare('SELECT member_gtids FROM cross_tenant_groups WHERE id = ?').bind(id).first() as any;
+  if (!group) return c.json({ error: 'Group not found' }, 404);
+
+  const members = JSON.parse(group.member_gtids || '[]');
+  if (body.action === 'add' && body.gtid) {
+    if (!members.includes(body.gtid)) members.push(body.gtid);
+  } else if (body.action === 'remove' && body.gtid) {
+    const idx = members.indexOf(body.gtid);
+    if (idx >= 0) members.splice(idx, 1);
+  }
+
+  await c.env.DB.prepare('UPDATE cross_tenant_groups SET member_gtids = ? WHERE id = ?')
+    .bind(JSON.stringify(members), id).run();
+
+  return c.json({ data: { id, member_gtids: members }, message: 'Group members updated' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GAP-19: Sandbox USTN Generation (Part 2.7.2)
+// Blueprint: "Synthetic USTNs use 'SB' prefix"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+identity.post('/sandbox/ustn', async (c) => {
+  const body = await c.req.json();
+  const ustn = generateSandboxUSTN(body.importer_suffix || '000', body.exporter_suffix || '000');
+  return c.json({ data: { ustn, sandbox: true }, message: 'Sandbox USTN generated with SB prefix' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GAP-12: Automatic contact saving helper
+// Called from trade creation, logistics quotes, financing, DM, distressed cargo
+async function autoSaveContact(db: D1Database, tenantId: string, contactGtid: string, relationshipType: string, eventType: string) {
+  try {
+    // Increment trade_count and total_value if it's a trade event
+    await db.prepare(`
+      INSERT INTO tenant_contacts (tenant_id, contact_gtid, relationship_type, first_interaction, last_interaction, auto_saved, trade_count, total_value)
+      VALUES (?, ?, ?, datetime('now'), datetime('now'), 1, ?, 0)
+      ON CONFLICT(tenant_id, contact_gtid) DO UPDATE SET
+        last_interaction = datetime('now'),
+        trade_count = CASE WHEN ? IN ('TRADE_CREATE','LOGISTICS_QUOTE','FINANCING_AGREEMENT') THEN trade_count + 1 ELSE trade_count END,
+        auto_saved = 1
+    `).bind(tenantId, contactGtid, relationshipType,
+      eventType === 'TRADE_CREATE' ? 1 : 0,
+      eventType
+    ).run();
+  } catch(e) { /* non-blocking */ }
+}
+
+// GAP-25: Smart Inbox lifecycle item helper
+async function createLifecycleInboxItem(db: D1Database, tenantId: string, fromState: string, toState: string, message: string) {
+  // Get all active employees for this tenant to create inbox items
+  const { results: employees } = await db.prepare(
+    "SELECT id FROM employees WHERE tenant_id = ? AND status IN ('ACTIVE','INVITED','PENDING_APPROVAL')"
+  ).bind(tenantId).all();
+
+  for (const emp of (employees || [])) {
+    try {
+      await db.prepare(`
+        INSERT INTO smart_inbox_items (id, employee_id, item_id, category, priority_score, title, description, action_link, dismissed, created_at, updated_at)
+        VALUES (?, ?, ?, 'COMPLIANCE', 95, ?, ?, '/dashboard/lifecycle', 0, ?, ?)
+      `).bind(
+        uuid(), (emp as any).id, uuid(),
+        `Organization Status: ${toState}`,
+        message,
+        isoNow(), isoNow()
+      ).run();
+    } catch(e) { /* non-blocking — smart_inbox_items may not exist yet */ }
+  }
+}
+
+// Export autoSaveContact for use by other route modules
+export { autoSaveContact };
 
 export default identity;

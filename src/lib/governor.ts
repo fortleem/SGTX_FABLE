@@ -389,10 +389,23 @@ const POLICY_RULES: Record<string, (ctx: any) => { verdict: GovernorVerdict; con
   },
 
   // ─── Part 0-2 Additional Policies ─────────────────────
-  // Part 2.3: Dual-mode context switch
+  // Part 2.3/2.8: Dual-mode context switch (GAP-22: enforcement message)
   'dual_mode.switch': (ctx) => {
     if (ctx.from === ctx.to) return { verdict: 'ALLOW', conditions: [], explanation: 'No context change needed' };
-    return { verdict: 'ALLOW', conditions: [], explanation: 'Trader mode context switch authorized — OPA role validation passed (Part 2.3)' };
+    return { verdict: 'ALLOW', conditions: [], explanation: `Trader mode context switch authorized: ${ctx.from || 'DUAL'} → ${ctx.to}. OPA role validation passed (Part 2.3). Note: Actions are restricted to the active mode context.` };
+  },
+  // Part 2.8 (GAP-22): Dual-mode action enforcement — blocks wrong-mode actions
+  'dual_mode.action_check': (ctx) => {
+    const { action_type, current_mode } = ctx;
+    const buyActions = ['trade.create_buy', 'trade.import', 'purchase_order.create'];
+    const sellActions = ['trade.create_sell', 'trade.export', 'sales_order.create'];
+    if (current_mode === 'BUY' && sellActions.includes(action_type)) {
+      return { verdict: 'DENY', conditions: [], explanation: `You are currently in Buyer mode. Switch to Seller mode to perform this action. (Part 2.8 Dual-Mode Toggle)` };
+    }
+    if (current_mode === 'SELL' && buyActions.includes(action_type)) {
+      return { verdict: 'DENY', conditions: [], explanation: `You are currently in Seller mode. Switch to Buyer mode to perform this action. (Part 2.8 Dual-Mode Toggle)` };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: `Action ${action_type} permitted in ${current_mode} mode` };
   },
   // Part 2.8: Tenant lifecycle transition
   'tenant.lifecycle.transition': (ctx) => {
@@ -416,6 +429,9 @@ const POLICY_RULES: Record<string, (ctx: any) => { verdict: GovernorVerdict; con
   },
   'onboarding.go_live': (ctx) => {
     return { verdict: 'ALLOW', conditions: [], explanation: 'Sandbox exit authorized — transition to production mode (Part 2.7)' };
+  },
+  'tenant.go_live': (ctx) => {
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Sandbox exit authorized — transition to production mode (Part 2.7). KYB status determines target lifecycle state.' };
   },
   // Part 1.5: Contract genesis
   'contract.genesis': (ctx) => {

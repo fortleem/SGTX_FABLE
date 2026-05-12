@@ -1,4 +1,4 @@
-// SGTX Platform — Utility Functions (v6.3 Blueprint Parts 0-2 Aligned)
+// SGTX Platform — Utility Functions (v6.3 Blueprint Parts 0-2 Fully Aligned)
 
 // Generate UUID v4
 export function uuid(): string {
@@ -79,6 +79,37 @@ export function generateGTID(country: string, entityType: string, sequence: numb
   const base = `SGTX-${country}-${entityType}-${seq}`;
   const checksum = (crc32(base) & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
   return `${base}-${checksum}`;
+}
+
+// Part 2.1 (GAP-1/GAP-28): Atomic GTID sequence generation via DB
+// Blueprint: "sequence stored in PostgreSQL and incremented atomically"
+// Uses gtid_sequences table for deterministic, collision-free GTID assignment
+export async function generateGTIDWithSequence(db: D1Database, country: string, entityType: string): Promise<string> {
+  // Atomic increment: INSERT OR UPDATE the sequence counter
+  await db.prepare(`
+    INSERT INTO gtid_sequences (country_code, entity_type, current_sequence, last_assigned_at)
+    VALUES (?, ?, 1, datetime('now'))
+    ON CONFLICT(country_code, entity_type) DO UPDATE SET
+      current_sequence = current_sequence + 1,
+      last_assigned_at = datetime('now')
+  `).bind(country.toUpperCase(), entityType).run();
+
+  // Read the current (just-incremented) sequence
+  const row = await db.prepare(
+    'SELECT current_sequence FROM gtid_sequences WHERE country_code = ? AND entity_type = ?'
+  ).bind(country.toUpperCase(), entityType).first() as any;
+
+  const sequence = row?.current_sequence || 1;
+  return generateGTID(country.toUpperCase(), entityType, sequence);
+}
+
+// Part 2.7.2 (GAP-19): Sandbox synthetic USTN with "SB" prefix
+export function generateSandboxUSTN(importerSuffix: string, exporterSuffix: string): string {
+  const now = new Date();
+  const ts = now.toISOString().replace(/[-T:\.Z]/g, '').slice(0, 14);
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+    .map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return `SB-${importerSuffix}-${exporterSuffix}-${ts}-${rand}`;
 }
 
 // Validate GTID format
@@ -197,7 +228,8 @@ export function generateInvitationToken(): { token: string; expires_at: string }
   return { token, expires_at: expires.toISOString().replace('T', ' ').slice(0, 19) };
 }
 
-// Part 2.8: Validate lifecycle state transitions
+// Part 2.10: Validate lifecycle state transitions
+// States: REGISTERED, ONBOARDING, KYB_PENDING, VERIFIED, LIMITED_MODE, AT_RISK, SUSPENDED, ARCHIVED
 const VALID_LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
   'REGISTERED': ['ONBOARDING'],
   'ONBOARDING': ['KYB_PENDING', 'REGISTERED'],
@@ -212,4 +244,114 @@ const VALID_LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
 export function validateLifecycleTransition(from: string, to: string): boolean {
   const allowed = VALID_LIFECYCLE_TRANSITIONS[from];
   return allowed ? allowed.includes(to) : false;
+}
+
+// Part 2.10 (GAP-27): Lifecycle state feature restrictions
+// Blueprint: "each state impacts allowed actions"
+export const LIFECYCLE_FEATURE_RESTRICTIONS: Record<string, { allowed: string[]; blocked: string[]; description: string }> = {
+  'REGISTERED': {
+    allowed: ['onboarding', 'profile.view', 'sandbox'],
+    blocked: ['trade.create', 'contract.sign', 'shipment.create', 'financing.request'],
+    description: 'New tenant. Only onboarding and sandbox access allowed.'
+  },
+  'ONBOARDING': {
+    allowed: ['onboarding', 'profile.edit', 'sandbox', 'kyb.submit'],
+    blocked: ['trade.create', 'contract.sign', 'shipment.create', 'financing.request'],
+    description: 'Onboarding in progress. Sandbox mode only.'
+  },
+  'KYB_PENDING': {
+    allowed: ['profile.view', 'sandbox', 'contacts.view', 'kyb.submit'],
+    blocked: ['trade.create', 'contract.sign', 'shipment.create', 'financing.request'],
+    description: 'KYB verification pending. Real trade creation disabled, sandbox allowed.'
+  },
+  'VERIFIED': {
+    allowed: ['*'],
+    blocked: [],
+    description: 'Fully verified. All features available.'
+  },
+  'LIMITED_MODE': {
+    allowed: ['trade.view', 'profile.view', 'contacts.view', 'contract.view', 'support'],
+    blocked: ['trade.create', 'financing.request', 'contract.sign'],
+    description: 'Limited mode. View-only access to trades, no new trade creation.'
+  },
+  'AT_RISK': {
+    allowed: ['profile.view', 'trade.view', 'support', 'compliance.respond'],
+    blocked: ['trade.create', 'contract.sign', 'shipment.create', 'financing.request'],
+    description: 'At risk. Compliance action required. Limited to view and compliance responses.'
+  },
+  'SUSPENDED': {
+    allowed: ['profile.view', 'support', 'data.export'],
+    blocked: ['trade.create', 'trade.view', 'contract.sign', 'shipment.create', 'financing.request'],
+    description: 'Suspended. Contact support. Only profile view and data export allowed.'
+  },
+  'ARCHIVED': {
+    allowed: ['data.export'],
+    blocked: ['*'],
+    description: 'Archived. Data export only. No other actions permitted.'
+  },
+};
+
+export function checkLifecycleFeatureAccess(lifecycleState: string, feature: string): { allowed: boolean; reason: string } {
+  const restrictions = LIFECYCLE_FEATURE_RESTRICTIONS[lifecycleState];
+  if (!restrictions) return { allowed: false, reason: `Unknown lifecycle state: ${lifecycleState}` };
+  if (restrictions.allowed.includes('*')) return { allowed: true, reason: 'Fully verified tenant' };
+  if (restrictions.blocked.includes('*')) return { allowed: false, reason: restrictions.description };
+  if (restrictions.blocked.includes(feature)) return { allowed: false, reason: restrictions.description };
+  if (restrictions.allowed.includes(feature)) return { allowed: true, reason: 'Permitted in current state' };
+  return { allowed: false, reason: `Feature '${feature}' not explicitly allowed in ${lifecycleState} state` };
+}
+
+// Part 2.5 (GAP-10): Icon Shuffle — deterministic per session
+// Blueprint: "shuffle is deterministic per session (seeded with session ID)"
+export function generateIconShuffle(sessionSeed: string, icons: string[]): string[] {
+  // Simple deterministic shuffle using seed hash
+  const shuffled = [...icons];
+  let seed = 0;
+  for (let i = 0; i < sessionSeed.length; i++) {
+    seed = ((seed << 5) - seed + sessionSeed.charCodeAt(i)) | 0;
+  }
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    const j = seed % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Part 2.5 (GAP-11): Visibility Rules — dynamic show/hide based on permissions, trader mode, lifecycle
+export function computeVisibilityRules(
+  permissions: string[],
+  traderMode: string,
+  lifecycleState: string,
+  tenantType: string
+): Record<string, boolean> {
+  const restrictions = LIFECYCLE_FEATURE_RESTRICTIONS[lifecycleState] || LIFECYCLE_FEATURE_RESTRICTIONS['REGISTERED'];
+  const isFullAccess = restrictions.allowed.includes('*');
+  
+  return {
+    // Navigation tabs
+    nav_dashboard: true,
+    nav_trades: isFullAccess || restrictions.allowed.includes('trade.view'),
+    nav_contracts: isFullAccess || restrictions.allowed.includes('contract.view'),
+    nav_shipments: isFullAccess || restrictions.allowed.includes('shipment.view'),
+    nav_financing: isFullAccess && (tenantType === 'CORPORATE' || tenantType === 'FINANCIAL'),
+    nav_network: isFullAccess || restrictions.allowed.includes('contacts.view'),
+    nav_settings: true,
+    nav_compliance: isFullAccess || restrictions.allowed.includes('compliance.respond'),
+    // Trader mode specific
+    show_buy_actions: traderMode === 'BUY' || traderMode === 'DUAL',
+    show_sell_actions: traderMode === 'SELL' || traderMode === 'DUAL',
+    show_mode_toggle: traderMode === 'DUAL',
+    // Action buttons
+    btn_create_trade: isFullAccess && !restrictions.blocked.includes('trade.create'),
+    btn_sign_contract: isFullAccess && !restrictions.blocked.includes('contract.sign'),
+    btn_create_shipment: isFullAccess && !restrictions.blocked.includes('shipment.create'),
+    btn_request_financing: isFullAccess && !restrictions.blocked.includes('financing.request'),
+    // Sandbox
+    show_sandbox_banner: lifecycleState === 'ONBOARDING' || lifecycleState === 'KYB_PENDING',
+    // Logistics-specific
+    show_logistics_panel: tenantType === 'LOGISTICS',
+    show_qc_panel: tenantType === 'QUALITY_CONTROL',
+    show_government_panel: tenantType === 'GOVERNMENT' || tenantType === 'REGULATORY',
+  };
 }

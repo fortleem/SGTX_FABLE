@@ -5,7 +5,7 @@
 // Part 2.7: Onboarding state initialization (6 steps, sandbox mode)
 // Part 2.8: Lifecycle state management on registration
 import { Hono } from 'hono';
-import { uuid, sha256, isoNow, generateGTID, generateInvitationToken, ENTITY_TYPE_MAP } from '../lib/utils';
+import { uuid, sha256, isoNow, generateGTID, generateGTIDWithSequence, generateInvitationToken, ENTITY_TYPE_MAP } from '../lib/utils';
 import { evaluateGovernor, auditLog } from '../lib/governor';
 import type { Bindings } from '../lib/types';
 
@@ -25,9 +25,9 @@ auth.post('/register', async (c) => {
   }
 
   const tenantId = uuid();
-  const seq = Math.floor(Math.random() * 999999);
   const entityType = ENTITY_TYPE_MAP[type || 'CORPORATE'] || 'TRD';
-  const gtid = generateGTID(jurisdiction, entityType, seq);
+  // GAP-1: Use atomic DB-backed sequence instead of Math.random()
+  const gtid = await generateGTIDWithSequence(c.env.DB, jurisdiction, entityType);
   const hash = await sha256(JSON.stringify({ gtid, legal_name, jurisdiction }));
   const pwHash = await sha256(admin_password);
 
@@ -42,9 +42,9 @@ auth.post('/register', async (c) => {
 
   // Create tenant with Part 2.8 lifecycle_state
   await c.env.DB.prepare(`
-    INSERT INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, cryptographic_hash, risk_score, sanctions_cleared, lifecycle_state, operating_mode, default_trader_mode, sandbox_mode, onboarding_completed, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'PENDING', ?, 50.0, 0, 'REGISTERED', ?, ?, 1, 0, ?, ?)
-  `).bind(tenantId, gtid, legal_name, jurisdiction, type || 'CORPORATE', hash, operating_mode || 'SIMPLE', default_trader_mode || 'DUAL', isoNow(), isoNow()).run();
+    INSERT INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, cryptographic_hash, risk_score, sanctions_cleared, lifecycle_state, lifecycle_state_updated_at, operating_mode, default_trader_mode, sandbox_mode, onboarding_completed, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 'PENDING', ?, 50.0, 0, 'REGISTERED', ?, ?, ?, 1, 0, ?, ?)
+  `).bind(tenantId, gtid, legal_name, jurisdiction, type || 'CORPORATE', hash, isoNow(), operating_mode || 'SIMPLE', default_trader_mode || 'DUAL', isoNow(), isoNow()).run();
 
   // Part 2.8: Initialize lifecycle history
   await c.env.DB.prepare(`
