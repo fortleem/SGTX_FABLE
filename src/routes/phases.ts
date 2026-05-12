@@ -19,7 +19,8 @@ phases.post('/trade/initiate', async (c) => {
   const {
     importer_tenant_id, exporter_gtid, raw_description,
     commodities, incoterm, destination_country, origin_country,
-    containers, notes, parsed_specs
+    containers, notes, parsed_specs,
+    transport_mode, seller_gtid, seller_company_name
   } = body;
 
   if (!importer_tenant_id) return c.json({ error: 'importer_tenant_id required' }, 400);
@@ -78,9 +79,9 @@ phases.post('/trade/initiate', async (c) => {
   const status = exporterTenantId ? 'PENDING_EXPORTER_RESPONSE' : 'DRAFT';
 
   await DB.prepare(`
-    INSERT INTO trade_requests (id, importer_tenant_id, exporter_tenant_id, assigned_exporter_id, raw_description, parsed_specs, status, governor_decision_id, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, importer_tenant_id, exporterTenantId, exporterTenantId, raw_description || null, specsJson, status, gov.decision_id, employeeId, isoNow(), isoNow()).run();
+    INSERT INTO trade_requests (id, importer_tenant_id, exporter_tenant_id, assigned_exporter_id, raw_description, parsed_specs, status, governor_decision_id, created_by, transport_mode, seller_gtid, seller_company_name, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, importer_tenant_id, exporterTenantId, exporterTenantId, raw_description || null, specsJson, status, gov.decision_id, employeeId, transport_mode || 'SEA_CARGO', seller_gtid || null, seller_company_name || null, isoNow(), isoNow()).run();
 
   // ── Persist container-level detail (new multi-container flow) ──
   const savedContainers: any[] = [];
@@ -89,8 +90,8 @@ phases.post('/trade/initiate', async (c) => {
       const ct = containers[ci];
       const containerId = uuid();
       await DB.prepare(`
-        INSERT INTO trade_containers (id, trade_request_id, container_index, container_type, origin_country, destination_country, port_of_discharge, port_of_loading, palletized, pallet_size, cloned_from_container_id, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO trade_containers (id, trade_request_id, container_index, container_type, origin_country, destination_country, port_of_discharge, port_of_loading, palletized, pallet_size, cloned_from_container_id, notes, transport_mode, destination_override, port_of_loading_unlocode, port_of_discharge_unlocode, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         containerId, id, ci + 1,
         ct.container_type || '40ft_HC',
@@ -102,6 +103,10 @@ phases.post('/trade/initiate', async (c) => {
         ct.pallet_size || '120x100',
         ct.cloned_from || null,
         ct.notes || null,
+        ct.transport_mode || transport_mode || 'SEA_CARGO',
+        ct.destination_override || null,
+        ct.port_of_loading_unlocode || null,
+        ct.port_of_discharge_unlocode || null,
         isoNow()
       ).run();
 
@@ -111,8 +116,8 @@ phases.post('/trade/initiate', async (c) => {
           const cm = ct.commodities[pi];
           const cmId = uuid();
           await DB.prepare(`
-            INSERT INTO trade_container_commodities (id, trade_container_id, trade_request_id, commodity_type, product_name, hs_code, product_specification, packaging, packaging_custom, num_pallets, quantity, unit, sort_order, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trade_container_commodities (id, trade_container_id, trade_request_id, commodity_type, product_name, hs_code, product_specification, packaging, packaging_custom, num_pallets, quantity, unit, sort_order, net_weight_per_unit, gross_weight_per_unit, tare_weight_per_unit, total_units, total_net_weight, total_gross_weight, weight_unit, quantity_type, packaging_description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).bind(
             cmId, containerId, id,
             cm.commodity_type || 'OTHER',
@@ -125,6 +130,15 @@ phases.post('/trade/initiate', async (c) => {
             cm.quantity || null,
             cm.unit || 'KG',
             pi + 1,
+            cm.net_weight_per_unit || null,
+            cm.gross_weight_per_unit || null,
+            cm.tare_weight_per_unit || null,
+            cm.total_units || null,
+            cm.total_net_weight || null,
+            cm.total_gross_weight || null,
+            cm.weight_unit || 'KG',
+            cm.quantity_type || 'WEIGHT',
+            cm.packaging_description || null,
             isoNow()
           ).run();
           savedCommodities.push({ id: cmId, ...cm });
