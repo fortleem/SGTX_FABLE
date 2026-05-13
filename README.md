@@ -199,24 +199,32 @@ POST /admin/onboard-partner         — AI agreement generation
 | Container Types | 11 types: 20GP, 40GP, 40HC, 20RF, 40RF, 20OT, 40OT, 20FR, 40FR, 20TK, 45HC | ✅ |
 | Draft Save/Load | Auto-save with incoterm, target_price, currency, unit persistence | ✅ |
 | Governor Gating | All submissions evaluated by Governor with incoterm + target_price context | ✅ |
+| Multi-Shipment Schedule | Toggle-enabled schedule builder: per-shipment date/port/container count/commodities, add/clone/remove, G1U10 validation | ✅ |
+| Marketplace Attribution | Auto-detection of marketplace relationships (G1U8), transparency banner, 72-hour dispute window | ✅ |
+| PlainLanguage Decision Panel | Styled modal (G1U11) with DENY (red), CONDITIONAL (amber), INFO (blue) modes — replaces all alert() | ✅ |
+| Governor Gates G1U4-G1U11 | G1U4 dual-use HS check, G1U7 data consistency, G1U8 marketplace, G1U9 container override log, G1U10 multi-shipment, G1U11 PlainLanguage | ✅ |
+| Commodity Compatibility Warnings | Ethylene conflict detection, temperature range >10°C spread, reefer/non-reefer mix warnings | ✅ |
+| Trust Portrait | Seller trust profile link — jurisdiction, KYB status, risk tier, sanctions, trust score via PlainLanguage modal | ✅ |
 
-### Trade Request Form API Endpoints (15 total)
+### Trade Request Form API Endpoints (17 total)
 ```
-GET  /api/v1/trade-form/contacts-search    — Search saved contacts by name/GTID
-GET  /api/v1/trade-form/gtid-resolve       — Resolve GTID to entity details
-GET  /api/v1/trade-form/ports              — Ports by country (direction=discharge|loading)
-GET  /api/v1/trade-form/hs-lookup          — HS code lookup by code
-GET  /api/v1/trade-form/hs-search          — HS code search by keyword
-GET  /api/v1/trade-form/packaging          — Packaging types (optionally by category)
+GET  /api/v1/trade-form/contacts-search      — Search saved contacts by name/GTID
+GET  /api/v1/trade-form/gtid-resolve         — Resolve GTID to entity details
+GET  /api/v1/trade-form/ports                — Ports by country (direction=discharge|loading)
+GET  /api/v1/trade-form/hs-lookup            — HS code lookup by code
+GET  /api/v1/trade-form/hs-search            — HS code search by keyword
+GET  /api/v1/trade-form/packaging            — Packaging types (optionally by category)
 GET  /api/v1/trade-form/packaging-categories — List packaging categories
-GET  /api/v1/trade-form/transport-modes    — Available transport modes
-POST /api/v1/trade-form/calculate-weights  — Weight calculator (net/gross/CBM)
-POST /api/v1/trade-form/draft-save         — Save form draft
-GET  /api/v1/trade-form/draft-load         — Load saved draft
-GET  /api/v1/trade-form/drafts             — List all drafts for user
-POST /api/v1/trade-form/submit             — Submit trade request (Governor-gated)
-GET  /api/v1/trade-form/container-advisor  — AI reefer/container recommendation per commodity
+GET  /api/v1/trade-form/transport-modes      — Available transport modes
+POST /api/v1/trade-form/calculate-weights    — Weight calculator (net/gross/CBM)
+POST /api/v1/trade-form/draft-save           — Save form draft (incl. multi-shipment)
+GET  /api/v1/trade-form/draft-load           — Load saved draft (incl. multi-shipment restore)
+GET  /api/v1/trade-form/drafts               — List all drafts for user
+POST /api/v1/trade-form/submit               — Submit trade request (Governor-gated, G1U4-G1U11)
+GET  /api/v1/trade-form/container-advisor    — AI reefer/container recommendation per commodity
 POST /api/v1/trade-form/container-advisor/batch — Bulk commodity recommendations
+GET  /api/v1/trade-form/marketplace-check    — Marketplace relationship detection (G1U8)
+GET  /api/v1/trade-form/trust-portrait       — Seller Trust Portrait (jurisdiction/KYB/risk/sanctions)
 ```
 
 ### Reference Data API Endpoints (9 total)
@@ -247,7 +255,7 @@ GET  /api/v1/ref/incoterms        — 11 incoterms (EXW→DDP)
 | 0 | Constitutional Layer (G1–G4) | ✅ Complete | `e3de27a` |
 | 1 | Governance Engine & Governor Service | ✅ Complete | `e3de27a` |
 | 2 | Identity & Tenant Management | ✅ Complete (14/14 gap tests) | `2fb9580` |
-| 3 Phase 1 | Structured Trade Request Form (Buyer) | ✅ Complete (12/12 tests) | `ed164d8` |
+| 3 Phase 1 | Structured Trade Request Form (Buyer) | ✅ Complete (19/19 tests, gap-free) | `521f201` |
 | 3 Phase 2 | Seller Quote Response | ⏳ Pending | — |
 | 4–28 | Remaining Blueprint Parts | ⏳ Pending | — |
 
@@ -255,3 +263,15 @@ GET  /api/v1/ref/incoterms        — 11 incoterms (EXW→DDP)
 - **Platform**: Cloudflare Pages (Sandbox)
 - **Status**: ✅ Active
 - **Last Updated**: 2026-05-13
+
+### Part 3 Phase 1 — Gap Analysis Summary
+All 6 gaps identified during comprehensive blueprint gap analysis have been resolved:
+1. **Multi-Shipment Schedule Builder** (Step 1.3) — toggle, per-shipment fields, add/clone/remove, G1U10 validation
+2. **Marketplace Relationship Detection** (Step 1.5) — `/marketplace-check` endpoint, auto-check, transparency banner, 72h dispute
+3. **PlainLanguage Decision Panel** (G1U11) — styled modal replacing all `alert()` calls for governor decisions
+4. **Governor Gate Validations** (G1U4/G1U7/G1U9/G1U10) — dual-use check, data consistency, override logging, multi-shipment validation
+5. **Commodity Compatibility Warnings** — ethylene conflicts, temperature spread, reefer/non-reefer mix
+6. **Trust Portrait** (Step 1.1) — seller trust profile via PlainLanguage modal in INFO mode
+
+**Test Results**: 19/19 assertions passing (10 new gap tests + 9 regression tests)
+**Commits**: Initial `ed164d8` → Gap fixes `521f201`
