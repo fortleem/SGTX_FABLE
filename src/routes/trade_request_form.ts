@@ -101,10 +101,12 @@ tradeForm.get('/trade-form/gtid-resolve', async (c) => {
 // Blueprint 3.0 Step 1.2.2: Port of Discharge filtered by Destination Country
 // ═══════════════════════════════════════════════════════════════════
 
-// GET /trade-form/ports?country=EG&transport_mode=SEA_CARGO
+// GET /trade-form/ports?country=EG&transport_mode=SEA_CARGO&direction=discharge
+// direction param: 'discharge' (buyer only sees destination ports), 'loading' (seller Phase 2), or omit for all
 tradeForm.get('/trade-form/ports', async (c) => {
   const country = c.req.query('country')?.toUpperCase();
   const transportMode = c.req.query('transport_mode');
+  const direction = c.req.query('direction'); // 'discharge' | 'loading' | undefined
   if (!country) return c.json({ error: 'country required' }, 400);
 
   // Map transport mode to port type
@@ -121,7 +123,10 @@ tradeForm.get('/trade-form/ports', async (c) => {
     ORDER BY name ASC
   `).bind(country).all();
 
-  return c.json({ data: results || [] });
+  return c.json({
+    data: results || [],
+    meta: { country, transport_mode: transportMode, direction: direction || 'all' }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -452,12 +457,14 @@ tradeForm.post('/trade-form/submit', async (c) => {
   const body = await c.req.json();
   const {
     tenant_id, employee_id, draft_id,
-    transport_mode, seller_gtid, seller_company_name,
+    transport_mode, incoterm, seller_gtid, seller_company_name,
+    target_price, target_currency, target_price_unit,
     containers, global_notes
   } = body;
 
   if (!tenant_id) return c.json({ error: 'tenant_id required' }, 400);
   if (!containers || !containers.length) return c.json({ error: 'At least one container required' }, 400);
+  if (!incoterm) return c.json({ error: 'incoterm required' }, 400);
 
   const now = isoNow();
   const tradeId = draft_id || uuid();
@@ -509,8 +516,10 @@ tradeForm.post('/trade-form/submit', async (c) => {
     actor_employee_id: empId,
     action_context: {
       transport_mode,
+      incoterm,
       seller_gtid: sellerGtid,
       container_count: containers.length,
+      target_price,
       commodities: containers.flatMap((ct: any) => (ct.commodities || []).map((cm: any) => cm.hs_code)).filter(Boolean),
     },
     jurisdictions,
@@ -522,14 +531,15 @@ tradeForm.post('/trade-form/submit', async (c) => {
 
   const status = sellerTenantId ? 'PENDING_EXPORTER_RESPONSE' : 'MATCHING';
 
-  // Build parsed_specs JSONB
+  // Build parsed_specs JSONB — buyer flow: no port_of_loading (that's seller Phase 2)
   const parsedSpecs = {
     containers: containers.map((ct: any, ci: number) => ({
       container_index: ci + 1,
       country_of_origin: ct.origin_country,
       destination_country: ct.destination_country,
-      port_of_loading: ct.port_of_loading,
+      // Buyer only selects port of discharge. Port of loading = Seller Phase 2.
       port_of_discharge: ct.port_of_discharge,
+      port_of_discharge_unlocode: ct.port_of_discharge_unlocode || null,
       transport_mode: ct.transport_mode || transport_mode,
       palletized: ct.palletized,
       pallet_size: ct.pallet_size,
@@ -554,6 +564,10 @@ tradeForm.post('/trade-form/submit', async (c) => {
         num_pallets: cm.num_pallets,
       })),
     })),
+    incoterm,
+    target_price: target_price || null,
+    target_currency: target_currency || 'USD',
+    target_price_unit: target_price_unit || 'PER_TON',
     transport_mode,
     global_notes,
   };
@@ -608,8 +622,8 @@ tradeForm.post('/trade-form/submit', async (c) => {
       containerId, tradeId, ci + 1,
       ct.container_type || '40ft_HC',
       ct.origin_country || '', ct.destination_country || '',
-      ct.port_of_discharge || null, ct.port_of_loading || null,
-      ct.port_of_loading_unlocode || null, ct.port_of_discharge_unlocode || null,
+      ct.port_of_discharge || null, null, /* port_of_loading = null for buyer, set by seller Phase 2 */
+      null, /* port_of_loading_unlocode = null for buyer */ ct.port_of_discharge_unlocode || null,
       ct.palletized !== false ? 1 : 0, ct.pallet_size || '120x100',
       ct.transport_mode || transport_mode || 'SEA_CARGO',
       ct.destination_override || null, ct.notes || null, now
@@ -672,7 +686,7 @@ tradeForm.post('/trade-form/submit', async (c) => {
   // Audit log
   try {
     await auditLog(c.env.DB, 'trade_requests', tradeId, 'CREATE', null, {
-      status, containers: savedContainers.length, transport_mode
+      status, containers: savedContainers.length, transport_mode, incoterm, target_price
     }, (buyer as any).gtid);
   } catch (e) { /* non-blocking */ }
 
@@ -682,7 +696,7 @@ tradeForm.post('/trade-form/submit', async (c) => {
       INSERT INTO trade_event_timeline (id, ustn, event_type, event_text, event_data, actor_gtid, phase, created_at)
       VALUES (?, ?, 'PHASE_1', 'Trade request submitted via advanced form', ?, ?, 'Phase 1', ?)
     `).bind(uuid(), tradeId, JSON.stringify({
-      containers: savedContainers.length, transport_mode, seller_gtid: sellerGtid
+      containers: savedContainers.length, transport_mode, incoterm, seller_gtid: sellerGtid, target_price
     }), (buyer as any).gtid, now).run();
   } catch (e) { /* non-blocking */ }
 
@@ -690,14 +704,196 @@ tradeForm.post('/trade-form/submit', async (c) => {
     data: {
       trade_request_id: tradeId,
       status,
+      incoterm: incoterm || null,
       transport_mode: transport_mode || 'SEA_CARGO',
       seller_gtid: sellerGtid,
+      target_price: target_price || null,
+      target_currency: target_currency || 'USD',
+      target_price_unit: target_price_unit || 'PER_TON',
       containers: savedContainers,
       total_containers: savedContainers.length,
       governor_decision: gov,
     },
-    message: `Trade request submitted with ${savedContainers.length} container(s). ${sellerTenantId ? 'Awaiting seller quote.' : 'Listed for matching.'}`
+    message: `Trade request submitted with ${savedContainers.length} container(s) under ${incoterm}. ${sellerTenantId ? 'Awaiting seller quote.' : 'Listed for matching.'}`
   }, 201);
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// AI CONTAINER ADVISOR — Reefer / Temperature Intelligence API
+// Returns temperature, humidity, air circulation, ethylene management
+// recommendations based on commodity type and product
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /trade-form/container-advisor?commodity_type=FRESH_FRUITS&product_name=Oranges
+tradeForm.get('/trade-form/container-advisor', async (c) => {
+  const commodityType = c.req.query('commodity_type');
+  const productName = c.req.query('product_name');
+  if (!commodityType) return c.json({ error: 'commodity_type required' }, 400);
+
+  // Comprehensive reefer intelligence database
+  const REEFER_DB: Record<string, any> = {
+    FROZEN_FRUITS: { temp_min: -18, temp_max: -18, humidity: '85-90%', air_circ_cbm_hr: 40, ethylene_mgmt: false, reefer_required: true, container_recommendation: '40ft_HC_RF', label: 'Deep Frozen', notes: 'Maintain -18°C throughout cold chain. No temperature breaks allowed. Pre-cool container before loading.' },
+    FROZEN_VEGETABLES: { temp_min: -18, temp_max: -18, humidity: '90-95%', air_circ_cbm_hr: 40, ethylene_mgmt: false, reefer_required: true, container_recommendation: '40ft_HC_RF', label: 'Deep Frozen', notes: 'Maintain -18°C. Avoid refreezing after thaw. Check blast freeze records.' },
+    MEAT_POULTRY: { temp_min: -18, temp_max: -1, humidity: '85-90%', air_circ_cbm_hr: 30, ethylene_mgmt: false, reefer_required: true, container_recommendation: '40ft_RF', label: 'Frozen/Chilled', notes: 'Frozen: -18°C. Chilled: -1 to 4°C. Separate from strong-smelling cargo. Halal/Kosher certification may be required.' },
+    SEAFOOD: { temp_min: -25, temp_max: 2, humidity: '85-95%', air_circ_cbm_hr: 40, ethylene_mgmt: false, reefer_required: true, container_recommendation: '40ft_HC_RF', label: 'Frozen/Chilled', notes: 'Frozen seafood: -18 to -25°C. Fresh/chilled: -1 to 2°C. Hygiene and food safety critical.' },
+    DAIRY: { temp_min: 0, temp_max: 5, humidity: '85-90%', air_circ_cbm_hr: 25, ethylene_mgmt: false, reefer_required: true, container_recommendation: '40ft_RF', label: 'Chilled', notes: 'Keep 0-5°C. Separate from odor-producing goods. Continuous temperature monitoring required.' },
+    FRESH_FRUITS: { temp_min: -1, temp_max: 14, humidity: '85-95%', air_circ_cbm_hr: 60, ethylene_mgmt: true, reefer_required: true, container_recommendation: '40ft_HC_RF', label: 'Fresh / Controlled Atmosphere',
+      notes: 'Temperature varies by fruit type. High air circulation (60+ CBM/hr). Ethylene management critical.',
+      product_specific: {
+        'Oranges': { temp_min: 4, temp_max: 8, humidity: '85-90%', notes: '4-8°C, 85-90% humidity. 4-6 weeks shelf life. Low ethylene producer.' },
+        'Lemons & Limes': { temp_min: 8, temp_max: 12, notes: '8-12°C. Chilling injury below 8°C. 4-8 weeks transit.' },
+        'Bananas': { temp_min: 13, temp_max: 14, notes: '13-14°C. Major ethylene producer — must isolate. Green: 13.5°C, Ripe: 14°C.' },
+        'Strawberries': { temp_min: 0, temp_max: 2, humidity: '90-95%', notes: '0-2°C, 90-95% humidity. Very perishable — max 7 days transit. Pre-cool essential.' },
+        'Grapes': { temp_min: -1, temp_max: 0, humidity: '90-95%', notes: '-1 to 0°C, 90-95% humidity. SO₂ pads recommended to prevent botrytis.' },
+        'Apples': { temp_min: 0, temp_max: 4, notes: '0-4°C. Controlled atmosphere (low O₂, low CO₂). Major ethylene producer — isolate.' },
+        'Mangoes': { temp_min: 10, temp_max: 13, notes: '10-13°C. Chilling injury below 10°C. Ethylene sensitive — do not mix with ethylene producers.' },
+        'Avocados': { temp_min: 5, temp_max: 13, notes: 'Unripe: 10-13°C. Ripe: 5-7°C. Ethylene triggers ripening.' },
+        'Cherries': { temp_min: -1, temp_max: 0, humidity: '90-95%', notes: '-1 to 0°C, 90-95% humidity. Max 14 days transit. Modified atmosphere packaging helps.' },
+        'Dates': { temp_min: 0, temp_max: 5, notes: '0-5°C for fresh dates. Dried dates: ambient OK.' },
+        'Pineapples': { temp_min: 7, temp_max: 10, notes: '7-10°C. Chilling injury below 7°C. Moderate ethylene sensitivity.' },
+        'Watermelons': { temp_min: 7, temp_max: 10, notes: '7-10°C. Chilling injury below 7°C. Large fruit — check container payload.' },
+        'Kiwi Fruit': { temp_min: 0, temp_max: 1, notes: '0-1°C. Ethylene sensitive. Long storage life (3-5 months) at proper temp.' },
+        'Peaches': { temp_min: -1, temp_max: 0, notes: '-1 to 0°C, 90-95% humidity. Very perishable — 2-4 weeks max.' },
+      }
+    },
+    FRESH_VEGETABLES: { temp_min: 0, temp_max: 12, humidity: '90-98%', air_circ_cbm_hr: 50, ethylene_mgmt: true, reefer_required: true, container_recommendation: '40ft_HC_RF', label: 'Fresh / High Humidity',
+      notes: 'Most vegetables 0-7°C. Tropical vegetables 10-12°C. High humidity essential.',
+      product_specific: {
+        'Potatoes': { temp_min: 4, temp_max: 8, humidity: '85-90%', notes: '4-8°C. Avoid light (causes greening). Ethylene causes sprouting.' },
+        'Tomatoes': { temp_min: 10, temp_max: 13, notes: 'Green: 10-13°C. Ripe: 7-10°C. Chilling injury below 10°C for green tomatoes.' },
+        'Onions': { temp_min: 0, temp_max: 2, humidity: '65-70%', notes: '0-2°C, LOW humidity (65-70%). Good ventilation. Long storage life.' },
+        'Garlic': { temp_min: 0, temp_max: 2, humidity: '60-70%', notes: '0-2°C, low humidity. Ventilation important.' },
+        'Peppers (Bell / Chilli)': { temp_min: 7, temp_max: 10, notes: '7-10°C, 90-95% humidity. Chilling injury below 7°C.' },
+        'Asparagus': { temp_min: 0, temp_max: 2, humidity: '95-98%', notes: '0-2°C, very high humidity. Extremely perishable — max 14 days.' },
+      }
+    },
+    GRAINS_CEREALS: { reefer_required: false, container_recommendation: '20ft', label: 'Dry / Ventilated', notes: 'Ventilated container recommended. Moisture < 14%. Fumigation may be required.' },
+    PULSES_LEGUMES: { reefer_required: false, container_recommendation: '20ft', label: 'Dry / Ventilated', notes: 'Dry container, moisture control. Fumigation certificate may be required.' },
+    TEXTILES: { reefer_required: false, container_recommendation: '40ft_HC', label: 'Dry / Standard', notes: 'Standard container. Protect from moisture and sunlight. Desiccants recommended.' },
+    CHEMICALS: { reefer_required: false, container_recommendation: '20ft', label: 'Hazmat / Standard', notes: 'Check IMDG classification. Proper ventilation and segregation from food. DG declaration required.' },
+    MINERALS_METALS: { reefer_required: false, container_recommendation: '20ft', label: 'Standard / Open Top', notes: 'Heavy cargo — check weight limits. Open top for oversize. Corrosion protection coating.' },
+    PETROLEUM_ENERGY: { reefer_required: false, container_recommendation: '20ft_Tank', label: 'Tank / IMO', notes: 'Tank container or ISO tank. IMO classification. Flash point certification required.' },
+    LIVESTOCK: { reefer_required: false, container_recommendation: '40ft_HC', label: 'Ventilated / Special', notes: 'Special livestock containers. Ventilation, feeding, watering systems. Veterinary certificates mandatory.' },
+  };
+
+  const baseAdvice = REEFER_DB[commodityType];
+  if (!baseAdvice) {
+    return c.json({
+      data: {
+        commodity_type: commodityType,
+        product_name: productName || null,
+        reefer_required: false,
+        container_recommendation: '40ft_HC',
+        label: 'Standard',
+        notes: 'No specific container requirements found. Standard dry container recommended.',
+        temp_display: 'Ambient',
+      }
+    });
+  }
+
+  // Start with base, then override with product-specific
+  let result = { ...baseAdvice };
+  delete result.product_specific;
+  result.commodity_type = commodityType;
+  result.product_name = productName || null;
+
+  if (productName && baseAdvice.product_specific?.[productName]) {
+    const override = baseAdvice.product_specific[productName];
+    result = { ...result, ...override };
+  }
+
+  // Build temperature display
+  if (result.reefer_required) {
+    if (result.temp_min === result.temp_max) {
+      result.temp_display = result.temp_min + '°C (' + cToF(result.temp_min) + '°F)';
+    } else {
+      result.temp_display = result.temp_min + ' to ' + result.temp_max + '°C (' + cToF(result.temp_min) + ' to ' + cToF(result.temp_max) + '°F)';
+    }
+  } else {
+    result.temp_display = 'Ambient';
+  }
+
+  return c.json({ data: result });
+});
+
+// Helper: Celsius to Fahrenheit
+function cToF(c: number): number {
+  return Math.round(c * 9 / 5 + 32);
+}
+
+// POST /trade-form/container-advisor/batch — Batch advisor for all commodities in a trade request
+tradeForm.post('/trade-form/container-advisor/batch', async (c) => {
+  const body = await c.req.json();
+  const { commodities } = body; // [{ commodity_type, product_name }]
+  if (!commodities || !Array.isArray(commodities)) return c.json({ error: 'commodities array required' }, 400);
+
+  const results = commodities.map((cm: any) => {
+    const advice = REEFER_DB_SIMPLE[cm.commodity_type];
+    if (!advice) return { ...cm, reefer_required: false, container_recommendation: '40ft_HC', label: 'Standard', temp_display: 'Ambient' };
+    let result = { ...cm, ...advice };
+    if (cm.product_name && advice.product_specific?.[cm.product_name]) {
+      result = { ...result, ...advice.product_specific[cm.product_name] };
+    }
+    delete result.product_specific;
+    return result;
+  });
+
+  // Aggregate: does any commodity need reefer?
+  const needsReefer = results.some((r: any) => r.reefer_required);
+  const lowestTemp = Math.min(...results.filter((r: any) => r.reefer_required).map((r: any) => r.temp_min ?? 25));
+
+  return c.json({
+    data: {
+      commodities: results,
+      summary: {
+        any_reefer_required: needsReefer,
+        lowest_temp_required: needsReefer ? lowestTemp : null,
+        recommended_container: needsReefer ? (lowestTemp <= -18 ? '40ft_HC_RF' : '40ft_RF') : '40ft_HC',
+      }
+    }
+  });
+});
+
+// Simplified reefer DB for batch endpoint (same structure, just referenced differently)
+const REEFER_DB_SIMPLE: Record<string, any> = {
+  FROZEN_FRUITS: { temp_min: -18, temp_max: -18, reefer_required: true, label: 'Deep Frozen' },
+  FROZEN_VEGETABLES: { temp_min: -18, temp_max: -18, reefer_required: true, label: 'Deep Frozen' },
+  MEAT_POULTRY: { temp_min: -18, temp_max: -1, reefer_required: true, label: 'Frozen/Chilled' },
+  SEAFOOD: { temp_min: -25, temp_max: 2, reefer_required: true, label: 'Frozen/Chilled' },
+  DAIRY: { temp_min: 0, temp_max: 5, reefer_required: true, label: 'Chilled' },
+  FRESH_FRUITS: { temp_min: -1, temp_max: 14, reefer_required: true, label: 'Fresh/CA',
+    product_specific: {
+      'Oranges': { temp_min: 4, temp_max: 8 }, 'Bananas': { temp_min: 13, temp_max: 14 },
+      'Strawberries': { temp_min: 0, temp_max: 2 }, 'Grapes': { temp_min: -1, temp_max: 0 },
+      'Apples': { temp_min: 0, temp_max: 4 }, 'Mangoes': { temp_min: 10, temp_max: 13 },
+      'Cherries': { temp_min: -1, temp_max: 0 }, 'Kiwi Fruit': { temp_min: 0, temp_max: 1 },
+    }
+  },
+  FRESH_VEGETABLES: { temp_min: 0, temp_max: 12, reefer_required: true, label: 'Fresh/Humid',
+    product_specific: {
+      'Potatoes': { temp_min: 4, temp_max: 8 }, 'Tomatoes': { temp_min: 10, temp_max: 13 },
+      'Onions': { temp_min: 0, temp_max: 2 },
+    }
+  },
+  GRAINS_CEREALS: { reefer_required: false, label: 'Dry' },
+  PULSES_LEGUMES: { reefer_required: false, label: 'Dry' },
+  TEXTILES: { reefer_required: false, label: 'Standard' },
+  CHEMICALS: { reefer_required: false, label: 'Hazmat' },
+  MINERALS_METALS: { reefer_required: false, label: 'Standard' },
+  PETROLEUM_ENERGY: { reefer_required: false, label: 'Tank' },
+  LIVESTOCK: { reefer_required: false, label: 'Special' },
+  PROCESSED_FOODS: { reefer_required: false, label: 'Standard' },
+  AUTOMOTIVE: { reefer_required: false, label: 'Standard' },
+  CERAMICS_GLASS: { reefer_required: false, label: 'Standard' },
+  BUILDING_MATERIALS: { reefer_required: false, label: 'Standard' },
+  SPICES: { reefer_required: false, label: 'Dry' },
+  COFFEE_TEA_COCOA: { reefer_required: false, label: 'Ventilated' },
+  OILS_FATS: { reefer_required: false, label: 'Tank/Standard' },
+  SUGAR_CONFECTIONERY: { reefer_required: false, label: 'Standard' },
+  WOOD_PAPER: { reefer_required: false, label: 'Ventilated' },
+  ELECTRONICS: { reefer_required: false, label: 'Standard' },
+  MACHINERY: { reefer_required: false, label: 'Flat Rack' },
+  OTHER: { reefer_required: false, label: 'Standard' },
+};
 
 export default tradeForm;

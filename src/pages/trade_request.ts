@@ -1,7 +1,16 @@
-// SGTX Platform v6.3 — Advanced Trade Request Form Page
+// SGTX Platform v6.3 — Advanced Trade Request Form Page (Buyer Flow)
 // Part 3 Phase 1: Structured Container-Level Request Form
-// Features: Bidirectional HS code auto-fill, packaging dropdowns with weight specs,
-// port auto-population, transport mode, GTID lookup from saved contacts
+// CORRECTED per user directives:
+//   - Buyer ONLY selects Country of Origin (NOT port of loading — that's seller Phase 2)
+//   - Buyer selects Port of Discharge (destination port only)
+//   - Optional Target Price with unit selector (per ton, per kg, per box, etc.)
+//   - Incoterm selection dropdown
+//   - NO SGTX fee display (system-calculated, not user-facing)
+//   - NO logistics cost (seller-only per blueprint)
+//   - AI Container Advisor with reefer temperature recommendations
+//   - Weights displayed in BOTH kg AND lbs simultaneously
+//   - Prominent custom weight entry (not just dropdown defaults)
+//   - Proper Fresh vs Frozen distinction in categories
 
 export function tradeRequestFormHTML(): string {
   return `<!DOCTYPE html>
@@ -9,11 +18,11 @@ export function tradeRequestFormHTML(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SGTX v6.3 — New Trade Request</title>
+  <title>SGTX v6.3 — New Trade Request (Buyer)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <style>
-    :root { --sgtx-primary: #0f172a; --sgtx-accent: #3b82f6; --sgtx-gold: #f59e0b; --sgtx-success: #10b981; }
+    :root { --sgtx-primary: #0f172a; --sgtx-accent: #3b82f6; --sgtx-gold: #f59e0b; --sgtx-success: #10b981; --sgtx-reefer: #06b6d4; }
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; }
     .glass { background: rgba(30,41,59,0.85); backdrop-filter: blur(12px); border: 1px solid rgba(71,85,105,0.4); }
     .glass-light { background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.3); }
@@ -36,6 +45,9 @@ export function tradeRequestFormHTML(): string {
     .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #1e293b; border: none;
       border-radius: 0.5rem; padding: 0.625rem 1.25rem; font-weight: 700; cursor: pointer; }
     .btn-gold:hover { background: linear-gradient(135deg, #d97706, #b45309); }
+    .btn-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; border: none;
+      border-radius: 0.5rem; padding: 0.5rem 1rem; font-weight: 600; cursor: pointer; }
+    .btn-cyan:hover { background: linear-gradient(135deg, #0891b2, #0e7490); }
     .container-tab { cursor: pointer; padding: 0.5rem 1rem; border-radius: 0.5rem 0.5rem 0 0; font-weight: 500;
       background: rgba(30,41,59,0.5); border: 1px solid rgba(71,85,105,0.3); border-bottom: none; transition: all 0.2s; }
     .container-tab.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; color: #60a5fa; }
@@ -53,9 +65,19 @@ export function tradeRequestFormHTML(): string {
       text-align: center; transition: all 0.2s; min-width: 140px; }
     .transport-card.selected { border-color: #3b82f6; background: rgba(59,130,246,0.1); box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
     .transport-card:hover { border-color: rgba(59,130,246,0.6); }
+    .advisor-panel { background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.3); border-radius: 0.75rem; }
+    .advisor-badge { display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(6,182,212,0.15);
+      color: #22d3ee; font-size: 0.7rem; padding: 0.125rem 0.5rem; border-radius: 9999px; }
+    .dual-weight { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+    .dual-weight .kg-val { color: #34d399; font-weight: 600; }
+    .dual-weight .lbs-val { color: #60a5fa; font-weight: 500; font-size: 0.8em; }
     .draft-indicator { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; }
     @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); } }
     .pulse-green { animation: pulse-green 2s ease-in-out; }
+    @keyframes advisor-glow { 0%, 100% { box-shadow: 0 0 8px rgba(6,182,212,0.3); } 50% { box-shadow: 0 0 20px rgba(6,182,212,0.5); } }
+    .advisor-glow { animation: advisor-glow 3s ease-in-out infinite; }
+    .reefer-indicator { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.4); border-radius: 0.5rem; padding: 0.5rem 0.75rem; }
+    .section-divider { height: 1px; background: linear-gradient(to right, transparent, rgba(71,85,105,0.5), transparent); margin: 0.5rem 0; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -66,6 +88,7 @@ export function tradeRequestFormHTML(): string {
       <div>
         <h1 class="text-lg font-bold text-white flex items-center gap-2">
           <i class="fas fa-file-invoice text-blue-400"></i> New Trade Request
+          <span class="text-xs font-normal text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full">Buyer Flow</span>
         </h1>
         <p class="text-xs text-slate-400">Part 3 Phase 1 — Structured Container-Level Request Form</p>
       </div>
@@ -113,15 +136,24 @@ export function tradeRequestFormHTML(): string {
       </div>
     </section>
 
-    <!-- STEP 1: SELLER / COUNTERPARTY SELECTION -->
+    <!-- STEP 1: INCOTERM & SELLER SELECTION -->
     <section class="glass rounded-xl p-5">
       <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
-        <i class="fas fa-handshake text-amber-400"></i> Seller / Counterparty
+        <i class="fas fa-handshake text-amber-400"></i> Trade Terms & Seller
         <span class="text-xs text-slate-400 font-normal">(Step 1.1)</span>
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Incoterm Selection -->
+      <div class="mb-4">
+        <label class="block text-xs text-slate-400 mb-1">Requested Incoterm <span class="text-amber-400">*</span></label>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2" id="incotermGrid">
+        </div>
+        <p class="text-xs text-slate-500 mt-1" id="incotermDesc"></p>
+      </div>
+      <div class="section-divider"></div>
+      <!-- Seller / Counterparty -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
         <div class="relative">
-          <label class="block text-xs text-slate-400 mb-1">GTID <span class="text-slate-500">(enter or select from contacts)</span></label>
+          <label class="block text-xs text-slate-400 mb-1">Seller GTID <span class="text-slate-500">(enter or select from contacts)</span></label>
           <input type="text" id="sellerGtid" placeholder="SGTX-XX-XX-XXXX-XXXX or search..." autocomplete="off"
             oninput="onSellerGtidInput(this.value)" onfocus="onSellerGtidInput(this.value)">
           <div id="gtidDropdown" class="search-dropdown hidden"></div>
@@ -143,6 +175,52 @@ export function tradeRequestFormHTML(): string {
             <div class="text-xs text-slate-400"><span id="sellerInfoGtid"></span> · <span id="sellerInfoJurisdiction"></span></div>
           </div>
           <div id="sellerInfoBadges" class="flex gap-2 ml-auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 1.5: OPTIONAL TARGET PRICE -->
+    <section class="glass rounded-xl p-5">
+      <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+        <i class="fas fa-tag text-green-400"></i> Target Price
+        <span class="text-xs text-slate-500 font-normal">(Optional — Buyer's indicative price)</span>
+      </h2>
+      <p class="text-xs text-slate-400 mb-3">
+        Set an optional target price to guide seller quotes. This is indicative only — actual price is determined during negotiation (Phase 2).
+        <span class="text-amber-400">SGTX fees are system-calculated and not shown here.</span>
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Target Price</label>
+          <input type="number" id="targetPrice" step="0.01" min="0" placeholder="e.g. 450.00" onchange="STATE.targetPrice = parseFloat(this.value) || null">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Currency</label>
+          <select id="targetCurrency" onchange="STATE.targetCurrency = this.value">
+            <option value="USD" selected>USD ($)</option>
+            <option value="EUR">EUR (&euro;)</option>
+            <option value="GBP">GBP (&pound;)</option>
+            <option value="AED">AED (د.إ)</option>
+            <option value="SAR">SAR (﷼)</option>
+            <option value="EGP">EGP (E£)</option>
+            <option value="CNY">CNY (¥)</option>
+            <option value="JPY">JPY (¥)</option>
+            <option value="INR">INR (₹)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Price Unit</label>
+          <select id="targetPriceUnit" onchange="STATE.targetPriceUnit = this.value">
+            <option value="PER_TON">Per Metric Ton (MT)</option>
+            <option value="PER_KG">Per Kilogram (kg)</option>
+            <option value="PER_LB">Per Pound (lb)</option>
+            <option value="PER_BOX">Per Box / Carton</option>
+            <option value="PER_BAG">Per Bag / Sack</option>
+            <option value="PER_PALLET">Per Pallet</option>
+            <option value="PER_UNIT">Per Unit / Piece</option>
+            <option value="PER_CONTAINER">Per Container (FCL)</option>
+            <option value="LUMP_SUM">Lump Sum (Total)</option>
+          </select>
         </div>
       </div>
     </section>
@@ -169,6 +247,17 @@ export function tradeRequestFormHTML(): string {
       <div id="containerForms"></div>
     </section>
 
+    <!-- AI CONTAINER ADVISOR -->
+    <section id="advisorSection" class="advisor-panel p-5 hidden">
+      <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+        <i class="fas fa-robot text-cyan-400"></i> AI Container Advisor
+        <span class="advisor-badge"><i class="fas fa-snowflake"></i> Reefer Intelligence</span>
+      </h2>
+      <div id="advisorContent" class="space-y-3">
+        <p class="text-xs text-slate-400">Select commodities to receive AI-powered container and temperature recommendations.</p>
+      </div>
+    </section>
+
     <!-- GLOBAL NOTES -->
     <section class="glass rounded-xl p-5">
       <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
@@ -183,7 +272,7 @@ export function tradeRequestFormHTML(): string {
       <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
         <i class="fas fa-chart-bar text-blue-400"></i> Trade Summary
       </h2>
-      <div id="tradeSummary" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+      <div id="tradeSummary" class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
         <div class="glass-light rounded-lg p-3">
           <div class="text-2xl font-bold text-blue-400" id="sumContainers">1</div>
           <div class="text-xs text-slate-400">Containers</div>
@@ -193,12 +282,17 @@ export function tradeRequestFormHTML(): string {
           <div class="text-xs text-slate-400">Commodities</div>
         </div>
         <div class="glass-light rounded-lg p-3">
-          <div class="text-2xl font-bold text-amber-400" id="sumGrossWeight">0</div>
-          <div class="text-xs text-slate-400">Total Gross (kg)</div>
+          <div class="text-lg font-bold text-amber-400" id="sumGrossWeightKg">0 kg</div>
+          <div class="text-sm text-blue-300" id="sumGrossWeightLbs">0 lbs</div>
+          <div class="text-xs text-slate-400">Total Gross</div>
         </div>
         <div class="glass-light rounded-lg p-3">
           <div class="text-2xl font-bold text-purple-400" id="sumTransport">Sea</div>
-          <div class="text-xs text-slate-400">Transport Mode</div>
+          <div class="text-xs text-slate-400">Transport</div>
+        </div>
+        <div class="glass-light rounded-lg p-3">
+          <div class="text-2xl font-bold text-cyan-400" id="sumIncoterm">—</div>
+          <div class="text-xs text-slate-400">Incoterm</div>
         </div>
       </div>
     </section>
@@ -224,28 +318,36 @@ export function tradeRequestFormHTML(): string {
   // STATE
   // ═══════════════════════════════════════════════════════════════════
   const API = '/api/v1';
+  const KG_TO_LBS = 2.20462;
+
   let STATE = {
     tenantId: null,
     draftId: null,
     transportMode: 'SEA_CARGO',
+    incoterm: null,
     sellerGtid: null,
     sellerCompanyName: null,
+    targetPrice: null,
+    targetCurrency: 'USD',
+    targetPriceUnit: 'PER_TON',
     containers: [createEmptyContainer(0)],
     activeContainer: 0,
     countries: [],
     commodityTypes: [],
     packagingTypes: [],
     allProducts: [],
+    incoterms: [],
     autoSaveTimer: null,
     lastSaved: null,
+    advisorCache: {},
   };
 
   function createEmptyContainer(index) {
     return {
       index, container_type: '40ft_HC',
       origin_country: '', destination_country: '',
-      port_of_loading: '', port_of_discharge: '',
-      port_of_loading_unlocode: '', port_of_discharge_unlocode: '',
+      // Buyer ONLY selects port of discharge (destination). Port of loading = Seller Phase 2.
+      port_of_discharge: '', port_of_discharge_unlocode: '',
       palletized: true, pallet_size: '120x100',
       transport_mode: null, destination_override: '', notes: '',
       commodities: [createEmptyCommodity(0)],
@@ -256,34 +358,138 @@ export function tradeRequestFormHTML(): string {
     return {
       index, commodity_type: '', product_name: '', hs_code: '',
       product_specification: '', packaging_code: '', packaging_description: '',
-      packaging_custom: '', net_weight_per_unit: null, gross_weight_per_unit: null,
+      packaging_custom: '',
+      // Weight fields — user can customize freely, dropdown is just a starting point
+      net_weight_per_unit: null, gross_weight_per_unit: null,
       tare_weight_per_unit: 0, total_units: null, total_net_weight: null,
       total_gross_weight: null, weight_unit: 'KG', quantity_type: 'WEIGHT',
       quantity_value: null, num_pallets: 1,
+      // AI advisor fields
+      reefer_recommendation: null,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // INCOTERM DATA (loaded from /ref/incoterms, fallback inline)
+  // ═══════════════════════════════════════════════════════════════════
+  const INCOTERM_DESCRIPTIONS = {
+    EXW: 'Seller makes goods available at their premises. Buyer bears all costs & risks.',
+    FCA: 'Seller delivers to carrier at named place. Risk transfers at handover.',
+    FAS: 'Seller delivers alongside vessel at port. Buyer bears costs from that point.',
+    FOB: 'Seller delivers on board the vessel. Risk transfers once on board.',
+    CFR: 'Seller pays freight to destination. Risk transfers when goods are on board.',
+    CIF: 'Seller pays freight + insurance. Risk transfers when goods are on board.',
+    CPT: 'Seller pays carriage to destination. Risk transfers at first carrier.',
+    CIP: 'Seller pays carriage + insurance to destination. Risk at first carrier.',
+    DAP: 'Seller delivers at named place, ready for unloading. Buyer handles import.',
+    DPU: 'Seller delivers and unloads at named place. Buyer handles import clearance.',
+    DDP: 'Seller delivers duty paid. Seller bears all costs including import duties.',
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // AI CONTAINER ADVISOR — Reefer / Temperature Intelligence
+  // ═══════════════════════════════════════════════════════════════════
+  const REEFER_INTELLIGENCE = {
+    // Frozen categories
+    FROZEN_FRUITS: { temp_min: -18, temp_max: -18, humidity: '85-90%', air_circ: 40, ethylene: false, reefer: true, label: 'Deep Frozen', notes: 'Maintain -18°C throughout cold chain. No temperature breaks.' },
+    FROZEN_VEGETABLES: { temp_min: -18, temp_max: -18, humidity: '90-95%', air_circ: 40, ethylene: false, reefer: true, label: 'Deep Frozen', notes: 'Maintain -18°C. Avoid refreezing after thaw.' },
+    MEAT_POULTRY: { temp_min: -18, temp_max: -1, humidity: '85-90%', air_circ: 30, ethylene: false, reefer: true, label: 'Frozen/Chilled', notes: 'Frozen: -18°C. Chilled: -1 to 4°C. Separate from strong-smelling cargo.' },
+    SEAFOOD: { temp_min: -18, temp_max: -1, humidity: '85-95%', air_circ: 40, ethylene: false, reefer: true, label: 'Frozen/Chilled', notes: 'Frozen seafood: -18 to -25°C. Fresh/chilled: -1 to 2°C. Hygiene critical.' },
+    DAIRY: { temp_min: 0, temp_max: 5, humidity: '85-90%', air_circ: 25, ethylene: false, reefer: true, label: 'Chilled', notes: 'Keep 0–5°C. Separate from odor-producing goods. Monitor constantly.' },
+    // Fresh categories
+    FRESH_FRUITS: { temp_min: 0, temp_max: 13, humidity: '85-95%', air_circ: 60, ethylene: true, reefer: true, label: 'Fresh / Controlled Atmosphere',
+      notes: 'Temperature varies by fruit: Citrus 4-8°C, Tropical 10-13°C, Berries 0-2°C. Ethylene management critical — separate ethylene producers from sensitive items. High air circulation recommended.',
+      product_overrides: {
+        'Bananas': { temp_min: 13, temp_max: 14, notes: 'Bananas: 13-14°C. Ethylene producer — isolate. Green = 13.5°C, Ripe = 14°C.' },
+        'Strawberries': { temp_min: 0, temp_max: 2, notes: 'Fresh strawberries: 0-2°C, 90-95% humidity. Very perishable — max 7 days transit.' },
+        'Oranges': { temp_min: 4, temp_max: 8, notes: 'Oranges: 4-8°C, 85-90% humidity. 4-6 weeks shelf life under proper conditions.' },
+        'Lemons & Limes': { temp_min: 8, temp_max: 12, notes: 'Lemons/Limes: 8-12°C. Sensitive to chilling injury below 8°C.' },
+        'Mangoes': { temp_min: 10, temp_max: 13, notes: 'Mangoes: 10-13°C. Ethylene sensitive. Avoid below 10°C (chilling injury).' },
+        'Avocados': { temp_min: 5, temp_max: 13, notes: 'Avocados: 5-7°C (ripe) or 10-13°C (unripe). Ethylene triggers ripening.' },
+        'Grapes': { temp_min: -1, temp_max: 0, notes: 'Grapes: -1 to 0°C, 90-95% humidity. SO₂ pads recommended.' },
+        'Apples': { temp_min: 0, temp_max: 4, notes: 'Apples: 0-4°C. Controlled atmosphere (low O₂, low CO₂). Ethylene producer.' },
+        'Cherries': { temp_min: -1, temp_max: 0, notes: 'Cherries: -1 to 0°C, 90-95% humidity. Very perishable — max 14 days.' },
+      }
+    },
+    FRESH_VEGETABLES: { temp_min: 0, temp_max: 12, humidity: '90-98%', air_circ: 50, ethylene: true, reefer: true, label: 'Fresh / High Humidity',
+      notes: 'Most vegetables: 0-7°C. Tropical vegetables: 10-12°C. High humidity essential. Some are ethylene-sensitive (leafy greens).',
+      product_overrides: {
+        'Potatoes': { temp_min: 4, temp_max: 8, notes: 'Potatoes: 4-8°C. Avoid light exposure. Ethylene causes sprouting.' },
+        'Tomatoes': { temp_min: 10, temp_max: 13, notes: 'Tomatoes: 10-13°C (green), 7-10°C (ripe). Chilling injury below 10°C for green.' },
+        'Onions': { temp_min: 0, temp_max: 2, notes: 'Onions: 0-2°C, 65-70% humidity (LOW humidity). Good ventilation needed.' },
+        'Peppers (Bell / Chilli)': { temp_min: 7, temp_max: 10, notes: 'Bell peppers: 7-10°C, 90-95% humidity. Chilling injury below 7°C.' },
+      }
+    },
+    // Non-reefer categories (standard or ventilated containers)
+    GRAINS_CEREALS: { reefer: false, label: 'Dry / Ventilated', notes: 'Ventilated container recommended. Moisture < 14%. Temperature not critical but avoid condensation.' },
+    PULSES_LEGUMES: { reefer: false, label: 'Dry / Ventilated', notes: 'Dry container, moisture control. Fumigation may be required.' },
+    SPICES: { reefer: false, label: 'Dry / Ventilated', notes: 'Dry container. Separate from strong-smelling cargo. Moisture < 12%.' },
+    COFFEE_TEA_COCOA: { reefer: false, label: 'Dry / Ventilated', notes: 'Ventilated container. Hygroscopic — protect from moisture. Green coffee: 20°C max.' },
+    OILS_FATS: { reefer: false, label: 'Tank / Standard', notes: 'Liquid oils: tank container or IBC. Solid fats may need heated container. Keep from direct sunlight.' },
+    SUGAR_CONFECTIONERY: { reefer: false, label: 'Dry / Standard', notes: 'Dry, clean container. Chocolate: may need reefer at 15-18°C in hot climates.' },
+    TEXTILES: { reefer: false, label: 'Dry / Standard', notes: 'Standard container. Protect from moisture and sunlight.' },
+    CHEMICALS: { reefer: false, label: 'Hazmat / Standard', notes: 'Check IMDG classification. Proper ventilation. Segregation from food.' },
+    MINERALS_METALS: { reefer: false, label: 'Standard / Open Top', notes: 'Heavy cargo — check weight limits. Open top for oversize. Corrosion protection.' },
+    MACHINERY: { reefer: false, label: 'Flat Rack / Standard', notes: 'Secure properly. Flat rack for oversize. Corrosion protection for exposed parts.' },
+    WOOD_PAPER: { reefer: false, label: 'Dry / Ventilated', notes: 'ISPM-15 compliance for wood packaging. Moisture protection critical for paper.' },
+    ELECTRONICS: { reefer: false, label: 'Standard (Climate Controlled)', notes: 'Anti-static packaging. Cushioning for shock. Insurance recommended.' },
+    PROCESSED_FOODS: { reefer: false, label: 'Dry / Standard', notes: 'Some items may need reefer (frozen meals). Check individual product requirements.' },
+    PETROLEUM_ENERGY: { reefer: false, label: 'Tank / IMO', notes: 'Tank container. IMO classification required. Flash point certification.' },
+    AUTOMOTIVE: { reefer: false, label: 'Standard / RoRo', notes: 'Vehicles: RoRo or container. Parts: standard container with proper securing.' },
+    CERAMICS_GLASS: { reefer: false, label: 'Standard', notes: 'Fragile — proper cushioning. Heavy — check container floor load limits.' },
+    LIVESTOCK: { reefer: false, label: 'Ventilated / Special', notes: 'Special livestock containers with ventilation, feeding, watering. Veterinary certificates required.' },
+    BUILDING_MATERIALS: { reefer: false, label: 'Standard / Flat Rack', notes: 'Heavy goods — weight distribution. Steel: corrosion protection. Cement: moisture protection.' },
+  };
+
+  function getReeferAdvice(commodityType, productName) {
+    const advice = REEFER_INTELLIGENCE[commodityType];
+    if (!advice) return { reefer: false, label: 'Standard', notes: 'No specific requirements found. Use standard container.', temp_display: 'N/A' };
+
+    // Check for product-specific overrides
+    let result = { ...advice };
+    if (advice.product_overrides && productName && advice.product_overrides[productName]) {
+      const override = advice.product_overrides[productName];
+      result = { ...result, ...override };
+    }
+
+    // Build temperature display
+    if (result.reefer) {
+      if (result.temp_min === result.temp_max) {
+        result.temp_display = result.temp_min + '°C';
+      } else {
+        result.temp_display = result.temp_min + ' to ' + result.temp_max + '°C';
+      }
+    } else {
+      result.temp_display = 'Ambient';
+    }
+    return result;
   }
 
   // ═══════════════════════════════════════════════════════════════════
   // INIT
   // ═══════════════════════════════════════════════════════════════════
   document.addEventListener('DOMContentLoaded', async () => {
-    // Parse tenant_id from URL or localStorage
     const params = new URLSearchParams(window.location.search);
     STATE.tenantId = params.get('tenant_id') || localStorage.getItem('sgtx_tenant_id') || null;
     STATE.draftId = params.get('draft_id') || null;
 
     // Load reference data in parallel
-    const [countriesRes, commoditiesRes, productsRes, packagingRes] = await Promise.all([
+    const [countriesRes, commoditiesRes, productsRes, packagingRes, incotermsRes] = await Promise.all([
       fetch(API + '/ref/countries').then(r => r.json()),
       fetch(API + '/ref/commodity-types').then(r => r.json()),
       fetch(API + '/ref/products').then(r => r.json()),
       fetch(API + '/trade-form/packaging').then(r => r.json()).catch(() => fetch(API + '/ref/packaging').then(r => r.json())),
+      fetch(API + '/ref/incoterms').then(r => r.json()),
     ]);
 
     STATE.countries = countriesRes.data || [];
     STATE.commodityTypes = commoditiesRes.data || [];
     STATE.allProducts = productsRes.data || [];
     STATE.packagingTypes = packagingRes.data || [];
+    STATE.incoterms = incotermsRes.data || [];
+
+    // Render incoterm grid
+    renderIncotermGrid();
 
     // Load draft if specified
     if (STATE.draftId && STATE.tenantId) {
@@ -304,7 +510,6 @@ export function tradeRequestFormHTML(): string {
       if (STATE.tenantId && hasFormData()) saveDraft(true);
     }, 30000);
 
-    // Notes counter
     document.getElementById('globalNotes').addEventListener('input', function() {
       document.getElementById('notesCount').textContent = this.value.length;
     });
@@ -318,8 +523,12 @@ export function tradeRequestFormHTML(): string {
   function loadDraftData(draft) {
     const fd = draft.form_data;
     if (fd.transport_mode) { STATE.transportMode = fd.transport_mode; selectTransportByMode(fd.transport_mode); }
+    if (fd.incoterm) { STATE.incoterm = fd.incoterm; selectIncotermByCode(fd.incoterm); }
     if (fd.seller_gtid) { STATE.sellerGtid = fd.seller_gtid; document.getElementById('sellerGtid').value = fd.seller_gtid; }
     if (fd.seller_company_name) { STATE.sellerCompanyName = fd.seller_company_name; document.getElementById('sellerCompanyName').value = fd.seller_company_name; }
+    if (fd.target_price != null) { STATE.targetPrice = fd.target_price; document.getElementById('targetPrice').value = fd.target_price; }
+    if (fd.target_currency) { STATE.targetCurrency = fd.target_currency; document.getElementById('targetCurrency').value = fd.target_currency; }
+    if (fd.target_price_unit) { STATE.targetPriceUnit = fd.target_price_unit; document.getElementById('targetPriceUnit').value = fd.target_price_unit; }
     if (fd.containers?.length) {
       STATE.containers = fd.containers.map((c, i) => ({
         ...createEmptyContainer(i), ...c, index: i,
@@ -331,6 +540,44 @@ export function tradeRequestFormHTML(): string {
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // INCOTERM SELECTION
+  // ═══════════════════════════════════════════════════════════════════
+  function renderIncotermGrid() {
+    const grid = document.getElementById('incotermGrid');
+    const terms = STATE.incoterms.length > 0 ? STATE.incoterms : [
+      { code: 'EXW' }, { code: 'FCA' }, { code: 'FAS' }, { code: 'FOB' },
+      { code: 'CFR' }, { code: 'CIF' }, { code: 'CPT' }, { code: 'CIP' },
+      { code: 'DAP' }, { code: 'DPU' }, { code: 'DDP' },
+    ];
+    grid.innerHTML = terms.map(t => {
+      const code = t.code;
+      const groupColors = { E: 'border-gray-500 text-gray-300', F: 'border-blue-500 text-blue-300',
+        C: 'border-amber-500 text-amber-300', D: 'border-green-500 text-green-300' };
+      const group = t.group || (code === 'EXW' ? 'E' : code.startsWith('F') ? 'F' : code.startsWith('C') ? 'C' : 'D');
+      const color = groupColors[group] || 'border-slate-500 text-slate-300';
+      return '<button class="incoterm-btn border-2 rounded-lg px-3 py-2 text-center transition-all hover:bg-white/5 ' + color + '" data-code="' + code + '" onclick="selectIncoterm(this)">' +
+        '<div class="font-bold text-sm">' + code + '</div>' +
+        '<div class="text-[10px] text-slate-400">' + (t.label || INCOTERM_DESCRIPTIONS[code]?.split('.')[0] || code) + '</div>' +
+      '</button>';
+    }).join('');
+  }
+
+  function selectIncoterm(el) {
+    document.querySelectorAll('.incoterm-btn').forEach(b => {
+      b.classList.remove('bg-white/10', 'ring-2', 'ring-blue-400');
+    });
+    el.classList.add('bg-white/10', 'ring-2', 'ring-blue-400');
+    STATE.incoterm = el.dataset.code;
+    document.getElementById('incotermDesc').textContent = INCOTERM_DESCRIPTIONS[STATE.incoterm] || '';
+    updateSummary();
+  }
+
+  function selectIncotermByCode(code) {
+    const btn = document.querySelector('.incoterm-btn[data-code="' + code + '"]');
+    if (btn) selectIncoterm(btn);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // TRANSPORT MODE
   // ═══════════════════════════════════════════════════════════════════
   function selectTransport(el) {
@@ -338,7 +585,6 @@ export function tradeRequestFormHTML(): string {
     el.classList.add('selected');
     STATE.transportMode = el.dataset.mode;
     updateSummary();
-    // Re-render port dropdowns for active container
     renderContainerForm(STATE.activeContainer);
   }
 
@@ -348,7 +594,7 @@ export function tradeRequestFormHTML(): string {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // SELLER GTID SEARCH (from saved contacts or manual)
+  // SELLER GTID SEARCH
   // ═══════════════════════════════════════════════════════════════════
   let gtidSearchTimeout;
   async function onSellerGtidInput(val) {
@@ -357,7 +603,6 @@ export function tradeRequestFormHTML(): string {
     gtidSearchTimeout = setTimeout(async () => {
       const dd = document.getElementById('gtidDropdown');
       let items = [];
-      // Search saved contacts first
       if (STATE.tenantId) {
         try {
           const res = await fetch(API + '/trade-form/contacts-search?tenant_id=' + STATE.tenantId + '&q=' + encodeURIComponent(val)).then(r => r.json());
@@ -368,7 +613,6 @@ export function tradeRequestFormHTML(): string {
           }));
         } catch(e) {}
       }
-      // Also try GTID resolve for exact match
       if (val.startsWith('SGTX-') && val.length > 10) {
         try {
           const res = await fetch(API + '/trade-form/gtid-resolve?gtid=' + encodeURIComponent(val)).then(r => r.json());
@@ -422,7 +666,6 @@ export function tradeRequestFormHTML(): string {
     document.getElementById('sellerCompanyName').value = name;
     hideDropdown('gtidDropdown');
     hideDropdown('companyDropdown');
-    // Show seller info
     const info = document.getElementById('sellerInfo');
     info.classList.remove('hidden');
     document.getElementById('sellerInfoName').textContent = name;
@@ -503,14 +746,15 @@ export function tradeRequestFormHTML(): string {
 
   // ═══════════════════════════════════════════════════════════════════
   // CONTAINER FORM RENDERING
+  // BUYER FLOW: Country of Origin (no port), Destination Country + Port of Discharge
   // ═══════════════════════════════════════════════════════════════════
   function renderContainerForm(idx) {
     const c = STATE.containers[idx];
     if (!c) return;
     const form = document.getElementById('containerForms');
-    const countriesOpts = '<option value="">Select country...</option>' +
+    const countriesOptsOrigin = '<option value="">Select country of origin...</option>' +
       STATE.countries.map(ct => '<option value="' + ct.code + '"' + (ct.code === c.origin_country ? ' selected' : '') + '>' + escHtml(ct.name) + '</option>').join('');
-    const countriesOptsDest = '<option value="">Select country...</option>' +
+    const countriesOptsDest = '<option value="">Select destination country...</option>' +
       STATE.countries.map(ct => '<option value="' + ct.code + '"' + (ct.code === c.destination_country ? ' selected' : '') + '>' + escHtml(ct.name) + '</option>').join('');
 
     form.innerHTML = '<div class="glass-light rounded-xl p-4 space-y-4">' +
@@ -522,41 +766,41 @@ export function tradeRequestFormHTML(): string {
           (STATE.containers.length > 1 ? '<button onclick="removeContainer(' + idx + ')" class="btn-danger text-xs"><i class="fas fa-trash mr-1"></i> Remove</button>' : '') +
         '</div>' +
       '</div>' +
-      // Container fields
+      // Row 1: Container Type, Country of Origin (NO port of loading for buyer), Destination Country
       '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">' +
         '<div><label class="block text-xs text-slate-400 mb-1">Container Type</label>' +
-          '<select id="ct_type" onchange="updateContainerField(' + idx + ',\\'container_type\\',this.value)">' +
+          '<select id="ct_type" onchange="updateContainerField(' + idx + ',\\'container_type\\',this.value); checkContainerAdvisor(' + idx + ')">' +
             ['20ft','40ft','40ft_HC','20ft_RF','40ft_RF','40ft_HC_RF','20ft_OT','40ft_OT','20ft_FR','40ft_FR','20ft_Tank'].map(t =>
               '<option value="' + t + '"' + (t === c.container_type ? ' selected' : '') + '>' + t.replace(/_/g,' ') + '</option>').join('') +
           '</select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Country of Origin</label>' +
-          '<select id="ct_origin" onchange="onOriginCountryChange(' + idx + ',this.value)">' + countriesOpts.replace('value="' + c.origin_country + '"', 'value="' + c.origin_country + '" selected') + '</select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Destination Country</label>' +
-          '<select id="ct_dest" onchange="onDestCountryChange(' + idx + ',this.value)">' + countriesOptsDest.replace('value="' + c.destination_country + '"', 'value="' + c.destination_country + '" selected') + '</select></div>' +
+        '<div><label class="block text-xs text-slate-400 mb-1">Country of Origin <span class="text-amber-400">*</span></label>' +
+          '<select id="ct_origin" onchange="onOriginCountryChange(' + idx + ',this.value)">' + countriesOptsOrigin + '</select>' +
+          '<p class="text-[10px] text-slate-500 mt-0.5">Port of loading is determined by seller in Phase 2</p></div>' +
+        '<div><label class="block text-xs text-slate-400 mb-1">Destination Country <span class="text-amber-400">*</span></label>' +
+          '<select id="ct_dest" onchange="onDestCountryChange(' + idx + ',this.value)">' + countriesOptsDest + '</select></div>' +
       '</div>' +
+      // Row 2: Port of Discharge (buyer only), Palletized, Pallet Size
       '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Port of Loading <span class="autofill-badge" id="polBadge_' + idx + '">auto</span></label>' +
-          '<select id="ct_pol_' + idx + '" onchange="updateContainerField(' + idx + ',\\'port_of_loading\\',this.value)">' +
-            '<option value="">Select port...</option></select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Port of Discharge <span class="autofill-badge" id="podBadge_' + idx + '">auto</span></label>' +
-          '<select id="ct_pod_' + idx + '" onchange="updateContainerField(' + idx + ',\\'port_of_discharge\\',this.value)">' +
+        '<div><label class="block text-xs text-slate-400 mb-1">Port of Discharge <span class="autofill-badge" id="podBadge_' + idx + '">auto from destination</span></label>' +
+          '<select id="ct_pod_' + idx + '" onchange="onPortDischargeChange(' + idx + ',this)">' +
             '<option value="">Select port...</option></select></div>' +
         '<div><label class="block text-xs text-slate-400 mb-1">Palletized?</label>' +
           '<div class="flex items-center gap-3 mt-1">' +
             '<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="pallet_' + idx + '" value="1"' + (c.palletized ? ' checked' : '') + ' onchange="updateContainerField(' + idx + ',\\'palletized\\',true)"> <span class="text-sm">Yes</span></label>' +
             '<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="pallet_' + idx + '" value="0"' + (!c.palletized ? ' checked' : '') + ' onchange="updateContainerField(' + idx + ',\\'palletized\\',false)"> <span class="text-sm">No</span></label>' +
           '</div></div>' +
-      '</div>' +
-      '<div class="grid grid-cols-1 md:grid-cols-3 gap-3">' +
         '<div><label class="block text-xs text-slate-400 mb-1">Pallet Size</label>' +
           '<select id="ct_palletSize" onchange="updateContainerField(' + idx + ',\\'pallet_size\\',this.value)">' +
             [['120x100','1200x1000 EUR2/ISO1'],['120x80','1200x800 EUR/EPAL'],['114x114','1140x1140 AUS'],['110x110','1100x1100 Asia'],['122x102','1219x1016 US/GMA']].map(([v,l]) =>
               '<option value="' + v + '"' + (v === c.pallet_size ? ' selected' : '') + '>' + l + '</option>').join('') +
           '</select></div>' +
+      '</div>' +
+      // Row 3: Destination Override, Container Notes
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
         '<div><label class="block text-xs text-slate-400 mb-1">Destination Override</label>' +
           '<input type="text" id="ct_destOverride" value="' + escHtml(c.destination_override || '') + '" placeholder="e.g. Alexandria Free Zone" onchange="updateContainerField(' + idx + ',\\'destination_override\\',this.value)"></div>' +
         '<div><label class="block text-xs text-slate-400 mb-1">Container Notes</label>' +
-          '<input type="text" id="ct_notes" value="' + escHtml(c.notes || '') + '" placeholder="e.g. Expedite customs" onchange="updateContainerField(' + idx + ',\\'notes\\',this.value)"></div>' +
+          '<input type="text" id="ct_notes" value="' + escHtml(c.notes || '') + '" placeholder="e.g. Expedite customs clearance" onchange="updateContainerField(' + idx + ',\\'notes\\',this.value)"></div>' +
       '</div>' +
       // Commodities section
       '<div class="border-t border-slate-700 pt-4 mt-2">' +
@@ -568,19 +812,17 @@ export function tradeRequestFormHTML(): string {
       '</div>' +
     '</div>';
 
-    // Load ports for origin/destination if already set
-    if (c.origin_country) loadPorts(idx, 'origin', c.origin_country, c.port_of_loading);
-    if (c.destination_country) loadPorts(idx, 'destination', c.destination_country, c.port_of_discharge);
+    // Load ports for destination if already set (buyer only gets discharge ports)
+    if (c.destination_country) loadDischargePorts(idx, c.destination_country, c.port_of_discharge);
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // COMMODITY ROW — Bidirectional auto-fill
+  // COMMODITY ROW — Bidirectional auto-fill + Weight in kg & lbs
   // ═══════════════════════════════════════════════════════════════════
   function renderCommodityRow(cIdx, cmIdx, cm) {
     const typeOpts = '<option value="">Select type...</option>' +
       STATE.commodityTypes.map(ct => '<option value="' + ct.type + '"' + (ct.type === cm.commodity_type ? ' selected' : '') + '>' + escHtml(ct.label) + '</option>').join('');
 
-    // Get products for current type
     const productsForType = cm.commodity_type
       ? (STATE.commodityTypes.find(ct => ct.type === cm.commodity_type)?.products || [])
       : [];
@@ -602,8 +844,27 @@ export function tradeRequestFormHTML(): string {
       pkgOpts += '</optgroup>';
     }
 
-    const weightUnitOpts = ['KG','TONS','LBS'].map(u => '<option value="' + u + '"' + (u === (cm.weight_unit||'KG') ? ' selected' : '') + '>' + u + '</option>').join('');
     const qtyTypeOpts = ['WEIGHT','UNITS'].map(t => '<option value="' + t + '"' + (t === (cm.quantity_type||'WEIGHT') ? ' selected' : '') + '>' + t + '</option>').join('');
+
+    // Reefer indicator if applicable
+    const reeferAdvice = cm.commodity_type ? getReeferAdvice(cm.commodity_type, cm.product_name) : null;
+    const reeferHtml = reeferAdvice && reeferAdvice.reefer
+      ? '<div class="reefer-indicator mt-2 flex items-center gap-2">' +
+          '<i class="fas fa-snowflake text-cyan-400"></i>' +
+          '<span class="text-xs text-cyan-300 font-semibold">' + reeferAdvice.label + ': ' + reeferAdvice.temp_display + '</span>' +
+          '<span class="text-xs text-slate-400">| Humidity: ' + (reeferAdvice.humidity || 'N/A') + '</span>' +
+          (reeferAdvice.ethylene ? '<span class="text-xs text-amber-400">| <i class="fas fa-wind"></i> Ethylene Mgmt</span>' : '') +
+          '<button onclick="showAdvisorDetail(\\'' + (cm.commodity_type||'') + '\\',\\'' + (cm.product_name||'').replace(/'/g,"\\\\'") + '\\')" class="btn-cyan text-[10px] ml-auto py-0.5 px-2"><i class="fas fa-robot mr-1"></i>Details</button>' +
+        '</div>'
+      : (reeferAdvice ? '<div class="mt-1 text-[10px] text-slate-500"><i class="fas fa-box text-slate-500 mr-1"></i>' + reeferAdvice.label + ' — ' + (reeferAdvice.notes||'').substring(0,80) + '</div>' : '');
+
+    // Weight summary with DUAL kg/lbs display
+    const grossUnitKg = cm.gross_weight_per_unit || 0;
+    const grossUnitLbs = grossUnitKg * KG_TO_LBS;
+    const totalNetKg = cm.total_net_weight || 0;
+    const totalNetLbs = totalNetKg * KG_TO_LBS;
+    const totalGrossKg = cm.total_gross_weight || 0;
+    const totalGrossLbs = totalGrossKg * KG_TO_LBS;
 
     return '<div class="glass-light rounded-lg p-3 mb-2" id="cmRow_' + cIdx + '_' + cmIdx + '">' +
       '<div class="flex items-center justify-between mb-2">' +
@@ -611,7 +872,7 @@ export function tradeRequestFormHTML(): string {
         (STATE.containers[cIdx].commodities.length > 1 ?
           '<button onclick="removeCommodity(' + cIdx + ',' + cmIdx + ')" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-times"></i></button>' : '') +
       '</div>' +
-      // Row 1: Type, Product, HS Code (bidirectional)
+      // Row 1: Type, Product, HS Code
       '<div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">' +
         '<div><label class="block text-xs text-slate-400 mb-1">Commodity Type</label>' +
           '<select onchange="onCommodityTypeChange(' + cIdx + ',' + cmIdx + ',this.value)">' + typeOpts + '</select></div>' +
@@ -626,43 +887,69 @@ export function tradeRequestFormHTML(): string {
           '<input type="text" value="' + escHtml(cm.product_specification || '') + '" placeholder="Grade A, Size 72-80mm" onchange="updateCmField(' + cIdx + ',' + cmIdx + ',\\'product_specification\\',this.value)"></div>' +
         '<div><label class="block text-xs text-slate-400 mb-1">Packaging</label>' +
           '<select id="pkg_' + cIdx + '_' + cmIdx + '" onchange="onPackagingChange(' + cIdx + ',' + cmIdx + ',this)">' + pkgOpts + '</select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Net Weight / Unit (kg)</label>' +
-          '<input type="number" id="netWt_' + cIdx + '_' + cmIdx + '" step="0.01" value="' + (cm.net_weight_per_unit || '') + '" placeholder="e.g. 25" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')"></div>' +
-      '</div>' +
-      // Row 3: Quantity, Weight calculation
-      '<div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Quantity Type</label>' +
-          '<select id="qtyType_' + cIdx + '_' + cmIdx + '" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')">' + qtyTypeOpts + '</select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Quantity Value</label>' +
-          '<input type="number" id="qtyVal_' + cIdx + '_' + cmIdx + '" step="0.01" value="' + (cm.quantity_value || '') + '" placeholder="e.g. 25000 or 2200" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')"></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Unit</label>' +
-          '<select id="wtUnit_' + cIdx + '_' + cmIdx + '" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')">' + weightUnitOpts + '</select></div>' +
-        '<div><label class="block text-xs text-slate-400 mb-1">Pallets</label>' +
+        '<div><label class="block text-xs text-slate-400 mb-1">Pallets for this commodity</label>' +
           '<input type="number" id="numPal_' + cIdx + '_' + cmIdx + '" min="0" value="' + (cm.num_pallets || 1) + '" onchange="updateCmField(' + cIdx + ',' + cmIdx + ',\\'num_pallets\\',parseInt(this.value))"></div>' +
       '</div>' +
-      // Weight summary
+      // Row 3: PROMINENT CUSTOM WEIGHT ENTRY — user can type any net weight per unit
+      '<div class="bg-slate-800/50 rounded-lg p-3 mb-2">' +
+        '<div class="flex items-center gap-2 mb-2">' +
+          '<i class="fas fa-weight-hanging text-amber-400 text-xs"></i>' +
+          '<span class="text-xs font-semibold text-amber-300">Weight Configuration</span>' +
+          '<span class="text-[10px] text-slate-500">(Customize net weight per unit — dropdown gives defaults, you can override)</span>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 md:grid-cols-4 gap-2">' +
+          '<div><label class="block text-[10px] text-slate-400 mb-1">Net Weight / Unit</label>' +
+            '<div class="flex gap-1">' +
+              '<input type="number" id="netWt_' + cIdx + '_' + cmIdx + '" step="0.01" value="' + (cm.net_weight_per_unit || '') + '" placeholder="kg" class="flex-1" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')">' +
+              '<span class="text-[10px] text-slate-500 self-center whitespace-nowrap">' + (cm.net_weight_per_unit ? fmtLbs(cm.net_weight_per_unit) + ' lbs' : '') + '</span>' +
+            '</div></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-1">Quantity Type</label>' +
+            '<select id="qtyType_' + cIdx + '_' + cmIdx + '" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')">' + qtyTypeOpts + '</select></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-1">Quantity Value</label>' +
+            '<input type="number" id="qtyVal_' + cIdx + '_' + cmIdx + '" step="0.01" value="' + (cm.quantity_value || '') + '" placeholder="e.g. 25000 kg or 2200 units" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')"></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-1">Unit (for weight qty)</label>' +
+            '<select id="wtUnit_' + cIdx + '_' + cmIdx + '" onchange="onWeightChange(' + cIdx + ',' + cmIdx + ')">' +
+              ['KG','TONS','LBS'].map(u => '<option value="' + u + '"' + (u === (cm.weight_unit||'KG') ? ' selected' : '') + '>' + u + '</option>').join('') +
+            '</select></div>' +
+        '</div>' +
+      '</div>' +
+      // Weight summary — DUAL kg AND lbs display
       '<div class="weight-display" id="weightSummary_' + cIdx + '_' + cmIdx + '">' +
-        '<div class="grid grid-cols-4 gap-2 text-xs">' +
-          '<div><span class="text-slate-400">Gross/Unit:</span> <span class="text-amber-400 font-semibold" id="grossUnit_' + cIdx + '_' + cmIdx + '">' + (cm.gross_weight_per_unit ? cm.gross_weight_per_unit.toFixed(2) + ' kg' : '—') + '</span></div>' +
-          '<div><span class="text-slate-400">Total Units:</span> <span class="text-blue-400 font-semibold" id="totalUnits_' + cIdx + '_' + cmIdx + '">' + (cm.total_units || '—') + '</span></div>' +
-          '<div><span class="text-slate-400">Total Net:</span> <span class="text-green-400 font-semibold" id="totalNet_' + cIdx + '_' + cmIdx + '">' + (cm.total_net_weight ? formatWeight(cm.total_net_weight, cm.weight_unit) : '—') + '</span></div>' +
-          '<div><span class="text-slate-400">Total Gross:</span> <span class="text-amber-400 font-bold" id="totalGross_' + cIdx + '_' + cmIdx + '">' + (cm.total_gross_weight ? formatWeight(cm.total_gross_weight, cm.weight_unit) : '—') + '</span></div>' +
+        '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">' +
+          '<div>' +
+            '<span class="text-slate-400 block">Gross / Unit</span>' +
+            '<span class="text-amber-400 font-bold" id="grossUnit_' + cIdx + '_' + cmIdx + '">' + (grossUnitKg > 0 ? grossUnitKg.toFixed(2) + ' kg' : '—') + '</span>' +
+            '<span class="text-blue-300 text-[10px] block" id="grossUnitLbs_' + cIdx + '_' + cmIdx + '">' + (grossUnitKg > 0 ? grossUnitLbs.toFixed(2) + ' lbs' : '') + '</span>' +
+          '</div>' +
+          '<div>' +
+            '<span class="text-slate-400 block">Total Cartons / Units</span>' +
+            '<span class="text-blue-400 font-bold" id="totalUnits_' + cIdx + '_' + cmIdx + '">' + (cm.total_units || '—') + '</span>' +
+          '</div>' +
+          '<div>' +
+            '<span class="text-slate-400 block">Total Net Weight</span>' +
+            '<span class="text-green-400 font-bold" id="totalNet_' + cIdx + '_' + cmIdx + '">' + (totalNetKg > 0 ? fmtKg(totalNetKg) + ' kg' : '—') + '</span>' +
+            '<span class="text-blue-300 text-[10px] block" id="totalNetLbs_' + cIdx + '_' + cmIdx + '">' + (totalNetKg > 0 ? fmtLbs(totalNetKg) + ' lbs' : '') + '</span>' +
+          '</div>' +
+          '<div>' +
+            '<span class="text-slate-400 block">Total Gross Weight</span>' +
+            '<span class="text-amber-400 font-bold" id="totalGross_' + cIdx + '_' + cmIdx + '">' + (totalGrossKg > 0 ? fmtKg(totalGrossKg) + ' kg' : '—') + '</span>' +
+            '<span class="text-blue-300 text-[10px] block" id="totalGrossLbs_' + cIdx + '_' + cmIdx + '">' + (totalGrossKg > 0 ? fmtLbs(totalGrossKg) + ' lbs' : '') + '</span>' +
+          '</div>' +
         '</div>' +
         '<div class="text-xs text-slate-500 mt-1" id="pkgDesc_' + cIdx + '_' + cmIdx + '">' + escHtml(cm.packaging_description || '') + '</div>' +
       '</div>' +
+      // Reefer / Container advisor indicator
+      reeferHtml +
     '</div>';
   }
 
   // ═══════════════════════════════════════════════════════════════════
   // BIDIRECTIONAL AUTO-FILL HANDLERS
   // ═══════════════════════════════════════════════════════════════════
-
-  // Commodity Type → populate products dropdown
   function onCommodityTypeChange(cIdx, cmIdx, type) {
     const cm = STATE.containers[cIdx].commodities[cmIdx];
     cm.commodity_type = type;
-    cm.product_name = ''; cm.hs_code = ''; // Reset when type changes
-    // Re-render this commodity's product dropdown
+    cm.product_name = ''; cm.hs_code = '';
     const productSel = document.getElementById('product_' + cIdx + '_' + cmIdx);
     if (productSel) {
       const products = STATE.commodityTypes.find(ct => ct.type === type)?.products || [];
@@ -671,10 +958,11 @@ export function tradeRequestFormHTML(): string {
         '<option value="__OTHER__">Other (free text)</option>';
     }
     document.getElementById('hsCode_' + cIdx + '_' + cmIdx).value = '';
+    checkContainerAdvisor(cIdx);
+    updateAdvisorSection();
     updateSummary();
   }
 
-  // Product selection → auto-fill HS code
   function onProductChange(cIdx, cmIdx, sel) {
     const cm = STATE.containers[cIdx].commodities[cmIdx];
     const val = sel.value;
@@ -683,21 +971,20 @@ export function tradeRequestFormHTML(): string {
       cm.hs_code = '';
     } else {
       cm.product_name = val;
-      // Get HS code from selected option's data attribute
       const opt = sel.options[sel.selectedIndex];
       cm.hs_code = opt?.dataset?.hs || '';
     }
     document.getElementById('hsCode_' + cIdx + '_' + cmIdx).value = cm.hs_code;
+    // Re-render to update reefer indicator for the specific product
+    renderContainerForm(cIdx);
+    updateAdvisorSection();
     updateSummary();
   }
 
-  // HS Code manual entry → reverse lookup: auto-fill commodity type & product
   async function onHsCodeChange(cIdx, cmIdx, hsCode) {
     const cm = STATE.containers[cIdx].commodities[cmIdx];
     cm.hs_code = hsCode;
     if (hsCode.length < 4) return;
-
-    // Search in local reference data first
     const normalized = hsCode.replace(/\\./g, '');
     for (const ct of STATE.commodityTypes) {
       for (const p of ct.products) {
@@ -705,14 +992,12 @@ export function tradeRequestFormHTML(): string {
         if (pNorm === normalized || pNorm.startsWith(normalized) || normalized.startsWith(pNorm)) {
           cm.commodity_type = ct.type;
           cm.product_name = p.name;
-          // Update dropdowns
-          renderContainerForm(cIdx); // Full re-render to update dependent dropdowns
+          renderContainerForm(cIdx);
+          updateAdvisorSection();
           return;
         }
       }
     }
-
-    // Try API search
     try {
       const res = await fetch(API + '/ref/hs-search?q=' + encodeURIComponent(hsCode)).then(r => r.json());
       if (res.data?.length > 0) {
@@ -720,14 +1005,14 @@ export function tradeRequestFormHTML(): string {
         cm.commodity_type = match.commodity_type;
         cm.product_name = match.name;
         renderContainerForm(cIdx);
+        updateAdvisorSection();
       }
     } catch (e) {}
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // PACKAGING & WEIGHT HANDLERS
+  // PACKAGING & WEIGHT HANDLERS — Custom weight entry is prominent
   // ═══════════════════════════════════════════════════════════════════
-
   function onPackagingChange(cIdx, cmIdx, sel) {
     const cm = STATE.containers[cIdx].commodities[cmIdx];
     const opt = sel.options[sel.selectedIndex];
@@ -735,9 +1020,13 @@ export function tradeRequestFormHTML(): string {
     const netWt = parseFloat(opt?.dataset?.net);
     const tareWt = parseFloat(opt?.dataset?.tare) || 0;
     cm.tare_weight_per_unit = tareWt;
+    // Set as DEFAULT only if user hasn't already customized
     if (netWt && !isNaN(netWt)) {
-      cm.net_weight_per_unit = netWt;
-      document.getElementById('netWt_' + cIdx + '_' + cmIdx).value = netWt;
+      const netWtInput = document.getElementById('netWt_' + cIdx + '_' + cmIdx);
+      if (!netWtInput.value || netWtInput.value === '0') {
+        cm.net_weight_per_unit = netWt;
+        netWtInput.value = netWt;
+      }
     }
     onWeightChange(cIdx, cmIdx);
   }
@@ -764,38 +1053,43 @@ export function tradeRequestFormHTML(): string {
     const grossPerUnit = netPerUnit + tarePerUnit;
     cm.gross_weight_per_unit = grossPerUnit;
 
-    let totalUnits = 0, totalNet = 0, totalGross = 0;
+    let totalUnits = 0, totalNetKg = 0, totalGrossKg = 0;
 
     if (cm.quantity_type === 'UNITS' && cm.quantity_value) {
       totalUnits = cm.quantity_value;
-      totalNet = totalUnits * netPerUnit;
-      totalGross = totalUnits * grossPerUnit;
+      totalNetKg = totalUnits * netPerUnit;
+      totalGrossKg = totalUnits * grossPerUnit;
     } else if (cm.quantity_type === 'WEIGHT' && cm.quantity_value) {
       let totalWeightKg = cm.quantity_value;
       const wu = (cm.weight_unit || 'KG').toUpperCase();
       if (wu === 'TONS' || wu === 'MT') totalWeightKg *= 1000;
       else if (wu === 'LBS') totalWeightKg *= 0.453592;
-      totalNet = totalWeightKg;
+      totalNetKg = totalWeightKg;
       if (netPerUnit > 0) totalUnits = Math.ceil(totalWeightKg / netPerUnit);
-      totalGross = totalUnits * grossPerUnit;
+      totalGrossKg = totalUnits * grossPerUnit;
     }
 
     cm.total_units = totalUnits || null;
-    cm.total_net_weight = totalNet || null;
-    cm.total_gross_weight = totalGross || null;
+    cm.total_net_weight = totalNetKg || null;
+    cm.total_gross_weight = totalGrossKg || null;
 
-    // Build packaging description
     cm.packaging_description = netPerUnit > 0
       ? totalUnits + ' x ' + netPerUnit + ' kg ' + (getPackagingLabel(cm.packaging_code) || cm.packaging_code)
       : '';
 
-    // Update display
-    const wu = cm.weight_unit || 'KG';
-    document.getElementById('grossUnit_' + cIdx + '_' + cmIdx).textContent = grossPerUnit > 0 ? grossPerUnit.toFixed(2) + ' kg' : '—';
-    document.getElementById('totalUnits_' + cIdx + '_' + cmIdx).textContent = totalUnits || '—';
-    document.getElementById('totalNet_' + cIdx + '_' + cmIdx).textContent = totalNet > 0 ? formatWeight(totalNet, wu) : '—';
-    document.getElementById('totalGross_' + cIdx + '_' + cmIdx).textContent = totalGross > 0 ? formatWeight(totalGross, wu) : '—';
-    document.getElementById('pkgDesc_' + cIdx + '_' + cmIdx).textContent = cm.packaging_description;
+    // Update displays — DUAL kg AND lbs
+    const grossUnitLbs = grossPerUnit * KG_TO_LBS;
+    const totalNetLbs = totalNetKg * KG_TO_LBS;
+    const totalGrossLbs = totalGrossKg * KG_TO_LBS;
+
+    setTxt('grossUnit_' + cIdx + '_' + cmIdx, grossPerUnit > 0 ? grossPerUnit.toFixed(2) + ' kg' : '—');
+    setTxt('grossUnitLbs_' + cIdx + '_' + cmIdx, grossPerUnit > 0 ? grossUnitLbs.toFixed(2) + ' lbs' : '');
+    setTxt('totalUnits_' + cIdx + '_' + cmIdx, totalUnits || '—');
+    setTxt('totalNet_' + cIdx + '_' + cmIdx, totalNetKg > 0 ? fmtKg(totalNetKg) + ' kg' : '—');
+    setTxt('totalNetLbs_' + cIdx + '_' + cmIdx, totalNetKg > 0 ? fmtLbs(totalNetKg) + ' lbs' : '');
+    setTxt('totalGross_' + cIdx + '_' + cmIdx, totalGrossKg > 0 ? fmtKg(totalGrossKg) + ' kg' : '—');
+    setTxt('totalGrossLbs_' + cIdx + '_' + cmIdx, totalGrossKg > 0 ? fmtLbs(totalGrossKg) + ' lbs' : '');
+    setTxt('pkgDesc_' + cIdx + '_' + cmIdx, cm.packaging_description);
 
     updateSummary();
   }
@@ -805,58 +1099,50 @@ export function tradeRequestFormHTML(): string {
     return pkg?.label || '';
   }
 
-  function formatWeight(kg, unit) {
-    if (!unit || unit === 'KG') return Math.round(kg).toLocaleString() + ' kg';
-    if (unit === 'TONS' || unit === 'MT') return (kg / 1000).toFixed(2) + ' tons';
-    if (unit === 'LBS') return Math.round(kg / 0.453592).toLocaleString() + ' lbs';
-    return kg.toFixed(2) + ' ' + unit;
-  }
-
   // ═══════════════════════════════════════════════════════════════════
-  // PORT AUTO-POPULATION
+  // PORT LOADING (BUYER = ONLY DISCHARGE PORTS)
   // ═══════════════════════════════════════════════════════════════════
-
   function onOriginCountryChange(cIdx, val) {
     STATE.containers[cIdx].origin_country = val;
-    loadPorts(cIdx, 'origin', val);
+    // Buyer does NOT get port of loading — only country of origin
     renderContainerTabs();
     updateSummary();
   }
 
   function onDestCountryChange(cIdx, val) {
     STATE.containers[cIdx].destination_country = val;
-    loadPorts(cIdx, 'destination', val);
+    loadDischargePorts(cIdx, val);
     renderContainerTabs();
     updateSummary();
   }
 
-  async function loadPorts(cIdx, direction, countryCode, preselected) {
-    const selId = direction === 'origin' ? 'ct_pol_' + cIdx : 'ct_pod_' + cIdx;
-    const sel = document.getElementById(selId);
-    if (!sel || !countryCode) return;
+  function onPortDischargeChange(cIdx, sel) {
+    const opt = sel.options[sel.selectedIndex];
+    STATE.containers[cIdx].port_of_discharge = sel.value;
+    STATE.containers[cIdx].port_of_discharge_unlocode = opt?.dataset?.unlocode || '';
+  }
 
+  async function loadDischargePorts(cIdx, countryCode, preselected) {
+    const sel = document.getElementById('ct_pod_' + cIdx);
+    if (!sel || !countryCode) return;
     try {
-      const res = await fetch(API + '/trade-form/ports?country=' + countryCode + '&transport_mode=' + STATE.transportMode).then(r => r.json());
-      const ports = res.data || [];
-      // Fallback to static reference
-      let portsList = ports;
+      const res = await fetch(API + '/trade-form/ports?country=' + countryCode + '&transport_mode=' + STATE.transportMode + '&direction=discharge').then(r => r.json());
+      let portsList = res.data || [];
       if (portsList.length === 0) {
         const staticRes = await fetch(API + '/ref/ports?country=' + countryCode).then(r => r.json());
         portsList = staticRes.data || [];
       }
-      sel.innerHTML = '<option value="">Select port...</option>' +
+      sel.innerHTML = '<option value="">Select port of discharge...</option>' +
         portsList.map(p => '<option value="' + escHtml(p.name || p.unlocode) + '" data-unlocode="' + (p.unlocode || p.code || '') + '"' +
           ((p.name === preselected || p.unlocode === preselected) ? ' selected' : '') + '>' +
           escHtml(p.name) + ' (' + (p.unlocode || p.code || '') + ')' + (p.port_type ? ' [' + p.port_type + ']' : '') + '</option>').join('');
-
-      // Auto-select first port if only one
       if (portsList.length === 1 && !preselected) {
         sel.selectedIndex = 1;
-        const field = direction === 'origin' ? 'port_of_loading' : 'port_of_discharge';
-        STATE.containers[cIdx][field] = portsList[0].name || portsList[0].unlocode;
+        STATE.containers[cIdx].port_of_discharge = portsList[0].name || portsList[0].unlocode;
+        STATE.containers[cIdx].port_of_discharge_unlocode = portsList[0].unlocode || portsList[0].code || '';
       }
     } catch (e) {
-      console.warn('Failed to load ports for ' + countryCode, e);
+      console.warn('Failed to load discharge ports for ' + countryCode, e);
     }
   }
 
@@ -875,7 +1161,98 @@ export function tradeRequestFormHTML(): string {
     c.commodities.splice(cmIdx, 1);
     c.commodities.forEach((cm, i) => cm.index = i);
     renderContainerForm(cIdx);
+    updateAdvisorSection();
     updateSummary();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // AI ADVISOR SECTION — aggregated reefer/container recommendations
+  // ═══════════════════════════════════════════════════════════════════
+  function updateAdvisorSection() {
+    const section = document.getElementById('advisorSection');
+    const content = document.getElementById('advisorContent');
+    const allCommodities = STATE.containers.flatMap(c => c.commodities.filter(cm => cm.commodity_type));
+    if (allCommodities.length === 0) { section.classList.add('hidden'); return; }
+
+    // Check if any commodity needs reefer
+    const reeferCommodities = allCommodities.filter(cm => {
+      const advice = getReeferAdvice(cm.commodity_type, cm.product_name);
+      return advice && advice.reefer;
+    });
+
+    if (reeferCommodities.length === 0 && allCommodities.length > 0) {
+      section.classList.remove('hidden');
+      content.innerHTML = '<div class="flex items-center gap-2 text-sm text-green-400">' +
+        '<i class="fas fa-check-circle"></i> All commodities can use standard (non-reefer) containers.' +
+        '</div>' +
+        '<div class="text-xs text-slate-400 mt-1">No temperature-controlled transport required for the selected commodity types.</div>';
+      return;
+    }
+
+    section.classList.remove('hidden');
+    section.classList.add('advisor-glow');
+
+    let html = '<div class="text-xs text-cyan-300 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i> Temperature-controlled transport recommended for ' + reeferCommodities.length + ' commodity(ies):</div>';
+    html += '<div class="space-y-2">';
+
+    const seen = new Set();
+    reeferCommodities.forEach(cm => {
+      const key = cm.commodity_type + '|' + (cm.product_name || '');
+      if (seen.has(key)) return;
+      seen.add(key);
+      const advice = getReeferAdvice(cm.commodity_type, cm.product_name);
+      html += '<div class="bg-slate-800/60 rounded-lg p-3">' +
+        '<div class="flex items-center gap-2 mb-1">' +
+          '<i class="fas fa-snowflake text-cyan-400"></i>' +
+          '<span class="text-sm font-semibold text-white">' + escHtml(cm.product_name || cm.commodity_type) + '</span>' +
+          '<span class="advisor-badge">' + advice.temp_display + '</span>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">' +
+          '<div><span class="text-slate-400">Temperature:</span> <span class="text-cyan-300">' + advice.temp_display + '</span></div>' +
+          '<div><span class="text-slate-400">Humidity:</span> <span class="text-cyan-300">' + (advice.humidity || 'N/A') + '</span></div>' +
+          '<div><span class="text-slate-400">Air Circ:</span> <span class="text-cyan-300">' + (advice.air_circ ? advice.air_circ + ' CBM/hr' : 'Standard') + '</span></div>' +
+          '<div><span class="text-slate-400">Ethylene:</span> <span class="' + (advice.ethylene ? 'text-amber-400' : 'text-slate-500') + '">' + (advice.ethylene ? 'Management Required' : 'N/A') + '</span></div>' +
+        '</div>' +
+        '<div class="text-[10px] text-slate-400 mt-1">' + escHtml(advice.notes || '') + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // Suggest container type if reefer needed
+    const hasReeferContainer = STATE.containers.some(c => c.container_type.includes('RF'));
+    if (reeferCommodities.length > 0 && !hasReeferContainer) {
+      html += '<div class="mt-3 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">' +
+        '<i class="fas fa-exclamation-triangle text-amber-400"></i>' +
+        '<span class="text-xs text-amber-300">You have reefer-required commodities but no reefer container selected. Consider switching to 40ft_RF or 40ft_HC_RF.</span>' +
+      '</div>';
+    }
+
+    content.innerHTML = html;
+  }
+
+  function showAdvisorDetail(commodityType, productName) {
+    const advice = getReeferAdvice(commodityType, productName);
+    const msg = 'AI Container Advisor — ' + (productName || commodityType) + '\\n\\n' +
+      'Container: ' + advice.label + '\\n' +
+      'Temperature: ' + advice.temp_display + '\\n' +
+      'Humidity: ' + (advice.humidity || 'N/A') + '\\n' +
+      'Air Circulation: ' + (advice.air_circ ? advice.air_circ + ' CBM/hr' : 'Standard') + '\\n' +
+      'Ethylene Management: ' + (advice.ethylene ? 'Required' : 'Not Required') + '\\n\\n' +
+      'Notes: ' + (advice.notes || 'No specific notes.');
+    alert(msg);
+  }
+
+  function checkContainerAdvisor(cIdx) {
+    // Auto-suggest reefer if any commodity in this container needs it
+    const c = STATE.containers[cIdx];
+    const needsReefer = c.commodities.some(cm => {
+      const advice = getReeferAdvice(cm.commodity_type, cm.product_name);
+      return advice && advice.reefer;
+    });
+    if (needsReefer && !c.container_type.includes('RF')) {
+      // Don't auto-change, just show advisor
+      updateAdvisorSection();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -888,11 +1265,13 @@ export function tradeRequestFormHTML(): string {
     const idx = STATE.activeContainer;
     const c = STATE.containers[idx];
     if (!c) return;
-    // Save port selections
-    const polSel = document.getElementById('ct_pol_' + idx);
+    // Save port of discharge selection (buyer only sees discharge)
     const podSel = document.getElementById('ct_pod_' + idx);
-    if (polSel) c.port_of_loading = polSel.value;
-    if (podSel) c.port_of_discharge = podSel.value;
+    if (podSel) {
+      c.port_of_discharge = podSel.value;
+      const opt = podSel.options[podSel.selectedIndex];
+      c.port_of_discharge_unlocode = opt?.dataset?.unlocode || '';
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -900,13 +1279,18 @@ export function tradeRequestFormHTML(): string {
   // ═══════════════════════════════════════════════════════════════════
   function updateSummary() {
     document.getElementById('sumContainers').textContent = STATE.containers.length;
-    const totalCommodities = STATE.containers.reduce((s, c) => s + c.commodities.length, 0);
+    const totalCommodities = STATE.containers.reduce((s, c) => s + c.commodities.filter(cm => cm.commodity_type).length, 0);
     document.getElementById('sumCommodities').textContent = totalCommodities;
-    const totalGross = STATE.containers.reduce((s, c) =>
+
+    const totalGrossKg = STATE.containers.reduce((s, c) =>
       s + c.commodities.reduce((ss, cm) => ss + (cm.total_gross_weight || 0), 0), 0);
-    document.getElementById('sumGrossWeight').textContent = totalGross > 0 ? Math.round(totalGross).toLocaleString() : '0';
+    const totalGrossLbs = totalGrossKg * KG_TO_LBS;
+    document.getElementById('sumGrossWeightKg').textContent = totalGrossKg > 0 ? fmtKg(totalGrossKg) + ' kg' : '0 kg';
+    document.getElementById('sumGrossWeightLbs').textContent = totalGrossKg > 0 ? fmtLbs(totalGrossKg) + ' lbs' : '0 lbs';
+
     const modeLabels = { SEA_CARGO: 'Sea', AIR_CARGO: 'Air', INTERNATIONAL_TRUCKING: 'Truck', RAIL_CARGO: 'Rail', MULTIMODAL: 'Multi' };
     document.getElementById('sumTransport').textContent = modeLabels[STATE.transportMode] || STATE.transportMode;
+    document.getElementById('sumIncoterm').textContent = STATE.incoterm || '—';
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -920,8 +1304,12 @@ export function tradeRequestFormHTML(): string {
     }
     const formData = {
       transport_mode: STATE.transportMode,
+      incoterm: STATE.incoterm,
       seller_gtid: STATE.sellerGtid || document.getElementById('sellerGtid').value || null,
       seller_company_name: STATE.sellerCompanyName || document.getElementById('sellerCompanyName').value || null,
+      target_price: STATE.targetPrice,
+      target_currency: STATE.targetCurrency,
+      target_price_unit: STATE.targetPriceUnit,
       containers: STATE.containers,
       global_notes: document.getElementById('globalNotes').value,
     };
@@ -952,11 +1340,12 @@ export function tradeRequestFormHTML(): string {
   async function submitTradeRequest() {
     saveCurrentContainerState();
     if (!STATE.tenantId) { alert('No tenant ID. Please log in first.'); return; }
+    if (!STATE.incoterm) { alert('Please select an Incoterm before submitting.'); return; }
 
-    // Validate
+    // Validate containers
     for (let i = 0; i < STATE.containers.length; i++) {
       const c = STATE.containers[i];
-      if (!c.origin_country) { alert('Container ' + (i+1) + ': Origin country is required.'); switchContainer(i); return; }
+      if (!c.origin_country) { alert('Container ' + (i+1) + ': Country of origin is required.'); switchContainer(i); return; }
       if (!c.destination_country) { alert('Container ' + (i+1) + ': Destination country is required.'); switchContainer(i); return; }
       for (let j = 0; j < c.commodities.length; j++) {
         const cm = c.commodities[j];
@@ -965,7 +1354,7 @@ export function tradeRequestFormHTML(): string {
       }
     }
 
-    if (!confirm('Submit this trade request with ' + STATE.containers.length + ' container(s)?')) return;
+    if (!confirm('Submit this trade request with ' + STATE.containers.length + ' container(s) under ' + STATE.incoterm + '?')) return;
 
     try {
       const res = await fetch(API + '/trade-form/submit', {
@@ -974,15 +1363,19 @@ export function tradeRequestFormHTML(): string {
           tenant_id: STATE.tenantId,
           draft_id: STATE.draftId,
           transport_mode: STATE.transportMode,
+          incoterm: STATE.incoterm,
           seller_gtid: STATE.sellerGtid || document.getElementById('sellerGtid').value || null,
           seller_company_name: STATE.sellerCompanyName || document.getElementById('sellerCompanyName').value || null,
+          target_price: STATE.targetPrice,
+          target_currency: STATE.targetCurrency,
+          target_price_unit: STATE.targetPriceUnit,
           containers: STATE.containers,
           global_notes: document.getElementById('globalNotes').value,
         }),
       }).then(r => r.json());
 
       if (res.error) { alert('Error: ' + res.error); return; }
-      alert('Trade request submitted successfully!\\nID: ' + (res.data?.trade_request_id || 'N/A') + '\\nStatus: ' + (res.data?.status || 'N/A'));
+      alert('Trade request submitted successfully!\\nID: ' + (res.data?.trade_request_id || 'N/A') + '\\nStatus: ' + (res.data?.status || 'N/A') + '\\nIncoterm: ' + STATE.incoterm);
       window.location.href = '/app';
     } catch (e) {
       alert('Failed to submit: ' + e.message);
@@ -993,6 +1386,9 @@ export function tradeRequestFormHTML(): string {
   // UTILITIES
   // ═══════════════════════════════════════════════════════════════════
   function escHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function fmtKg(kg) { return Math.round(kg).toLocaleString(); }
+  function fmtLbs(kg) { return Math.round(kg * KG_TO_LBS).toLocaleString(); }
+  function setTxt(id, txt) { const el = document.getElementById(id); if (el) el.textContent = txt; }
   </script>
 </body>
 </html>`;
