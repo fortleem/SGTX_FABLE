@@ -72,6 +72,11 @@ export function tradeRequestFormHTML(): string {
     .dual-weight .kg-val { color: #34d399; font-weight: 600; }
     .dual-weight .lbs-val { color: #60a5fa; font-weight: 500; font-size: 0.8em; }
     .draft-indicator { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; }
+    .modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; }
+    .modal-panel { background: #1e293b; border: 1px solid rgba(71,85,105,0.5); border-radius: 1rem; max-width: 600px; width: 95%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .shipment-row { background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; }
+    .attribution-banner { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 0.75rem; padding: 1rem; }
+    .compatibility-warning { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 0.5rem; padding: 0.75rem; }
     @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); } }
     .pulse-green { animation: pulse-green 2s ease-in-out; }
     @keyframes advisor-glow { 0%, 100% { box-shadow: 0 0 8px rgba(6,182,212,0.3); } 50% { box-shadow: 0 0 20px rgba(6,182,212,0.5); } }
@@ -258,6 +263,39 @@ export function tradeRequestFormHTML(): string {
       </div>
     </section>
 
+    <!-- STEP 1.3: MULTI-SHIPMENT REQUEST -->
+    <section class="glass rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-semibold text-white flex items-center gap-2">
+          <i class="fas fa-calendar-alt text-purple-400"></i> Multi-Shipment Contract
+          <span class="text-xs text-slate-400 font-normal">(Step 1.3 — Optional)</span>
+        </h2>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <span class="text-xs text-slate-400">Enable Schedule</span>
+          <div class="relative">
+            <input type="checkbox" id="multiShipmentToggle" class="sr-only" onchange="toggleMultiShipment(this.checked)">
+            <div class="w-10 h-5 bg-slate-600 rounded-full peer-checked:bg-purple-500 transition-colors" id="msToggleBg"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform" id="msToggleDot"></div>
+          </div>
+        </label>
+      </div>
+      <p class="text-xs text-slate-400 mb-3">Request a multi-shipment contract with scheduled deliveries. Each shipment can have different dates, ports, and container counts.</p>
+      <div id="multiShipmentBuilder" class="hidden">
+        <div id="shipmentRows" class="space-y-2"></div>
+        <div class="flex gap-2 mt-2">
+          <button onclick="addShipment()" class="btn-secondary text-xs"><i class="fas fa-plus mr-1"></i> Add Shipment</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 1.5: MARKETPLACE ATTRIBUTION BANNER -->
+    <div id="attributionBanner" class="hidden mx-4">
+    </div>
+
+    <!-- COMMODITY COMPATIBILITY WARNINGS -->
+    <div id="compatibilityWarnings" class="hidden mx-4">
+    </div>
+
     <!-- GLOBAL NOTES -->
     <section class="glass rounded-xl p-5">
       <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
@@ -313,6 +351,29 @@ export function tradeRequestFormHTML(): string {
     </div>
   </div>
 
+  <!-- PLAIN LANGUAGE DECISION PANEL (G1U11) -->
+  <div id="governorDecisionModal" class="modal-overlay hidden">
+    <div class="modal-panel">
+      <div class="p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center" id="govModalIcon">
+            <i class="fas fa-gavel text-red-400 text-lg"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white" id="govModalTitle">Governor Decision</h3>
+            <p class="text-xs text-slate-400" id="govModalSubtitle">Your trade request requires attention</p>
+          </div>
+        </div>
+        <div id="govModalBody" class="space-y-3 mb-6">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button onclick="closeGovernorModal()" class="btn-secondary">Close</button>
+          <button id="govModalAction" onclick="closeGovernorModal()" class="btn-primary hidden">Resolve & Retry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
   // ═══════════════════════════════════════════════════════════════════
   // STATE
@@ -340,6 +401,13 @@ export function tradeRequestFormHTML(): string {
     autoSaveTimer: null,
     lastSaved: null,
     advisorCache: {},
+    // Multi-shipment (Step 1.3)
+    multiShipmentEnabled: false,
+    shipments: [],
+    // Marketplace attribution (Step 1.5)
+    marketplaceAttribution: null,
+    // Container override log (G1U9)
+    containerOverrideLog: [],
   };
 
   function createEmptyContainer(index) {
@@ -529,6 +597,13 @@ export function tradeRequestFormHTML(): string {
     if (fd.target_price != null) { STATE.targetPrice = fd.target_price; document.getElementById('targetPrice').value = fd.target_price; }
     if (fd.target_currency) { STATE.targetCurrency = fd.target_currency; document.getElementById('targetCurrency').value = fd.target_currency; }
     if (fd.target_price_unit) { STATE.targetPriceUnit = fd.target_price_unit; document.getElementById('targetPriceUnit').value = fd.target_price_unit; }
+    // Restore multi-shipment state
+    if (fd.multi_shipment_enabled) {
+      STATE.multiShipmentEnabled = true;
+      STATE.shipments = fd.shipments || [];
+      document.getElementById('multiShipmentToggle').checked = true;
+      toggleMultiShipment(true);
+    }
     if (fd.containers?.length) {
       STATE.containers = fd.containers.map((c, i) => ({
         ...createEmptyContainer(i), ...c, index: i,
@@ -672,7 +747,37 @@ export function tradeRequestFormHTML(): string {
     document.getElementById('sellerInfoGtid').textContent = gtid;
     document.getElementById('sellerInfoJurisdiction').textContent = jurisdiction || '';
     document.getElementById('sellerInfoBadges').innerHTML =
-      '<span class="saved-badge"><i class="fas fa-check-circle"></i> Verified</span>';
+      '<span class="saved-badge"><i class="fas fa-check-circle"></i> Verified</span>' +
+      '<button onclick="showTrustPortrait()" class="text-xs text-cyan-400 hover:text-cyan-300 ml-2" title="View Trust Portrait"><i class="fas fa-shield-alt mr-1"></i>Trust Portrait</button>';
+    // Step 1.5: Check marketplace attribution after seller selection
+    checkMarketplaceAttribution();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TRUST PORTRAIT (Step 1.1 — Advisory, Groq-generated summary)
+  // ═══════════════════════════════════════════════════════════════════
+  async function showTrustPortrait() {
+    if (!STATE.sellerGtid) { alert('No seller selected.'); return; }
+    try {
+      const res = await fetch(API + '/trade-form/gtid-resolve?gtid=' + encodeURIComponent(STATE.sellerGtid)).then(r => r.json());
+      const d = res.data;
+      if (!d) { alert('Could not load seller data.'); return; }
+      const ts = d.trust_score || {};
+      showGovernorModal('info',
+        'Trust Portrait — ' + escHtml(d.company_name || STATE.sellerGtid),
+        'AI-generated summary of trade history, payment behaviour, and public sentiment (advisory only).',
+        '<div class="space-y-3">' +
+          '<div class="grid grid-cols-2 gap-3">' +
+            '<div class="glass-light rounded-lg p-3"><div class="text-xs text-slate-400">Jurisdiction</div><div class="text-sm font-semibold text-white">' + escHtml(d.jurisdiction || 'N/A') + '</div></div>' +
+            '<div class="glass-light rounded-lg p-3"><div class="text-xs text-slate-400">KYB Status</div><div class="text-sm font-semibold ' + (d.kyb_status === 'VERIFIED' ? 'text-green-400' : 'text-amber-400') + '">' + escHtml(d.kyb_status || 'N/A') + '</div></div>' +
+            '<div class="glass-light rounded-lg p-3"><div class="text-xs text-slate-400">Risk Score</div><div class="text-sm font-semibold text-white">' + (d.risk_score != null ? d.risk_score : 'N/A') + '</div></div>' +
+            '<div class="glass-light rounded-lg p-3"><div class="text-xs text-slate-400">Sanctions</div><div class="text-sm font-semibold ' + (d.sanctions_clear ? 'text-green-400' : 'text-red-400') + '">' + (d.sanctions_clear ? '✅ Clear' : '⚠️ Flagged') + '</div></div>' +
+          '</div>' +
+          (ts.composite_score != null ? '<div class="glass-light rounded-lg p-3"><div class="text-xs text-slate-400">Composite Trust Score</div><div class="text-lg font-bold text-cyan-400">' + ts.composite_score + '/100</div></div>' : '') +
+          '<p class="text-xs text-slate-500 italic">Trust Portrait is AI-generated and advisory only. It does not constitute a recommendation to trade.</p>' +
+        '</div>'
+      );
+    } catch (e) { alert('Failed to load Trust Portrait: ' + e.message); }
   }
 
   function hideDropdown(id) { document.getElementById(id).classList.add('hidden'); }
@@ -680,6 +785,278 @@ export function tradeRequestFormHTML(): string {
     if (!e.target.closest('#sellerGtid') && !e.target.closest('#gtidDropdown')) hideDropdown('gtidDropdown');
     if (!e.target.closest('#sellerCompanyName') && !e.target.closest('#companyDropdown')) hideDropdown('companyDropdown');
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MARKETPLACE ATTRIBUTION (Step 1.5 — Auto-detection)
+  // ═══════════════════════════════════════════════════════════════════
+  async function checkMarketplaceAttribution() {
+    if (!STATE.tenantId || !STATE.sellerGtid) return;
+    try {
+      const res = await fetch(API + '/trade-form/marketplace-check?tenant_id=' + STATE.tenantId + '&seller_gtid=' + encodeURIComponent(STATE.sellerGtid)).then(r => r.json());
+      const banner = document.getElementById('attributionBanner');
+      if (res.data?.attributed) {
+        STATE.marketplaceAttribution = res.data;
+        banner.innerHTML = '<div class="attribution-banner">' +
+          '<div class="flex items-center gap-2 mb-2">' +
+            '<i class="fas fa-handshake text-amber-400"></i>' +
+            '<span class="text-sm font-semibold text-amber-300">Marketplace Attribution Detected</span>' +
+          '</div>' +
+          '<p class="text-xs text-slate-300">This trade will be attributed to <strong>' + escHtml(res.data.marketplace_name) + '</strong> because you first connected through them' +
+            (res.data.first_trade_date ? ' on ' + res.data.first_trade_date : '') + '. The standard revenue share of <strong>' + (res.data.revenue_share_pct || 'N/A') + '%</strong> will be applied.</p>' +
+          '<p class="text-xs text-slate-500 mt-1">You may <button onclick="disputeAttribution()" class="text-amber-400 underline">dispute this</button> within 72 hours.</p>' +
+        '</div>';
+        banner.classList.remove('hidden');
+      } else {
+        STATE.marketplaceAttribution = null;
+        banner.classList.add('hidden');
+      }
+    } catch (e) { /* non-blocking */ }
+  }
+
+  function disputeAttribution() {
+    if (confirm('Are you sure you want to dispute this marketplace attribution? This will be reviewed within 72 hours.')) {
+      STATE.marketplaceAttribution = { ...STATE.marketplaceAttribution, disputed: true };
+      document.getElementById('attributionBanner').innerHTML = '<div class="attribution-banner border-blue-500/30">' +
+        '<div class="flex items-center gap-2"><i class="fas fa-flag text-blue-400"></i>' +
+        '<span class="text-sm font-semibold text-blue-300">Attribution Dispute Filed</span></div>' +
+        '<p class="text-xs text-slate-400 mt-1">Your dispute has been recorded. Trade will proceed pending review.</p></div>';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // MULTI-SHIPMENT SCHEDULE BUILDER (Step 1.3)
+  // ═══════════════════════════════════════════════════════════════════
+  function toggleMultiShipment(enabled) {
+    STATE.multiShipmentEnabled = enabled;
+    const builder = document.getElementById('multiShipmentBuilder');
+    const bg = document.getElementById('msToggleBg');
+    const dot = document.getElementById('msToggleDot');
+    if (enabled) {
+      builder.classList.remove('hidden');
+      bg.style.background = '#a855f7';
+      dot.style.transform = 'translateX(20px)';
+      if (STATE.shipments.length === 0) addShipment();
+    } else {
+      builder.classList.add('hidden');
+      bg.style.background = '';
+      dot.style.transform = '';
+    }
+    updateSummary();
+  }
+
+  function addShipment() {
+    const num = STATE.shipments.length + 1;
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    STATE.shipments.push({
+      shipment_number: num,
+      delivery_date: tomorrow,
+      port_of_discharge: '',
+      port_of_discharge_country: STATE.containers[0]?.destination_country || '',
+      container_count: 1,
+      inherit_commodities: true,
+      commodities_override: null,
+      notes: '',
+    });
+    renderShipments();
+  }
+
+  function cloneShipment(idx) {
+    const src = STATE.shipments[idx];
+    const clone = JSON.parse(JSON.stringify(src));
+    clone.shipment_number = STATE.shipments.length + 1;
+    STATE.shipments.push(clone);
+    renderShipments();
+  }
+
+  function removeShipment(idx) {
+    STATE.shipments.splice(idx, 1);
+    STATE.shipments.forEach((s, i) => s.shipment_number = i + 1);
+    renderShipments();
+  }
+
+  function renderShipments() {
+    const container = document.getElementById('shipmentRows');
+    if (!container) return;
+    const destCountry = STATE.containers[0]?.destination_country || '';
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    container.innerHTML = STATE.shipments.map((s, i) =>
+      '<div class="shipment-row">' +
+        '<div class="flex items-center justify-between mb-2">' +
+          '<span class="text-xs font-semibold text-purple-300"><i class="fas fa-shipping-fast mr-1"></i> Shipment ' + (i + 1) + '</span>' +
+          '<div class="flex gap-1">' +
+            '<button onclick="cloneShipment(' + i + ')" class="text-xs text-slate-400 hover:text-white" title="Clone"><i class="fas fa-clone"></i></button>' +
+            (STATE.shipments.length > 1 ? '<button onclick="removeShipment(' + i + ')" class="text-xs text-red-400 hover:text-red-300" title="Remove"><i class="fas fa-trash"></i></button>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="grid grid-cols-2 md:grid-cols-4 gap-2">' +
+          '<div><label class="block text-[10px] text-slate-400 mb-0.5">Delivery Date <span class="text-amber-400">*</span></label>' +
+            '<input type="date" value="' + (s.delivery_date || tomorrow) + '" min="' + tomorrow + '" class="text-xs" onchange="STATE.shipments[' + i + '].delivery_date=this.value"></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-0.5">Destination Country</label>' +
+            '<select class="text-xs" onchange="STATE.shipments[' + i + '].port_of_discharge_country=this.value; loadShipmentPorts(' + i + ',this.value)">' +
+              '<option value="">Same as main</option>' +
+              STATE.countries.map(ct => '<option value="' + ct.code + '"' + (ct.code === s.port_of_discharge_country ? ' selected' : '') + '>' + escHtml(ct.name) + '</option>').join('') +
+            '</select></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-0.5">Port of Discharge</label>' +
+            '<select id="shipPort_' + i + '" class="text-xs" onchange="STATE.shipments[' + i + '].port_of_discharge=this.value">' +
+              '<option value="">Inherit from main</option></select></div>' +
+          '<div><label class="block text-[10px] text-slate-400 mb-0.5">Containers</label>' +
+            '<input type="number" min="1" value="' + (s.container_count || 1) + '" class="text-xs" onchange="STATE.shipments[' + i + '].container_count=parseInt(this.value)||1"></div>' +
+        '</div>' +
+        '<div class="flex items-center gap-2 mt-2">' +
+          '<label class="text-[10px] text-slate-400">Commodities:</label>' +
+          '<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="shipCom_' + i + '" value="inherit"' + (s.inherit_commodities ? ' checked' : '') + ' onchange="STATE.shipments[' + i + '].inherit_commodities=true" class="text-xs"> <span class="text-[10px]">Inherit from main</span></label>' +
+          '<label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="shipCom_' + i + '" value="custom"' + (!s.inherit_commodities ? ' checked' : '') + ' onchange="STATE.shipments[' + i + '].inherit_commodities=false" class="text-[10px]"> <span class="text-[10px]">Edit per shipment</span></label>' +
+          '<input type="text" value="' + escHtml(s.notes || '') + '" placeholder="Notes" class="text-xs flex-1 ml-2" onchange="STATE.shipments[' + i + '].notes=this.value">' +
+        '</div>' +
+      '</div>'
+    ).join('');
+    // Load ports for shipments with specific countries
+    STATE.shipments.forEach((s, i) => {
+      if (s.port_of_discharge_country) loadShipmentPorts(i, s.port_of_discharge_country);
+    });
+  }
+
+  async function loadShipmentPorts(idx, countryCode) {
+    const sel = document.getElementById('shipPort_' + idx);
+    if (!sel || !countryCode) return;
+    try {
+      const res = await fetch(API + '/trade-form/ports?country=' + countryCode + '&transport_mode=' + STATE.transportMode + '&direction=discharge').then(r => r.json());
+      const ports = res.data || [];
+      sel.innerHTML = '<option value="">Inherit from main</option>' +
+        ports.map(p => '<option value="' + escHtml(p.name || p.unlocode) + '"' +
+          (p.name === STATE.shipments[idx].port_of_discharge ? ' selected' : '') + '>' +
+          escHtml(p.name) + ' (' + (p.unlocode || '') + ')</option>').join('');
+    } catch (e) {}
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // COMMODITY COMPATIBILITY WARNINGS
+  // ═══════════════════════════════════════════════════════════════════
+  function checkCommodityCompatibility() {
+    const warnings = [];
+    const allCommodities = STATE.containers.flatMap((c, ci) =>
+      c.commodities.map((cm, cmi) => ({ ...cm, containerIndex: ci, commodityIndex: cmi }))
+    ).filter(cm => cm.commodity_type);
+
+    // Check ethylene producers vs ethylene-sensitive in same container
+    const ethyleneProducers = ['Bananas', 'Apples', 'Avocados', 'Mangoes', 'Peaches'];
+    const ethyleneSensitive = ['Kiwi Fruit', 'Strawberries', 'Grapes', 'Cherries', 'Asparagus', 'Potatoes'];
+
+    STATE.containers.forEach((c, ci) => {
+      const products = c.commodities.filter(cm => cm.product_name).map(cm => cm.product_name);
+      const hasProducer = products.some(p => ethyleneProducers.includes(p));
+      const hasSensitive = products.some(p => ethyleneSensitive.includes(p));
+      if (hasProducer && hasSensitive) {
+        const prods = products.filter(p => ethyleneProducers.includes(p));
+        const sens = products.filter(p => ethyleneSensitive.includes(p));
+        warnings.push({ type: 'ETHYLENE_CONFLICT', container: ci + 1,
+          message: 'Container ' + (ci+1) + ': Ethylene producer(s) (' + prods.join(', ') + ') mixed with ethylene-sensitive item(s) (' + sens.join(', ') + '). Consider separating into different containers.' });
+      }
+
+      // Check temperature range conflicts
+      const reeferItems = c.commodities.filter(cm => cm.commodity_type).map(cm => {
+        const advice = getReeferAdvice(cm.commodity_type, cm.product_name);
+        return { ...cm, advice };
+      }).filter(cm => cm.advice?.reefer);
+      if (reeferItems.length >= 2) {
+        const minTemp = Math.min(...reeferItems.map(r => r.advice.temp_min ?? 0));
+        const maxTemp = Math.max(...reeferItems.map(r => r.advice.temp_max ?? 0));
+        if (maxTemp - minTemp > 10) {
+          warnings.push({ type: 'TEMPERATURE_RANGE', container: ci + 1,
+            message: 'Container ' + (ci+1) + ': Wide temperature range (' + minTemp + '°C to ' + maxTemp + '°C). Items with very different temperature requirements should be in separate reefer containers.' });
+        }
+      }
+
+      // Check reefer + non-reefer mix
+      const reefer = c.commodities.filter(cm => { const a = getReeferAdvice(cm.commodity_type, cm.product_name); return a?.reefer; });
+      const nonReefer = c.commodities.filter(cm => { const a = getReeferAdvice(cm.commodity_type, cm.product_name); return cm.commodity_type && !a?.reefer; });
+      if (reefer.length > 0 && nonReefer.length > 0) {
+        warnings.push({ type: 'REEFER_MIX', container: ci + 1,
+          message: 'Container ' + (ci+1) + ': Mixing reefer-required and non-reefer commodities. This may damage non-reefer goods or waste reefer capacity.' });
+      }
+    });
+
+    const panel = document.getElementById('compatibilityWarnings');
+    if (warnings.length > 0) {
+      panel.innerHTML = warnings.map(w =>
+        '<div class="compatibility-warning mb-2">' +
+          '<div class="flex items-center gap-2">' +
+            '<i class="fas fa-exclamation-triangle text-red-400"></i>' +
+            '<span class="text-xs font-semibold text-red-300">' + w.type.replace(/_/g, ' ') + '</span>' +
+          '</div>' +
+          '<p class="text-xs text-slate-300 mt-1">' + escHtml(w.message) + '</p>' +
+        '</div>'
+      ).join('');
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+    return warnings;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PLAIN LANGUAGE DECISION PANEL (G1U11)
+  // ═══════════════════════════════════════════════════════════════════
+  function showGovernorModal(type, title, subtitle, bodyHtml, actionLabel) {
+    const modal = document.getElementById('governorDecisionModal');
+    const icon = document.getElementById('govModalIcon');
+    const actionBtn = document.getElementById('govModalAction');
+
+    const colors = { deny: 'bg-red-500/20', conditional: 'bg-amber-500/20', info: 'bg-blue-500/20' };
+    const icons = { deny: 'fa-ban text-red-400', conditional: 'fa-exclamation-circle text-amber-400', info: 'fa-info-circle text-blue-400' };
+    icon.className = 'w-10 h-10 rounded-full flex items-center justify-center ' + (colors[type] || colors.info);
+    icon.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + ' text-lg"></i>';
+
+    document.getElementById('govModalTitle').textContent = title || 'Governor Decision';
+    document.getElementById('govModalSubtitle').textContent = subtitle || '';
+    document.getElementById('govModalBody').innerHTML = bodyHtml || '';
+
+    if (actionLabel) {
+      actionBtn.textContent = actionLabel;
+      actionBtn.classList.remove('hidden');
+    } else {
+      actionBtn.classList.add('hidden');
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function closeGovernorModal() {
+    document.getElementById('governorDecisionModal').classList.add('hidden');
+  }
+
+  function showGovernorDeny(govResult) {
+    const reasons = govResult.reasons || govResult.policy_reasons || [];
+    const gateId = govResult.gate_id || govResult.decision_type || 'Unknown';
+    showGovernorModal('deny', 'Trade Request Denied', 'Governor gate ' + gateId + ' blocked this action.',
+      '<div class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">' +
+        '<p class="text-sm text-red-300 font-semibold">This trade request cannot proceed in its current state.</p>' +
+      '</div>' +
+      (reasons.length > 0 ? '<div class="space-y-2">' + reasons.map(r =>
+        '<div class="flex items-start gap-2">' +
+          '<i class="fas fa-times-circle text-red-400 mt-0.5"></i>' +
+          '<div><p class="text-sm text-white">' + escHtml(typeof r === 'string' ? r : r.message || r.reason || JSON.stringify(r)) + '</p>' +
+          (r.action ? '<p class="text-xs text-cyan-400 mt-0.5"><i class="fas fa-arrow-right mr-1"></i>' + escHtml(r.action) + '</p>' : '') +
+          '</div></div>'
+      ).join('') + '</div>' : '<p class="text-xs text-slate-400">No specific reason provided. Contact support if this persists.</p>')
+    );
+  }
+
+  function showGovernorConditional(govResult) {
+    const conditions = govResult.conditions || govResult.reasons || [];
+    showGovernorModal('conditional', 'Action Required', 'Your trade request needs adjustments before it can be submitted.',
+      '<div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-3">' +
+        '<p class="text-sm text-amber-300">Please resolve the following conditions:</p>' +
+      '</div>' +
+      '<div class="space-y-2">' + conditions.map((c, i) =>
+        '<div class="flex items-start gap-2">' +
+          '<span class="text-xs text-amber-400 font-bold mt-0.5">' + (i + 1) + '.</span>' +
+          '<p class="text-sm text-white">' + escHtml(typeof c === 'string' ? c : c.message || c.condition || JSON.stringify(c)) + '</p>' +
+        '</div>'
+      ).join('') + '</div>',
+      'Resolve & Retry'
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // CONTAINER MANAGEMENT
@@ -1312,6 +1689,8 @@ export function tradeRequestFormHTML(): string {
       target_price_unit: STATE.targetPriceUnit,
       containers: STATE.containers,
       global_notes: document.getElementById('globalNotes').value,
+      multi_shipment_enabled: STATE.multiShipmentEnabled,
+      shipments: STATE.multiShipmentEnabled ? STATE.shipments : [],
     };
     try {
       const res = await fetch(API + '/trade-form/draft-save', {
@@ -1340,21 +1719,68 @@ export function tradeRequestFormHTML(): string {
   async function submitTradeRequest() {
     saveCurrentContainerState();
     if (!STATE.tenantId) { alert('No tenant ID. Please log in first.'); return; }
-    if (!STATE.incoterm) { alert('Please select an Incoterm before submitting.'); return; }
+    if (!STATE.incoterm) {
+      showGovernorConditional({ gate_id: 'G1U7', conditions: ['Incoterm is required. Please select an Incoterm before submitting.'] });
+      return;
+    }
 
-    // Validate containers
+    // G1U7: Validate per-container data consistency
     for (let i = 0; i < STATE.containers.length; i++) {
       const c = STATE.containers[i];
-      if (!c.origin_country) { alert('Container ' + (i+1) + ': Country of origin is required.'); switchContainer(i); return; }
-      if (!c.destination_country) { alert('Container ' + (i+1) + ': Destination country is required.'); switchContainer(i); return; }
+      if (!c.origin_country) {
+        showGovernorConditional({ gate_id: 'G1U7', conditions: ['Container ' + (i+1) + ': Country of origin is required.'] });
+        switchContainer(i); return;
+      }
+      if (!c.destination_country) {
+        showGovernorConditional({ gate_id: 'G1U7', conditions: ['Container ' + (i+1) + ': Destination country is required.'] });
+        switchContainer(i); return;
+      }
       for (let j = 0; j < c.commodities.length; j++) {
         const cm = c.commodities[j];
-        if (!cm.commodity_type) { alert('Container ' + (i+1) + ', Commodity ' + (j+1) + ': Commodity type is required.'); switchContainer(i); return; }
-        if (!cm.product_name) { alert('Container ' + (i+1) + ', Commodity ' + (j+1) + ': Product is required.'); switchContainer(i); return; }
+        if (!cm.commodity_type) {
+          showGovernorConditional({ gate_id: 'G1U7', conditions: ['Container ' + (i+1) + ', Commodity ' + (j+1) + ': Commodity type is required.'] });
+          switchContainer(i); return;
+        }
+        if (!cm.product_name) {
+          showGovernorConditional({ gate_id: 'G1U7', conditions: ['Container ' + (i+1) + ', Commodity ' + (j+1) + ': Product is required.'] });
+          switchContainer(i); return;
+        }
+        // G1U7: Pallet count must be >= 0
+        if (cm.num_pallets != null && cm.num_pallets < 0) {
+          showGovernorConditional({ gate_id: 'G1U7', conditions: ['Container ' + (i+1) + ', Commodity ' + (j+1) + ': Pallet count cannot be negative.'] });
+          switchContainer(i); return;
+        }
       }
     }
 
-    if (!confirm('Submit this trade request with ' + STATE.containers.length + ' container(s) under ' + STATE.incoterm + '?')) return;
+    // G1U10: Multi-shipment schedule validation
+    if (STATE.multiShipmentEnabled) {
+      if (STATE.shipments.length === 0) {
+        showGovernorConditional({ gate_id: 'G1U10', conditions: ['Multi-shipment is enabled but no shipments are defined. Add at least one shipment or disable multi-shipment.'] });
+        return;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      for (let i = 0; i < STATE.shipments.length; i++) {
+        const s = STATE.shipments[i];
+        if (!s.delivery_date || s.delivery_date <= today) {
+          showGovernorConditional({ gate_id: 'G1U10', conditions: ['Shipment ' + (i+1) + ': Delivery date must be in the future.'] });
+          return;
+        }
+        if (s.container_count < 1) {
+          showGovernorConditional({ gate_id: 'G1U10', conditions: ['Shipment ' + (i+1) + ': Container count must be at least 1.'] });
+          return;
+        }
+      }
+    }
+
+    // Commodity compatibility warnings (advisory — don't block, just warn)
+    const compatWarnings = checkCommodityCompatibility();
+    if (compatWarnings.length > 0) {
+      if (!confirm('Warning: ' + compatWarnings.length + ' commodity compatibility issue(s) detected. Proceed anyway?')) return;
+    }
+
+    if (!confirm('Submit this trade request with ' + STATE.containers.length + ' container(s) under ' + STATE.incoterm + '?' +
+      (STATE.multiShipmentEnabled ? '\\n\\nMulti-shipment: ' + STATE.shipments.length + ' scheduled shipment(s)' : ''))) return;
 
     try {
       const res = await fetch(API + '/trade-form/submit', {
@@ -1371,11 +1797,29 @@ export function tradeRequestFormHTML(): string {
           target_price_unit: STATE.targetPriceUnit,
           containers: STATE.containers,
           global_notes: document.getElementById('globalNotes').value,
+          multi_shipment_enabled: STATE.multiShipmentEnabled,
+          multi_shipment_schedule: STATE.multiShipmentEnabled ? STATE.shipments : null,
+          marketplace_attribution: STATE.marketplaceAttribution,
+          container_override_log: STATE.containerOverrideLog,
         }),
       }).then(r => r.json());
 
-      if (res.error) { alert('Error: ' + res.error); return; }
-      alert('Trade request submitted successfully!\\nID: ' + (res.data?.trade_request_id || 'N/A') + '\\nStatus: ' + (res.data?.status || 'N/A') + '\\nIncoterm: ' + STATE.incoterm);
+      if (res.error) {
+        // G1U11: Show PlainLanguage Decision Panel for governor denials
+        if (res.governor) {
+          if (res.governor.verdict === 'DENY') {
+            showGovernorDeny(res.governor);
+          } else if (res.governor.verdict === 'CONDITIONAL') {
+            showGovernorConditional(res.governor);
+          }
+        } else {
+          showGovernorModal('deny', 'Submission Error', res.error,
+            '<p class="text-sm text-red-300">' + escHtml(res.error) + '</p>');
+        }
+        return;
+      }
+      alert('Trade request submitted successfully!\\nID: ' + (res.data?.trade_request_id || 'N/A') + '\\nStatus: ' + (res.data?.status || 'N/A') + '\\nIncoterm: ' + STATE.incoterm +
+        (STATE.multiShipmentEnabled ? '\\nShipments: ' + STATE.shipments.length : ''));
       window.location.href = '/app';
     } catch (e) {
       alert('Failed to submit: ' + e.message);

@@ -459,7 +459,9 @@ tradeForm.post('/trade-form/submit', async (c) => {
     tenant_id, employee_id, draft_id,
     transport_mode, incoterm, seller_gtid, seller_company_name,
     target_price, target_currency, target_price_unit,
-    containers, global_notes
+    containers, global_notes,
+    multi_shipment_enabled, multi_shipment_schedule,
+    marketplace_attribution, container_override_log
   } = body;
 
   if (!tenant_id) return c.json({ error: 'tenant_id required' }, 400);
@@ -510,6 +512,11 @@ tradeForm.post('/trade-form/submit', async (c) => {
     if (sellerJ) jurisdictions.push((sellerJ as any).jurisdiction);
   }
 
+  // G1U4: Collect all HS codes for dual-use check
+  const allHsCodes = containers.flatMap((ct: any) => (ct.commodities || []).map((cm: any) => cm.hs_code)).filter(Boolean);
+  // G1U9: Container override log from client
+  const overrideCount = container_override_log?.length || 0;
+
   const gov = await evaluateGovernor(c.env.DB, {
     decision_type: 'trade.request.create',
     actor_gtid: (buyer as any).gtid || tenant_id,
@@ -520,7 +527,17 @@ tradeForm.post('/trade-form/submit', async (c) => {
       seller_gtid: sellerGtid,
       container_count: containers.length,
       target_price,
-      commodities: containers.flatMap((ct: any) => (ct.commodities || []).map((cm: any) => cm.hs_code)).filter(Boolean),
+      commodities: allHsCodes,
+      // G1U4: Flag for dual-use goods screening
+      hs_codes_for_dual_use_check: allHsCodes,
+      // G1U8: Marketplace attribution
+      marketplace_attributed: !!marketplace_attribution?.attributed,
+      marketplace_disputed: !!marketplace_attribution?.disputed,
+      // G1U9: Container type override count
+      container_override_count: overrideCount,
+      // G1U10: Multi-shipment schedule
+      multi_shipment_enabled: !!multi_shipment_enabled,
+      shipment_count: multi_shipment_schedule?.length || 0,
     },
     jurisdictions,
   });
@@ -570,7 +587,45 @@ tradeForm.post('/trade-form/submit', async (c) => {
     target_price_unit: target_price_unit || 'PER_TON',
     transport_mode,
     global_notes,
+    multi_shipment_enabled: !!multi_shipment_enabled,
+    multi_shipment_schedule: multi_shipment_schedule || null,
+    container_override_log: container_override_log || [],
   };
+
+  // G1U8: Persist marketplace attribution if detected
+  if (marketplace_attribution?.attributed && !marketplace_attribution?.disputed) {
+    try {
+      await c.env.DB.prepare(`
+        INSERT OR IGNORE INTO partner_lead_attributions (id, trade_request_id, marketplace_partner_id,
+          buyer_tenant_id, seller_tenant_id, revenue_share_pct, attribution_date, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+      `).bind(
+        uuid(), tradeId,
+        marketplace_attribution.marketplace_id || 'unknown',
+        tenant_id, sellerTenantId || null,
+        marketplace_attribution.revenue_share_pct || 0,
+        marketplace_attribution.first_trade_date || now,
+        now
+      ).run();
+    } catch (e) { /* non-blocking — table may not exist yet */ }
+  }
+
+  // G1U9: Persist container override log
+  if (container_override_log?.length > 0) {
+    try {
+      await auditLog(c.env.DB, 'trade_requests', tradeId, 'CONTAINER_OVERRIDE', null,
+        { overrides: container_override_log }, (buyer as any).gtid);
+    } catch (e) { /* non-blocking */ }
+  }
+
+  // Persist multi-shipment schedule
+  if (multi_shipment_enabled && multi_shipment_schedule?.length > 0) {
+    try {
+      await c.env.DB.prepare(`
+        UPDATE trade_requests SET multi_shipment_schedule = ? WHERE id = ?
+      `).bind(JSON.stringify(multi_shipment_schedule), tradeId).run();
+    } catch (e) { /* column may not exist yet — non-blocking */ }
+  }
 
   // Check if this is an update of an existing draft
   const existingDraft = draft_id ? await c.env.DB.prepare(
@@ -686,7 +741,10 @@ tradeForm.post('/trade-form/submit', async (c) => {
   // Audit log
   try {
     await auditLog(c.env.DB, 'trade_requests', tradeId, 'CREATE', null, {
-      status, containers: savedContainers.length, transport_mode, incoterm, target_price
+      status, containers: savedContainers.length, transport_mode, incoterm, target_price,
+      multi_shipment: !!multi_shipment_enabled, shipments: multi_shipment_schedule?.length || 0,
+      marketplace_attributed: !!marketplace_attribution?.attributed,
+      container_overrides: container_override_log?.length || 0,
     }, (buyer as any).gtid);
   } catch (e) { /* non-blocking */ }
 
@@ -696,7 +754,8 @@ tradeForm.post('/trade-form/submit', async (c) => {
       INSERT INTO trade_event_timeline (id, ustn, event_type, event_text, event_data, actor_gtid, phase, created_at)
       VALUES (?, ?, 'PHASE_1', 'Trade request submitted via advanced form', ?, ?, 'Phase 1', ?)
     `).bind(uuid(), tradeId, JSON.stringify({
-      containers: savedContainers.length, transport_mode, incoterm, seller_gtid: sellerGtid, target_price
+      containers: savedContainers.length, transport_mode, incoterm, seller_gtid: sellerGtid, target_price,
+      multi_shipment: !!multi_shipment_enabled, shipment_count: multi_shipment_schedule?.length || 0,
     }), (buyer as any).gtid, now).run();
   } catch (e) { /* non-blocking */ }
 
@@ -712,10 +771,60 @@ tradeForm.post('/trade-form/submit', async (c) => {
       target_price_unit: target_price_unit || 'PER_TON',
       containers: savedContainers,
       total_containers: savedContainers.length,
+      multi_shipment: !!multi_shipment_enabled,
+      shipment_count: multi_shipment_schedule?.length || 0,
+      marketplace_attributed: !!marketplace_attribution?.attributed,
       governor_decision: gov,
     },
-    message: `Trade request submitted with ${savedContainers.length} container(s) under ${incoterm}. ${sellerTenantId ? 'Awaiting seller quote.' : 'Listed for matching.'}`
+    message: `Trade request submitted with ${savedContainers.length} container(s) under ${incoterm}.${multi_shipment_enabled ? ` ${multi_shipment_schedule?.length || 0} shipment(s) scheduled.` : ''} ${sellerTenantId ? 'Awaiting seller quote.' : 'Listed for matching.'}`
   }, 201);
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MARKETPLACE ATTRIBUTION CHECK — Step 1.5
+// Checks partner_lead_attributions for existing marketplace relationship
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /trade-form/marketplace-check?tenant_id=X&seller_gtid=SGTX-XX-XX-XXXX-XXXX
+tradeForm.get('/trade-form/marketplace-check', async (c) => {
+  const tenantId = c.req.query('tenant_id');
+  const sellerGtid = c.req.query('seller_gtid');
+  if (!tenantId || !sellerGtid) return c.json({ data: { attributed: false } });
+
+  // Resolve seller tenant_id
+  const seller = await c.env.DB.prepare(
+    `SELECT id FROM tenants WHERE gtid = ?`
+  ).bind(sellerGtid).first();
+  if (!seller) return c.json({ data: { attributed: false } });
+
+  // Check partner_lead_attributions for most recent marketplace introduction
+  try {
+    const attr = await c.env.DB.prepare(`
+      SELECT pla.*, t.legal_name as marketplace_name
+      FROM partner_lead_attributions pla
+      LEFT JOIN tenants t ON t.id = pla.marketplace_partner_id
+      WHERE pla.buyer_tenant_id = ? AND pla.seller_tenant_id = ?
+        AND pla.status = 'ACTIVE'
+      ORDER BY pla.created_at DESC LIMIT 1
+    `).bind(tenantId, (seller as any).id).first();
+
+    if (attr) {
+      return c.json({
+        data: {
+          attributed: true,
+          marketplace_id: (attr as any).marketplace_partner_id,
+          marketplace_name: (attr as any).marketplace_name || 'Marketplace Partner',
+          revenue_share_pct: (attr as any).revenue_share_pct || 0,
+          first_trade_date: (attr as any).attribution_date || (attr as any).created_at,
+          attribution_id: (attr as any).id,
+        }
+      });
+    }
+  } catch (e) {
+    // Table may not exist yet — non-blocking
+  }
+
+  return c.json({ data: { attributed: false } });
 });
 
 // ═══════════════════════════════════════════════════════════════════
