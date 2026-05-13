@@ -180,14 +180,78 @@ POST /admin/impersonate             — Read-only 30 min session
 POST /admin/onboard-partner         — AI agreement generation
 ```
 
+## Part 3 Phase 1 — Structured Container-Level Trade Request Form
+
+### Buyer Flow (Completed)
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Country of Origin | Buyer selects origin country only (NOT port of loading — seller responsibility) | ✅ |
+| Port of Discharge | Buyer selects destination port filtered by `direction=discharge` | ✅ |
+| Incoterm Selection | 11 incoterms (EXW→DDP), color-coded grid: E=gray, F=blue, C=amber, D=green | ✅ |
+| Target Price (Optional) | 9 currencies (USD/EUR/GBP/AED/SAR/EGP/CNY/JPY/INR), 9 units (PER_TON→LUMP_SUM) | ✅ |
+| SGTX Fee | System-calculated only (XGBoost/LightGBM + LLM, clamped 0.1%–2.5%), NOT shown to buyer | ✅ |
+| Logistics Cost | Removed from buyer form — seller-only (manual or RFQ to providers) | ✅ |
+| Commodity Categories | 26 categories, ~250+ products with HS codes (6 new: Processed Foods, Petroleum, Automotive, Ceramics, Livestock, Building Materials) | ✅ |
+| AI Container Advisor | Reefer intelligence: product-specific temp overrides for 15+ fruits, 6+ vegetables; humidity, air circulation, ethylene management | ✅ |
+| Dual Weight Display | All weights shown in both kg AND lbs (KG_TO_LBS = 2.20462) | ✅ |
+| Custom Weight Entry | Prominent amber-styled "Weight Configuration" section for custom net weight per unit | ✅ |
+| Packaging & Pallets | 12 packaging types (4 categories), 8 pallet sizes, custom dimensions | ✅ |
+| Container Types | 11 types: 20GP, 40GP, 40HC, 20RF, 40RF, 20OT, 40OT, 20FR, 40FR, 20TK, 45HC | ✅ |
+| Draft Save/Load | Auto-save with incoterm, target_price, currency, unit persistence | ✅ |
+| Governor Gating | All submissions evaluated by Governor with incoterm + target_price context | ✅ |
+
+### Trade Request Form API Endpoints (15 total)
+```
+GET  /api/v1/trade-form/contacts-search    — Search saved contacts by name/GTID
+GET  /api/v1/trade-form/gtid-resolve       — Resolve GTID to entity details
+GET  /api/v1/trade-form/ports              — Ports by country (direction=discharge|loading)
+GET  /api/v1/trade-form/hs-lookup          — HS code lookup by code
+GET  /api/v1/trade-form/hs-search          — HS code search by keyword
+GET  /api/v1/trade-form/packaging          — Packaging types (optionally by category)
+GET  /api/v1/trade-form/packaging-categories — List packaging categories
+GET  /api/v1/trade-form/transport-modes    — Available transport modes
+POST /api/v1/trade-form/calculate-weights  — Weight calculator (net/gross/CBM)
+POST /api/v1/trade-form/draft-save         — Save form draft
+GET  /api/v1/trade-form/draft-load         — Load saved draft
+GET  /api/v1/trade-form/drafts             — List all drafts for user
+POST /api/v1/trade-form/submit             — Submit trade request (Governor-gated)
+GET  /api/v1/trade-form/container-advisor  — AI reefer/container recommendation per commodity
+POST /api/v1/trade-form/container-advisor/batch — Bulk commodity recommendations
+```
+
+### Reference Data API Endpoints (9 total)
+```
+GET  /api/v1/ref/countries        — 130+ countries with codes
+GET  /api/v1/ref/ports            — 200+ ports by country
+GET  /api/v1/ref/commodity-types  — 26 commodity categories
+GET  /api/v1/ref/products         — Products by category with HS codes
+GET  /api/v1/ref/hs-search        — HS code search
+GET  /api/v1/ref/packaging        — 12 packaging types
+GET  /api/v1/ref/pallet-sizes     — 8 pallet sizes
+GET  /api/v1/ref/container-types  — 11 container types
+GET  /api/v1/ref/incoterms        — 11 incoterms (EXW→DDP)
+```
+
 ## Tech Stack
 - **Backend**: Hono (TypeScript) on Cloudflare Workers
-- **Database**: Cloudflare D1 (SQLite, 120+ tables, 4 migrations)
+- **Database**: Cloudflare D1 (SQLite, 230+ tables, 18 migrations)
 - **Frontend**: Vanilla JS + TailwindCSS + FontAwesome + Chart.js
-- **Build**: Vite + @hono/vite-cloudflare-pages
+- **Build**: Vite + @hono/vite-cloudflare-pages (NODE_OPTIONS="--max-old-space-size=400")
 - **Dev Server**: Wrangler Pages Dev + PM2
+- **Route Files**: 30+ route modules, 31 imports in index.tsx
+
+## Implementation Progress
+
+| Part | Name | Status | Commit |
+|------|------|--------|--------|
+| 0 | Constitutional Layer (G1–G4) | ✅ Complete | `e3de27a` |
+| 1 | Governance Engine & Governor Service | ✅ Complete | `e3de27a` |
+| 2 | Identity & Tenant Management | ✅ Complete (14/14 gap tests) | `2fb9580` |
+| 3 Phase 1 | Structured Trade Request Form (Buyer) | ✅ Complete (12/12 tests) | `ed164d8` |
+| 3 Phase 2 | Seller Quote Response | ⏳ Pending | — |
+| 4–28 | Remaining Blueprint Parts | ⏳ Pending | — |
 
 ## Deployment
 - **Platform**: Cloudflare Pages (Sandbox)
 - **Status**: ✅ Active
-- **Last Updated**: 2026-04-28
+- **Last Updated**: 2026-05-13
