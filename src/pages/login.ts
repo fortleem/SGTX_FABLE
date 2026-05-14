@@ -1,10 +1,10 @@
-// SGTX Platform v6.1 — Login Page
+// SGTX Platform v6.3 — Login Page
 export function loginHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — SGTX Platform</title>
+<title>Login — SGTX Platform v6.3</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 <script>tailwind.config={theme:{extend:{colors:{sgtx:{50:'#f0f0ff',100:'#e0e0ff',200:'#c4c0ff',300:'#a49aff',400:'#7c6eff',500:'#4E3FE8',600:'#3d2fc0',700:'#2d2290',800:'#1e1660',900:'#0f0b30'}}}}}</script>
@@ -14,7 +14,7 @@ export function loginHTML(): string {
   <div class="text-center mb-8">
     <a href="/" class="inline-flex items-center gap-3 mb-6">
       <div class="w-12 h-12 bg-sgtx-500 rounded-xl flex items-center justify-center"><i class="fas fa-shield-halved text-white text-xl"></i></div>
-      <div class="text-left"><div class="text-white font-bold text-xl">SGTX</div><div class="text-sgtx-400 text-xs">Platform v6.1</div></div>
+      <div class="text-left"><div class="text-white font-bold text-xl">SGTX</div><div class="text-sgtx-400 text-xs">Platform v6.3</div></div>
     </a>
     <h1 class="text-2xl font-bold text-white mb-2">Sign In</h1>
     <p class="text-sgtx-300 text-sm">Access your organization's trade execution dashboard</p>
@@ -41,25 +41,31 @@ export function loginHTML(): string {
   </div>
 
   <div class="mt-8 bg-sgtx-800/50 rounded-lg p-4">
-    <h3 class="text-sgtx-300 text-xs font-bold mb-2"><i class="fas fa-info-circle mr-1"></i> Demo Accounts</h3>
-    <div class="space-y-2 text-xs text-sgtx-400">
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('ahmed@cairoimports.eg','password123')">
-        <span>Cairo Imports Co. (Importer, EG)</span><span class="text-sgtx-500">Use →</span>
+    <h3 class="text-sgtx-300 text-xs font-bold mb-3"><i class="fas fa-users mr-1"></i> Demo Accounts <span class="text-sgtx-500 font-normal">(click to auto-login)</span></h3>
+    <div class="space-y-1.5 text-xs">
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('ahmed@cairoimports.eg','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-building text-blue-400"></i><span class="text-sgtx-200 group-hover:text-white">Cairo Imports Co.</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Importer · EG</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('nguyen@saigontex.vn','password123')">
-        <span>Saigon Textiles (Exporter, VN)</span><span class="text-sgtx-500">Use →</span>
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('nguyen@saigontex.vn','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-industry text-green-400"></i><span class="text-sgtx-200 group-hover:text-white">Saigon Textiles</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Exporter · VN</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('chen@asiafinance.sg','password123')">
-        <span>Asia Trade Finance (Financier, SG)</span><span class="text-sgtx-500">Use →</span>
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('chen@asiafinance.sg','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-landmark text-amber-400"></i><span class="text-sgtx-200 group-hover:text-white">Asia Trade Finance</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Financier · SG</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('muller@hamburg-log.de','password123')">
-        <span>Hamburg Logistics (Logistics, DE)</span><span class="text-sgtx-500">Use →</span>
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('muller@hamburg-log.de','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-truck text-cyan-400"></i><span class="text-sgtx-200 group-hover:text-white">Hamburg Logistics</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Logistics · DE</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('james@londonqc.co.uk','password123')">
-        <span>London QC Services (QC, GB)</span><span class="text-sgtx-500">Use →</span>
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('james@londonqc.co.uk','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-microscope text-purple-400"></i><span class="text-sgtx-200 group-hover:text-white">London QC Services</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">QC · GB</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
-      <div class="flex justify-between cursor-pointer hover:text-sgtx-200" onclick="fillDemo('admin@sgtx.us','password123')">
-        <span>SGTX Platform (Admin, US)</span><span class="text-sgtx-500">Use →</span>
+      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('admin@sgtx.us','password123')">
+        <div class="flex items-center gap-2"><i class="fas fa-shield-halved text-red-400"></i><span class="text-sgtx-200 group-hover:text-white">SGTX Platform</span></div>
+        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Admin · US</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
       </div>
     </div>
   </div>
@@ -71,6 +77,7 @@ export function loginHTML(): string {
 
 <script>
 function fillDemo(e,p){document.getElementById('email').value=e;document.getElementById('password').value=p;}
+function demoLogin(e,p){fillDemo(e,p);document.querySelector('form').dispatchEvent(new Event('submit',{cancelable:true}));}
 
 async function handleLogin(e){
   e.preventDefault();
