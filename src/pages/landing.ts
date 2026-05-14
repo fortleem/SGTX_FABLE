@@ -1,4 +1,4 @@
-// SGTX Platform v6.1 — Landing Page
+// SGTX Platform v6.3 — Landing Page
 export function landingPageHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -25,7 +25,7 @@ export function landingPageHTML(): string {
   <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 bg-sgtx-500 rounded-xl flex items-center justify-center"><i class="fas fa-shield-halved text-white text-lg"></i></div>
-      <div><span class="font-bold text-xl">SGTX</span><span class="text-sgtx-300 text-xs ml-2">v6.1</span></div>
+      <div><span class="font-bold text-xl">SGTX</span><span class="text-sgtx-300 text-xs ml-2">v6.3</span></div>
     </div>
     <div class="hidden md:flex items-center gap-8 text-sm text-sgtx-200">
       <a href="#features" class="hover:text-white transition">Features</a>

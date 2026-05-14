@@ -1,10 +1,10 @@
-// SGTX Platform v6.1 — Main Application Shell (Multi-Tenant Portal)
+// SGTX Platform v6.3 — Main Application Shell (Multi-Tenant Portal)
 export function appHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SGTX Platform v6.1 — Dashboard</title>
+<title>SGTX Platform v6.3 — Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -43,7 +43,7 @@ tailwind.config = {
   <div class="p-5 border-b border-gray-100">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 bg-sgtx-500 rounded-xl flex items-center justify-center"><i class="fas fa-shield-halved text-white text-lg"></i></div>
-      <div><div class="font-bold text-lg text-sgtx-800">SGTX</div><div class="text-[10px] text-gray-400 -mt-0.5 tracking-wider">PLATFORM v6.1</div></div>
+      <div><div class="font-bold text-lg text-sgtx-800">SGTX</div><div class="text-[10px] text-gray-400 -mt-0.5 tracking-wider">PLATFORM v6.3</div></div>
     </div>
     <div id="tenant-info" class="mt-3 text-xs text-gray-500"></div>
   </div>
