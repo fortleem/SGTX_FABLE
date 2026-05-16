@@ -66,6 +66,7 @@ tailwind.config = {
       <button onclick="logout()" class="text-red-400 hover:text-red-600"><i class="fas fa-sign-out-alt"></i></button>
     </div>
     <div class="text-[9px] text-gray-400 text-center italic">No irreversible action without Governor approval</div>
+    <div class="text-[8px] text-gray-300 text-center mt-1">SGTX is a non-custodial execution platform, not a marketplace.</div>
   </div>
 </aside>
 <!-- Main -->
