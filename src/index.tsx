@@ -38,6 +38,8 @@ import settlement from './routes/settlement';
 import tradeRequestForm from './routes/trade_request_form';
 // Part 3 Phase 2: Seller Quote, Packing & Logistics Orchestration (G2U1-G2U22, G2UPACK1)
 import sellerQuote from './routes/seller_quote_form';
+// Part 3 Phase 4: Universal Trade Finance (Steps 4.1-4.11, Gates G4U1-G4U10a)
+import tradeFinance from './routes/trade_finance';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -97,6 +99,8 @@ app.route('/api/v1', settlement);
 app.route('/api/v1', tradeRequestForm);
 // Part 3 Phase 2: Seller Quote Form Routes
 app.route('/api/v1', sellerQuote);
+// Part 3 Phase 4: Universal Trade Finance Routes
+app.route('/api/v1', tradeFinance);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
@@ -112,7 +116,8 @@ app.get('/api/health', (c) => c.json({
     'smart_inbox', 'tenant_experience', 'workflow_recovery',
     'trade_advanced', 'finance_advanced', 'commodity_intel',
     'phases_1_to_10', 'reference_data',
-    'contracting_part3', 'settlement_part6', 'trade_request_form', 'seller_quote_form'
+    'contracting_part3', 'settlement_part6', 'trade_request_form', 'seller_quote_form',
+    'trade_finance_phase4'
   ],
   timestamp: new Date().toISOString(),
 }));
