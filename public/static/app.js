@@ -2109,7 +2109,7 @@ async function renderInspectionQueue() {
       <div class="divide-y divide-surface-100">
         ${[{id:'INS-001',commodity:'Cotton Textiles',seller:'Saigon Textiles',qty:'200 bales',deadline:'Jan 25',priority:'HIGH',type:'Pre-shipment'},{id:'INS-002',commodity:'Garments (Mixed)',seller:'VN Apparel Co',qty:'500 boxes',deadline:'Jan 28',priority:'MEDIUM',type:'AQL Sampling'},{id:'INS-003',commodity:'Fabric Rolls',seller:'Saigon Textiles',qty:'80 rolls',deadline:'Feb 2',priority:'LOW',type:'Visual + Weight'},{id:'INS-004',commodity:'Electronics',seller:'Shenzhen Tech',qty:'1200 units',deadline:'Jan 26',priority:'HIGH',type:'Full Inspection'}].map(i => `
           <div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">
-            <div class="w-10 h-10 rounded-xl ${i.priority==='HIGH'?'bg-red-100':'i.priority==='MEDIUM'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center">
+            <div class="w-10 h-10 rounded-xl ${i.priority==='HIGH'?'bg-red-100':i.priority==='MEDIUM'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center">
               <i class="fas fa-microscope ${i.priority==='HIGH'?'text-red-500':i.priority==='MEDIUM'?'text-amber-500':'text-blue-500'} text-sm"></i>
             </div>
             <div class="flex-1">
@@ -2219,14 +2219,14 @@ async function renderARInspection() {
         <div class="space-y-3">
           ${[{type:'Stain',conf:94,severity:'MAJOR',img:'IMG_0042'},{type:'Thread Pull',conf:87,severity:'MINOR',img:'IMG_0043'},{type:'Color Variation',conf:72,severity:'MINOR',img:'IMG_0044'},{type:'Dimensional Error',conf:96,severity:'CRITICAL',img:'IMG_0045'}].map(d => `
             <div class="flex items-center gap-3 p-3 rounded-xl border border-surface-100">
-              <div class="w-8 h-8 rounded-lg ${d.severity==='CRITICAL'?'bg-red-100':'d.severity==='MAJOR'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center">
-                <i class="fas fa-bug ${d.severity==='CRITICAL'?'text-red-500':'d.severity==='MAJOR'?'text-amber-500':'text-blue-500'} text-xs"></i>
+              <div class="w-8 h-8 rounded-lg ${d.severity==='CRITICAL'?'bg-red-100':d.severity==='MAJOR'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center">
+                <i class="fas fa-bug ${d.severity==='CRITICAL'?'text-red-500':d.severity==='MAJOR'?'text-amber-500':'text-blue-500'} text-xs"></i>
               </div>
               <div class="flex-1">
                 <div class="text-xs font-medium">${d.type}</div>
                 <div class="text-[10px] text-surface-400">${d.img} • ${d.conf}% confidence</div>
               </div>
-              <span class="text-[10px] font-bold ${d.severity==='CRITICAL'?'text-red-600':'d.severity==='MAJOR'?'text-amber-600':'text-blue-600'}">${d.severity}</span>
+              <span class="text-[10px] font-bold ${d.severity==='CRITICAL'?'text-red-600':d.severity==='MAJOR'?'text-amber-600':'text-blue-600'}">${d.severity}</span>
             </div>`).join('')}
         </div>
         <div class="mt-3 p-3 bg-surface-50 rounded-xl text-[10px] text-surface-500">
@@ -2578,23 +2578,24 @@ async function renderPSPManager() {
     <div class="sgtx-card mb-6">
       <h3 class="font-semibold text-sm mb-4"><i class="fas fa-credit-card text-sgtx-500 mr-2"></i>PSP Health Dashboard</h3>
       <div class="space-y-3">
-        ${[{name:'Stripe',status:'Healthy',uptime:'99.99%',latency:'120ms',priority:1},{name:'Wise',status:'Healthy',uptime:'99.8%',latency:'340ms',priority:2},{name:'PayPal Business',status:'Degraded',uptime:'97.2%',latency:'890ms',priority:3},{name:'Local Bank Rails',status:'Healthy',uptime:'99.5%',latency:'200ms',priority:4},{name:'Crypto Rails (Circle)',status:'Maintenance',uptime:'95.0%',latency:'—',priority:5}].map(p => \`
-          <div class="flex items-center justify-between p-4 rounded-xl border border-surface-100">
-            <div class="flex items-center gap-3">
-              <span class="w-6 h-6 rounded-full bg-surface-100 flex items-center justify-center text-[10px] font-bold">${p.priority}</span>
-              <div><div class="text-sm font-medium">${p.name}</div><div class="text-[10px] text-surface-400">${p.latency} avg latency</div></div>
-            </div>
-            <div class="flex items-center gap-3">
-              <span class="text-[10px] font-semibold">${p.uptime}</span>
-              <span class="text-[10px] px-2 py-1 rounded font-semibold ${p.status==='Healthy'?'bg-emerald-100 text-emerald-700':p.status==='Degraded'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700'}">${p.status}</span>
-            </div>
-          </div>\`).join('')}
+        ${[{name:'Stripe',status:'Healthy',uptime:'99.99%',latency:'120ms',priority:1},{name:'Wise',status:'Healthy',uptime:'99.8%',latency:'340ms',priority:2},{name:'PayPal Business',status:'Degraded',uptime:'97.2%',latency:'890ms',priority:3},{name:'Local Bank Rails',status:'Healthy',uptime:'99.5%',latency:'200ms',priority:4},{name:'Crypto Rails (Circle)',status:'Maintenance',uptime:'95.0%',latency:'—',priority:5}].map(p =>
+          '<div class="flex items-center justify-between p-4 rounded-xl border border-surface-100">' +
+            '<div class="flex items-center gap-3">' +
+              '<span class="w-6 h-6 rounded-full bg-surface-100 flex items-center justify-center text-[10px] font-bold">' + p.priority + '</span>' +
+              '<div><div class="text-sm font-medium">' + p.name + '</div><div class="text-[10px] text-surface-400">' + p.latency + ' avg latency</div></div>' +
+            '</div>' +
+            '<div class="flex items-center gap-3">' +
+              '<span class="text-[10px] font-semibold">' + p.uptime + '</span>' +
+              '<span class="text-[10px] px-2 py-1 rounded font-semibold ' + (p.status==='Healthy'?'bg-emerald-100 text-emerald-700':p.status==='Degraded'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700') + '">' + p.status + '</span>' +
+            '</div>' +
+          '</div>'
+        ).join('')}
       </div>
     </div>
     <div class="sgtx-card">
       <h3 class="font-semibold text-sm mb-3"><i class="fas fa-route text-sgtx-500 mr-2"></i>Fallback Chain</h3>
       <div class="flex items-center gap-2 flex-wrap py-2">
-        ${['Stripe','Wise','PayPal','Bank','Crypto'].map((p,i) => \`<div class="flex items-center gap-2"><div class="px-3 py-2 rounded-lg bg-sgtx-50 border border-sgtx-200 text-xs font-medium text-sgtx-700">${p}</div>${i<4 ? '<i class="fas fa-chevron-right text-surface-300 text-xs"></i>' : ''}</div>\`).join('')}
+        ${['Stripe','Wise','PayPal','Bank','Crypto'].map((p,i) => '<div class="flex items-center gap-2"><div class="px-3 py-2 rounded-lg bg-sgtx-50 border border-sgtx-200 text-xs font-medium text-sgtx-700">' + p + '</div>' + (i<4 ? '<i class="fas fa-chevron-right text-surface-300 text-xs"></i>' : '') + '</div>').join('')}
       </div>
       <div class="text-[10px] text-surface-400 mt-2">AI PSP Router auto-selects optimal rail. Fallback on timeout (>5s) or error rate >2%.</div>
     </div>`;
@@ -2671,12 +2672,13 @@ async function renderConfigHistory() {
     <div class="sgtx-card !p-0 overflow-hidden">
       <div class="px-5 py-4 border-b border-surface-100"><h3 class="font-semibold text-sm"><i class="fas fa-code-branch text-sgtx-500 mr-2"></i>Configuration Changes</h3></div>
       <div class="divide-y divide-surface-100">
-        ${[{ver:'v47',change:'Updated jurisdiction matrix',author:'Admin A',time:'2h ago'},{ver:'v46',change:'PSP fallback chain reordered',author:'Admin B',time:'1d ago'},{ver:'v45',change:'Fee rate adjusted EG-VN corridor',author:'Admin A',time:'3d ago'},{ver:'v44',change:'Governor policy: Added G1U11 gate',author:'Admin C',time:'5d ago'}].map(c => \`
-          <div class="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 transition">
-            <span class="font-mono text-xs text-sgtx-600 font-bold w-8">${c.ver}</span>
-            <div class="flex-1"><div class="text-xs text-surface-800">${c.change}</div><div class="text-[10px] text-surface-400">${c.author} • ${c.time}</div></div>
-            <button class="text-[10px] text-sgtx-600 hover:underline">Rollback</button>
-          </div>\`).join('')}
+        ${[{ver:'v47',change:'Updated jurisdiction matrix',author:'Admin A',time:'2h ago'},{ver:'v46',change:'PSP fallback chain reordered',author:'Admin B',time:'1d ago'},{ver:'v45',change:'Fee rate adjusted EG-VN corridor',author:'Admin A',time:'3d ago'},{ver:'v44',change:'Governor policy: Added G1U11 gate',author:'Admin C',time:'5d ago'}].map(c =>
+          '<div class="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 transition">' +
+            '<span class="font-mono text-xs text-sgtx-600 font-bold w-8">' + c.ver + '</span>' +
+            '<div class="flex-1"><div class="text-xs text-surface-800">' + c.change + '</div><div class="text-[10px] text-surface-400">' + c.author + ' &bull; ' + c.time + '</div></div>' +
+            '<button class="text-[10px] text-sgtx-600 hover:underline">Rollback</button>' +
+          '</div>'
+        ).join('')}
       </div>
     </div>`;
 }
