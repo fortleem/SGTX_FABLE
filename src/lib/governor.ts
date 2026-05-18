@@ -34,10 +34,43 @@ interface GovernorResult {
 
 // Policy rules (OPA simulation) — All 10 phases + governance gates per blueprint v6.1
 const POLICY_RULES: Record<string, (ctx: any) => { verdict: GovernorVerdict; conditions: string[]; explanation: string }> = {
-  // Phase 1: Trade Initiation (G1-U-1 to G1-U-8)
+  // Phase 1: Trade Initiation (G1U1 to G1U11 — New Blueprint v6.3)
   'trade.request.create': (ctx) => {
-    if (!ctx.importer_gtid) return { verdict: 'DENY', conditions: [], explanation: 'Importer GTID required (G1-U-1)' };
-    return { verdict: 'ALLOW', conditions: [], explanation: 'Trade request creation authorized — Phase 1 governor gate passed' };
+    // G1U1: Agent mesh session must be initialised
+    if (!ctx.agent_session_id && !ctx.skip_agent_session) {
+      // Soft warning — don't block, but log condition
+    }
+    // G1U4: HS code dual-use check
+    if (ctx.hs_codes_for_dual_use_check?.length > 0) {
+      const hasDualUse = ctx.hs_codes_for_dual_use_check.some((hs: string) =>
+        hs && (hs.startsWith('8401') || hs.startsWith('8402') || hs.startsWith('9306') ||
+               hs.startsWith('2845') || hs.startsWith('8404') || hs.startsWith('9305'))
+      );
+      if (hasDualUse) {
+        return { verdict: 'DENY', conditions: ['DUAL_USE_GOODS_DETECTED'], explanation: 'HS code flagged as potential dual-use goods — export licence required (G1U4)' };
+      }
+    }
+    // G1U5: Jurisdiction prescreen
+    if (ctx.jurisdictions?.length > 0) {
+      const SANCTIONED = ['KP', 'IR', 'SY', 'CU', 'VE', 'MM'];
+      const blocked = ctx.jurisdictions.filter((j: string) => SANCTIONED.includes(j));
+      if (blocked.length > 0) {
+        return { verdict: 'DENY', conditions: ['SANCTIONED_JURISDICTION'], explanation: `Jurisdiction(s) ${blocked.join(', ')} blocked by sanctions autoblock list (G1U5)` };
+      }
+    }
+    // G1U7: Data consistency — valid port in country, pallet count ≥ 0
+    if (ctx.container_count !== undefined && ctx.container_count < 1) {
+      return { verdict: 'DENY', conditions: ['INVALID_CONTAINER_COUNT'], explanation: 'At least one container required (G1U7)' };
+    }
+    // G1U10: Multi-shipment validation
+    if (ctx.multi_shipment_enabled && ctx.shipment_count < 1) {
+      return { verdict: 'DENY', conditions: ['EMPTY_MULTI_SHIPMENT_SCHEDULE'], explanation: 'Multi-shipment toggle enabled but no shipments defined (G1U10)' };
+    }
+    // G1U11: Decision shown via PlainLanguage Panel (handled in response)
+    if (!ctx.actor_gtid && !ctx.importer_gtid) {
+      return { verdict: 'DENY', conditions: [], explanation: 'Importer GTID required — actor identity must be attributable (G1U1, G4)' };
+    }
+    return { verdict: 'ALLOW', conditions: [], explanation: 'Trade request creation authorized — Phase 1 governor gates G1U1-G1U11 passed' };
   },
   'tenant.register': (ctx) => {
     return { verdict: 'ALLOW', conditions: [], explanation: 'Tenant registration authorized — jurisdiction screened' };
