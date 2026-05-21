@@ -43,17 +43,16 @@ sellerQuote.get('/seller-quote/pending-requests', async (c) => {
   if (!seller_tenant_id) return c.json({ error: 'seller_tenant_id required' }, 400);
 
   const requests = await DB.prepare(`
-    SELECT tr.id, tr.buyer_tenant_id, tr.status, tr.parsed_specs, tr.created_at,
+    SELECT tr.id, tr.importer_tenant_id, tr.status, tr.parsed_specs, tr.created_at,
            t.legal_name as buyer_name, t.gtid as buyer_gtid, t.jurisdiction as buyer_country,
-           ts.score as buyer_trust_score
+           COALESCE(100 - t.risk_score, 75) as buyer_trust_score
     FROM trade_requests tr
-    LEFT JOIN tenants t ON tr.buyer_tenant_id = t.id
-    LEFT JOIN trust_scores ts ON t.gtid = ts.gtid
-    WHERE (tr.assigned_exporter_id = ? OR tr.status = 'SUBMITTED')
+    LEFT JOIN tenants t ON tr.importer_tenant_id = t.id
+    WHERE (tr.assigned_exporter_id = ? OR tr.exporter_tenant_id = ? OR tr.status = 'SUBMITTED')
     AND tr.status IN ('SUBMITTED', 'PENDING', 'CREATED')
     ORDER BY tr.created_at DESC
     LIMIT 50
-  `).bind(seller_tenant_id).all();
+  `).bind(seller_tenant_id, seller_tenant_id).all();
 
   const enriched = (requests.results || []).map((r: any) => {
     let specs: any = {};
@@ -82,10 +81,9 @@ sellerQuote.get('/seller-quote/request-detail', async (c) => {
 
   const tr = await DB.prepare(`
     SELECT tr.*, t.legal_name as buyer_name, t.gtid as buyer_gtid, t.jurisdiction as buyer_country,
-           ts.score as buyer_trust_score, ts.components as trust_components
+           COALESCE(100 - t.risk_score, 75) as buyer_trust_score
     FROM trade_requests tr
-    LEFT JOIN tenants t ON tr.buyer_tenant_id = t.id
-    LEFT JOIN trust_scores ts ON t.gtid = ts.gtid
+    LEFT JOIN tenants t ON tr.importer_tenant_id = t.id
     WHERE tr.id = ?
   `).bind(trade_request_id).first() as any;
 

@@ -40,6 +40,8 @@ import tradeRequestForm from './routes/trade_request_form';
 import sellerQuote from './routes/seller_quote_form';
 // Part 3 Phase 4: Universal Trade Finance (Steps 4.1-4.11, Gates G4U1-G4U10a)
 import tradeFinance from './routes/trade_finance';
+// Blueprint Gap Closure: Phase 5 Physical Execution, Phase 7/8 Distressed, Phase 10 Disputes, QC AQL
+import gapClosure from './routes/gap_closure';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -101,6 +103,8 @@ app.route('/api/v1', tradeRequestForm);
 app.route('/api/v1', sellerQuote);
 // Part 3 Phase 4: Universal Trade Finance Routes
 app.route('/api/v1', tradeFinance);
+// Blueprint Gap Closure Routes (Phase 5, 7/8, 10, QC AQL)
+app.route('/api/v1', gapClosure);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
@@ -117,7 +121,8 @@ app.get('/api/health', (c) => c.json({
     'trade_advanced', 'finance_advanced', 'commodity_intel',
     'phases_1_to_10', 'reference_data',
     'contracting_part3', 'settlement_part6', 'trade_request_form', 'seller_quote_form',
-    'trade_finance_phase4'
+    'trade_finance_phase4',
+    'gap_closure_phase5_7_10_qc'
   ],
   timestamp: new Date().toISOString(),
 }));
