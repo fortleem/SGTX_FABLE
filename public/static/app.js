@@ -114,12 +114,14 @@ const portalMenus = {
     { id: 'logistics-builder', icon: 'fa-truck-fast', label: 'Logistics Builder', mode: 'SELL' },
     { id: 'quote-submit', icon: 'fa-paper-plane', label: 'Quote Submission', mode: 'SELL' },
     { id: 'qc-booking', icon: 'fa-microscope', label: 'QC Booking', mode: 'SELL' },
+    { id: 'doc-finalisation', icon: 'fa-file-circle-check', label: 'Document Finalisation', mode: 'SELL' },
     { id: 'barcode-print', icon: 'fa-barcode', label: 'Barcode Print', mode: 'SELL' },
     { id: 'cash-position', icon: 'fa-chart-area', label: 'Cash Position', mode: 'SELL' },
     { id: 'distressed-sell', icon: 'fa-fire', label: 'Distressed & Outreach', mode: 'SELL' },
     { section: 'Shared' },
     { id: 'disputes', icon: 'fa-gavel', label: 'Disputes' },
     { id: 'contacts', icon: 'fa-users', label: 'Saved Contacts' },
+    { id: 'company-admin', icon: 'fa-building-user', label: 'Company Admin' },
   ],
   logistics: [
     { section: 'Core' },
@@ -393,6 +395,8 @@ const pageRenderers = {
   'barcode-print': renderBarcodePrint,
   'cash-position': renderCashPosition,
   'distressed-sell': renderDistressedSell,
+  'doc-finalisation': renderDocFinalisation,
+  'company-admin': renderCompanyAdmin,
   // Logistics
   'logistics-dashboard': renderLogisticsDashboard,
   'rfq-inbox': renderRFQInbox,
@@ -575,1024 +579,1754 @@ function showToast(msg, type = 'info') {
   setTimeout(() => toast.remove(), 4000);
 }
 
+
 // ═══════════════════════════════════════════════════════════
 // SMART INBOX — Default Landing Page (Blueprint 6.1.1)
 // Prioritised action feed with urgency scores
 // ═══════════════════════════════════════════════════════════
-async function renderSmartInbox() {
-  setTitle('Smart Inbox', 'Prioritised actions requiring your attention');
-  
-  // Generate contextual inbox items based on portal & real data
-  let trades = [], shipments = [], stats = {};
+
+// ── Shared Components (Part 6.1.x) ──────────────────────
+
+function plainLanguageDecisionPanel(decision) {
+  if (!decision) return '';
+  const verdictMap = {
+    'APPROVED': { icon: 'fa-check-circle', color: 'emerald', label: 'Approved', plain: 'Your request has been approved. You can proceed to the next step.' },
+    'CONDITIONAL': { icon: 'fa-exclamation-triangle', color: 'amber', label: 'Conditionally Approved', plain: 'Approved with conditions — review the requirements below before proceeding.' },
+    'DENIED': { icon: 'fa-times-circle', color: 'red', label: 'Denied', plain: 'This request was not approved. See the reason below and suggested next steps.' },
+    'PENDING': { icon: 'fa-clock', color: 'blue', label: 'Pending Review', plain: 'Your request is being reviewed. You will be notified when a decision is made.' }
+  };
+  const v = verdictMap[decision.verdict] || verdictMap['PENDING'];
+  return '<div class="glass-card p-4 border-l-4 border-' + v.color + '-400 mb-4">' +
+    '<div class="flex items-center gap-2 mb-2">' +
+    '<i class="fas ' + v.icon + ' text-' + v.color + '-400 text-lg"></i>' +
+    '<span class="font-semibold text-' + v.color + '-300">' + v.label + '</span>' +
+    (decision.decided_at ? '<span class="text-xs text-surface-500 ml-auto">' + timeAgo(decision.decided_at) + '</span>' : '') +
+    '</div>' +
+    '<p class="text-sm text-surface-300 mb-2">' + v.plain + '</p>' +
+    (decision.reason ? '<div class="text-xs text-surface-400 bg-dark-800/50 rounded p-2 mt-2"><strong>Detail:</strong> ' + decision.reason + '</div>' : '') +
+    (decision.conditions ? '<div class="text-xs text-amber-300/80 bg-amber-900/20 rounded p-2 mt-2"><strong>Conditions:</strong> ' + decision.conditions + '</div>' : '') +
+    (decision.next_steps ? '<div class="text-xs text-blue-300/80 bg-blue-900/20 rounded p-2 mt-2"><strong>Next Steps:</strong> ' + decision.next_steps + '</div>' : '') +
+    '</div>';
+}
+
+function guidedRecoveryBanner(type) {
+  const banners = {
+    'repeated_submission': { icon: 'fa-redo', color: 'amber', title: 'We noticed multiple attempts', msg: 'It looks like you have submitted this before. Would you like to check the status of your previous submission instead?', action: 'View Previous', page: 'smart-inbox' },
+    'abandonment': { icon: 'fa-pause-circle', color: 'blue', title: 'Continue where you left off?', msg: 'You started this process earlier but did not finish. Your progress has been saved.', action: 'Resume', page: null },
+    'denial_loop': { icon: 'fa-life-ring', color: 'red', title: 'Need help?', msg: 'Your recent requests were not approved. Our support team can help you understand the requirements and resubmit.', action: 'Get Help', page: 'disputes' }
+  };
+  const b = banners[type];
+  if (!b) return '';
+  return '<div class="glass-card p-4 border-l-4 border-' + b.color + '-400 mb-4 flex items-center gap-4">' +
+    '<i class="fas ' + b.icon + ' text-' + b.color + '-400 text-2xl"></i>' +
+    '<div class="flex-1">' +
+    '<div class="font-semibold text-' + b.color + '-300 text-sm">' + b.title + '</div>' +
+    '<div class="text-xs text-surface-400 mt-1">' + b.msg + '</div>' +
+    '</div>' +
+    '<button onclick="' + (b.page ? "navigateTo('" + b.page + "')" : 'window.history.back()') + '" class="px-3 py-1.5 bg-' + b.color + '-500/20 text-' + b.color + '-300 rounded-lg text-xs font-medium hover:bg-' + b.color + '-500/30 transition">' + b.action + '</button>' +
+    '</div>';
+}
+
+function slaTransparencyPanel(actions) {
+  if (!actions || !actions.length) return '';
+  return '<div class="glass-card p-4 mb-4">' +
+    '<div class="flex items-center gap-2 mb-3"><i class="fas fa-stopwatch text-blue-400"></i><span class="text-sm font-semibold text-surface-200">SLA Transparency</span></div>' +
+    '<div class="space-y-2">' +
+    actions.map(function(a) {
+      return '<div class="flex items-center justify-between text-xs bg-dark-800/40 rounded-lg p-2">' +
+        '<span class="text-surface-300">' + (a.label || a.action || 'Action') + '</span>' +
+        '<div class="flex items-center gap-3">' +
+        (a.responsible ? '<span class="text-surface-500"><i class="fas fa-user-tag mr-1"></i>' + a.responsible + '</span>' : '') +
+        (a.queue_position ? '<span class="text-surface-500"><i class="fas fa-list-ol mr-1"></i>#' + a.queue_position + '</span>' : '') +
+        '<span class="text-blue-300 font-mono">' + (a.estimated_time || a.eta || 'Pending') + '</span>' +
+        '</div></div>';
+    }).join('') +
+    '</div></div>';
+}
+
+// ── Smart Inbox Helpers ──────────────────────────────────
+
+function getCategoryIcon(cat) {
+  var icons = { TRADE: 'fa-handshake', DOCUMENT: 'fa-file-alt', FINANCE: 'fa-university', COMPLIANCE: 'fa-shield-alt', LOGISTICS: 'fa-truck', QC: 'fa-microscope', DISPUTE: 'fa-gavel', SYSTEM: 'fa-cog' };
+  return icons[cat] || 'fa-bell';
+}
+function getCategoryColor(cat) {
+  var colors = { TRADE: 'blue', DOCUMENT: 'purple', FINANCE: 'emerald', COMPLIANCE: 'amber', LOGISTICS: 'cyan', QC: 'orange', DISPUTE: 'red', SYSTEM: 'gray' };
+  return colors[cat] || 'gray';
+}
+function getActionPage(item) {
+  var map = { TRADE: 'trade-command-center', DOCUMENT: 'customs-readiness', FINANCE: 'financing', COMPLIANCE: 'governor', LOGISTICS: 'logistics-builder', QC: 'qc-booking', DISPUTE: 'disputes' };
+  return map[item.category] || 'smart-inbox';
+}
+function generateLocalAISummary(items) {
+  if (!items.length) return 'No pending items. All clear!';
+  var urgent = items.filter(function(i) { return (i.urgency_score || 0) >= 70; }).length;
+  var cats = [];
+  items.forEach(function(i) { if (i.category && cats.indexOf(i.category) === -1) cats.push(i.category); });
+  var summary = 'You have ' + items.length + ' item' + (items.length > 1 ? 's' : '') + ' needing attention.';
+  if (urgent) summary += ' ' + urgent + ' are urgent (score >= 70).';
+  summary += ' Categories: ' + cats.join(', ') + '.';
+  return summary;
+}
+
+async function snoozeInboxItem(itemId) {
   try {
-    const [tradesR, shipmentsR, statsR] = await Promise.all([
-      api('/trades').catch(() => ({ data: [] })),
-      api('/shipments').catch(() => ({ data: [] })),
-      api('/stats').catch(() => ({ data: {} })),
-    ]);
-    trades = tradesR.data || [];
-    shipments = shipmentsR.data || [];
-    stats = statsR.data || {};
-  } catch(e) {}
+    await apiPost('/inbox/' + itemId + '/snooze', { snooze_until: new Date(Date.now() + 24*3600000).toISOString() });
+    showToast('Snoozed for 24 hours', 'info');
+    renderSmartInbox();
+  } catch(e) { showToast('Snooze failed', 'error'); }
+}
+async function dismissInboxItem(itemId) {
+  try {
+    await apiPost('/inbox/' + itemId + '/dismiss', {});
+    showToast('Dismissed', 'info');
+    renderSmartInbox();
+  } catch(e) { showToast('Dismiss failed', 'error'); }
+}
 
-  // Build inbox items from real data
-  const inboxItems = [];
-  
-  trades.filter(t => t.status === 'PENDING_EXPORTER_RESPONSE' || t.status === 'DRAFT').forEach(t => {
-    inboxItems.push({ urgency: 85, icon: 'fa-handshake', color: 'amber', title: `Trade request awaiting response`, desc: `${t.importer_name || '?'} → ${t.exporter_name || '?'}`, time: t.created_at, action: () => navigate('pending-requests') });
-  });
-  
-  trades.filter(t => t.status === 'QUOTE_SUBMITTED').forEach(t => {
-    inboxItems.push({ urgency: 90, icon: 'fa-tag', color: 'blue', title: `Quote ready for review`, desc: `From ${t.exporter_name || 'seller'}`, time: t.created_at, action: () => navigate('quote-review') });
-  });
+// ── Smart Inbox Main Render ──────────────────────────────
 
-  shipments.filter(s => s.status === 'IN_TRANSIT').forEach(s => {
-    inboxItems.push({ urgency: 40, icon: 'fa-ship', color: 'cyan', title: `Shipment in transit`, desc: `${s.ustn} — ${s.origin_port || '?'} → ${s.destination_port || '?'}`, time: s.created_at, action: () => navigate('shipments-vault') });
-  });
+async function renderSmartInbox() {
+  setTitle('Smart Inbox', 'Your prioritized action feed');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(6);
+  try {
+    var res = await api('/inbox?tenant_id=' + tenant.id);
+    var items = res.data || [];
+    var sorted = items.sort(function(a, b) { return (b.urgency_score || 0) - (a.urgency_score || 0); });
+    var aiSummary = generateLocalAISummary(sorted);
+    var categories = ['ALL'];
+    sorted.forEach(function(i) { if (i.category && categories.indexOf(i.category) === -1) categories.push(i.category); });
+    var urgentCount = sorted.filter(function(i) { return (i.urgency_score || 0) >= 70; }).length;
 
-  // Add some contextual items if inbox is empty
-  if (inboxItems.length === 0) {
-    inboxItems.push(
-      { urgency: 30, icon: 'fa-circle-check', color: 'green', title: 'All caught up!', desc: 'No pending actions. Your trade pipeline is clear.', time: new Date().toISOString() },
-      { urgency: 20, icon: 'fa-lightbulb', color: 'purple', title: 'Get started', desc: 'Create a new trade request or explore the platform.', time: new Date().toISOString() },
-    );
+    content.innerHTML =
+      fourQuestions(
+        'Your prioritized action feed — items sorted by urgency score (0-100).',
+        'Review urgent items first (score >= 70). Click any item to take action.',
+        urgentCount > 0 ? urgentCount + ' urgent item(s) need attention now.' : 'No blockers right now.',
+        'After resolving urgent items, work through medium and low priority items.'
+      ) +
+      '<div class="glass-card p-4 mb-4 border-l-4 border-blue-400">' +
+        '<div class="flex items-center gap-2 mb-1"><i class="fas fa-robot text-blue-400"></i><span class="text-sm font-semibold text-surface-200">AI Summary</span></div>' +
+        '<p class="text-xs text-surface-400">' + aiSummary + '</p>' +
+      '</div>' +
+      '<div class="flex gap-2 mb-4 flex-wrap">' +
+        categories.map(function(c) {
+          return '<button onclick="filterInbox(\'' + c + '\')" class="inbox-filter-btn px-3 py-1.5 rounded-full text-xs font-medium transition ' + (c === 'ALL' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400 hover:text-white') + '" data-cat="' + c + '">' +
+            (c === 'ALL' ? '<i class="fas fa-layer-group mr-1"></i>' : '<i class="fas ' + getCategoryIcon(c) + ' mr-1"></i>') + c + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div id="inbox-list" class="space-y-2">' +
+        (sorted.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-check-circle text-4xl text-emerald-400 mb-3"></i><p class="text-surface-400">All clear! No pending actions.</p></div>' :
+          sorted.map(function(item) {
+            var urgency = item.urgency_score || 0;
+            var urgencyColor = urgency >= 70 ? 'red' : urgency >= 40 ? 'amber' : 'emerald';
+            var cat = item.category || 'SYSTEM';
+            var catColor = getCategoryColor(cat);
+            return '<div class="inbox-item glass-card p-4 hover:bg-white/5 transition cursor-pointer border-l-4 border-' + urgencyColor + '-400" data-category="' + cat + '" onclick="navigateTo(\'' + getActionPage(item) + '\')">' +
+              '<div class="flex items-start gap-3">' +
+                '<div class="w-10 h-10 rounded-xl bg-' + catColor + '-500/20 flex items-center justify-center flex-shrink-0"><i class="fas ' + getCategoryIcon(cat) + ' text-' + catColor + '-400"></i></div>' +
+                '<div class="flex-1 min-w-0">' +
+                  '<div class="flex items-center gap-2 mb-1">' +
+                    '<span class="font-medium text-sm text-surface-200 truncate">' + (item.title || 'Notification') + '</span>' +
+                    '<span class="ml-auto flex items-center gap-1 text-xs font-mono text-' + urgencyColor + '-400"><i class="fas fa-fire text-[10px]"></i>' + urgency + '</span>' +
+                  '</div>' +
+                  '<p class="text-xs text-surface-400 line-clamp-2">' + (item.message || item.body || '') + '</p>' +
+                  '<div class="flex items-center gap-3 mt-2 text-[10px] text-surface-500">' +
+                    (item.ustn ? '<span class="font-mono">' + item.ustn + '</span>' : '') +
+                    '<span>' + timeAgo(item.created_at) + '</span>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex flex-col gap-1 flex-shrink-0">' +
+                  '<button onclick="event.stopPropagation(); snoozeInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-500 hover:text-blue-400 p-1" title="Snooze 24h"><i class="fas fa-clock"></i></button>' +
+                  '<button onclick="event.stopPropagation(); dismissInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-500 hover:text-red-400 p-1" title="Dismiss"><i class="fas fa-times"></i></button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('')) +
+      '</div>';
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-exclamation-triangle text-amber-400 text-3xl mb-3"></i><p class="text-surface-400">Could not load inbox: ' + e.message + '</p></div>';
   }
+}
 
-  // Sort by urgency
-  inboxItems.sort((a, b) => b.urgency - a.urgency);
-
-  const urgencyClass = (u) => u >= 80 ? 'urgency-critical' : u >= 60 ? 'urgency-high' : u >= 40 ? 'urgency-medium' : 'urgency-low';
-  const urgencyColor = (u) => u >= 80 ? 'text-red-500' : u >= 60 ? 'text-amber-500' : u >= 40 ? 'text-blue-500' : 'text-surface-400';
-
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions(
-      `${inboxItems.filter(i=>i.urgency>=60).length} high-priority items`,
-      inboxItems.length > 0 ? 'Review top items and take action' : 'No actions needed',
-      inboxItems.filter(i=>i.urgency>=80).length > 0 ? `${inboxItems.filter(i=>i.urgency>=80).length} critical items need immediate attention` : 'Nothing blocking',
-      'Items auto-update as trade events occur'
-    )}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-bolt', 'Pending Actions', inboxItems.filter(i=>i.urgency>=40).length, null, 'purple')}
-      ${metricCard('fa-handshake', 'Active Trades', trades.length, null, 'blue')}
-      ${metricCard('fa-ship', 'Shipments', shipments.length, null, 'cyan')}
-      ${metricCard('fa-shield-halved', 'Governor Status', 'Active', null, 'green')}
-    </div>
-    <div class="sgtx-card !p-0 overflow-hidden">
-      <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
-        <h3 class="font-semibold text-sm text-surface-800"><i class="fas fa-bolt text-sgtx-500 mr-2"></i>Priority Actions</h3>
-        <div class="flex gap-2">
-          <button class="text-[10px] px-3 py-1 rounded-full bg-surface-100 text-surface-600 hover:bg-surface-200 transition">All</button>
-          <button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-400 transition">Critical</button>
-          <button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-400 transition">Trade</button>
-        </div>
-      </div>
-      <div class="divide-y divide-surface-100">
-        ${inboxItems.map(item => `
-          <div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 cursor-pointer transition ${urgencyClass(item.urgency)}" onclick="${item.action ? 'void(0)' : ''}">
-            <div class="w-10 h-10 rounded-xl bg-${item.color}-50 flex items-center justify-center shrink-0">
-              <i class="fas ${item.icon} text-${item.color}-500 text-sm"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-sm font-medium text-surface-800 truncate">${item.title}</div>
-              <div class="text-xs text-surface-400 truncate mt-0.5">${item.desc}</div>
-            </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="${urgencyColor(item.urgency)} text-[10px] font-bold">${item.urgency}</span>
-              <span class="text-[10px] text-surface-300">${timeAgo(item.time)}</span>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+function filterInbox(cat) {
+  document.querySelectorAll('.inbox-filter-btn').forEach(function(btn) {
+    var isActive = btn.getAttribute('data-cat') === cat;
+    btn.classList.toggle('bg-brand-500', isActive);
+    btn.classList.toggle('text-white', isActive);
+  });
+  document.querySelectorAll('.inbox-item').forEach(function(item) {
+    item.style.display = (cat === 'ALL' || item.getAttribute('data-category') === cat) ? '' : 'none';
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
 // TRADE COMMAND CENTER (Blueprint 6.1.2)
-// Single page per USTN with timeline + summary cards
+// Single page per USTN with 8-phase timeline
 // ═══════════════════════════════════════════════════════════
+
 async function renderTradeCommandCenter() {
-  setTitle('Trade Command Center', 'Unified trade view per USTN');
-  const { data: trades } = await api('/trades');
-  
-  if (!trades.length) {
-    document.getElementById('content').innerHTML = `<div class="flex flex-col items-center justify-center h-64 text-center">
-      <i class="fas fa-terminal text-4xl text-surface-200 mb-4"></i>
-      <p class="text-sm text-surface-400">No active trades. Create a trade request to see the command center.</p>
-    </div>`;
-    return;
+  setTitle('Trade Command Center', 'Unified view of a trade by USTN');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(8);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&limit=20');
+    var trades = res.data || [];
+    if (!trades.length) {
+      content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-folder-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades yet. Start by creating a new trade request.</p><button onclick="navigateTo(\'new-trade\')" class="mt-3 px-4 py-2 bg-brand-500 text-white rounded-lg text-sm">New Trade</button></div>';
+      return;
+    }
+    content.innerHTML =
+      fourQuestions('View any trade end-to-end across all 8 phases.', 'Select a trade to see its full lifecycle.', '', 'Track progress, review documents, and take action on each phase.') +
+      '<div class="space-y-3">' +
+        trades.map(function(t) {
+          var phase = t.current_phase || 1;
+          var phasePct = Math.round((phase / 10) * 100);
+          return '<div class="glass-card p-4 hover:bg-white/5 transition cursor-pointer" onclick="showTradeTimeline(\'' + (t.ustn || t.id) + '\')">' +
+            '<div class="flex items-center justify-between mb-2">' +
+              '<div class="flex items-center gap-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || 'PENDING') + '</span>' + badge(t.status || 'DRAFT', t.status === 'COMPLETED' ? 'emerald' : t.status === 'ACTIVE' ? 'blue' : 'amber') + '</div>' +
+              '<span class="text-xs text-surface-500">' + timeAgo(t.created_at) + '</span>' +
+            '</div>' +
+            '<p class="text-sm text-surface-300 mb-2">' + (t.commodity_type || 'Trade') + ' — ' + (t.incoterm || 'N/A') + '</p>' +
+            '<div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-dark-700 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-500 to-emerald-400 rounded-full transition-all" style="width:' + phasePct + '%"></div></div><span class="text-xs text-surface-500">Phase ' + phase + '/10</span></div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
+}
 
-  // Show the most recent trade
-  const trade = trades[0];
-  const phases = [
-    { num: 1, label: 'Initiate', icon: 'fa-play', done: true },
-    { num: 2, label: 'Quote', icon: 'fa-tag', done: ['QUOTE_SUBMITTED','QUOTED','CONTRACTED','LOCKED','IN_EXECUTION'].includes(trade.status) },
-    { num: 3, label: 'Contract', icon: 'fa-file-contract', done: ['CONTRACTED','LOCKED','IN_EXECUTION'].includes(trade.status) },
-    { num: 4, label: 'Finance', icon: 'fa-landmark', done: ['IN_EXECUTION'].includes(trade.status) },
-    { num: 5, label: 'Execute', icon: 'fa-ship', done: false },
-    { num: 6, label: 'Settle', icon: 'fa-check-double', done: false },
-  ];
+async function showTradeTimeline(ustn) {
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(10);
+  try {
+    var res = await api('/trade/' + ustn + '/command-center');
+    var data = res.data || res;
+    var trade = data.trade || data;
+    var phases = [
+      { num: 1, name: 'Pre-Qual', icon: 'fa-clipboard-check' },
+      { num: 2, name: 'Quotation', icon: 'fa-file-invoice-dollar' },
+      { num: 3, name: 'Contract', icon: 'fa-file-signature' },
+      { num: 4, name: 'Finance', icon: 'fa-university' },
+      { num: 5, name: 'Physical', icon: 'fa-boxes' },
+      { num: 6, name: 'QC', icon: 'fa-microscope' },
+      { num: 7, name: 'Docs', icon: 'fa-folder-open' },
+      { num: 8, name: 'Logistics', icon: 'fa-ship' },
+      { num: 9, name: 'Customs', icon: 'fa-gavel' },
+      { num: 10, name: 'Settle', icon: 'fa-check-double' }
+    ];
+    var currentPhase = trade.current_phase || 1;
 
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions(
-      `Trade ${trade.status} — Phase ${phases.filter(p=>p.done).length}/6`,
-      phases.find(p=>!p.done) ? `Complete Phase ${phases.find(p=>!p.done).num}: ${phases.find(p=>!p.done).label}` : 'All phases complete',
-      trade.status === 'PENDING_EXPORTER_RESPONSE' ? 'Awaiting seller response' : 'None',
-      phases.find(p=>!p.done) ? `Phase ${phases.find(p=>!p.done).num} will unlock next capabilities` : 'Settlement'
-    )}
-    <!-- Phase Timeline -->
-    <div class="sgtx-card mb-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-sm"><i class="fas fa-timeline text-sgtx-500 mr-2"></i>Trade Lifecycle</h3>
-        <span class="text-xs text-surface-400">ID: ${trade.id?.slice(0,12)}...</span>
-      </div>
-      <div class="flex items-center gap-2">
-        ${phases.map(p => `
-          <div class="flex-1 text-center">
-            <div class="w-10 h-10 mx-auto rounded-xl ${p.done ? 'bg-gradient-to-br from-sgtx-500 to-sgtx-600 text-white shadow-glow-sm' : 'bg-surface-100 text-surface-400'} flex items-center justify-center">
-              <i class="fas ${p.icon} text-sm"></i>
-            </div>
-            <div class="text-[10px] mt-2 font-medium ${p.done ? 'text-sgtx-600' : 'text-surface-400'}">${p.label}</div>
-          </div>
-          ${p.num < 6 ? `<div class="w-8 h-0.5 ${p.done ? 'bg-sgtx-400' : 'bg-surface-200'} rounded-full"></div>` : ''}`).join('')}
-      </div>
-    </div>
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="sgtx-card">
-        <h4 class="text-xs font-semibold text-surface-500 uppercase mb-3">Commercial Terms</h4>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-surface-400">Buyer</span><span class="font-medium">${trade.importer_name || '—'}</span></div>
-          <div class="flex justify-between"><span class="text-surface-400">Seller</span><span class="font-medium">${trade.exporter_name || '—'}</span></div>
-          <div class="flex justify-between"><span class="text-surface-400">Status</span>${badge(trade.status)}</div>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h4 class="text-xs font-semibold text-surface-500 uppercase mb-3">Parties & Jurisdiction</h4>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-surface-400">Origin</span><span class="font-medium">${trade.importer_jurisdiction || '—'}</span></div>
-          <div class="flex justify-between"><span class="text-surface-400">Destination</span><span class="font-medium">${trade.exporter_jurisdiction || '—'}</span></div>
-          <div class="flex justify-between"><span class="text-surface-400">Created</span><span class="text-xs">${timeAgo(trade.created_at)}</span></div>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h4 class="text-xs font-semibold text-surface-500 uppercase mb-3">Governance</h4>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-surface-400">Governor</span>${badge('ALLOW')}</div>
-          <div class="flex justify-between"><span class="text-surface-400">Compliance</span><span class="text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Clear</span></div>
-          <div class="flex justify-between"><span class="text-surface-400">SGTX Fee</span><span class="font-medium">Pending</span></div>
-        </div>
-      </div>
-    </div>
-    <!-- Activity Feed -->
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-clock-rotate-left text-sgtx-500 mr-2"></i>Activity Feed</h3>
-      <div class="space-y-3">
-        <div class="flex gap-3"><div class="w-2 h-2 rounded-full bg-sgtx-500 mt-1.5 shrink-0"></div><div><div class="text-xs font-medium">Trade initiated</div><div class="text-[10px] text-surface-400">${timeAgo(trade.created_at)}</div></div></div>
-        ${trade.status !== 'DRAFT' ? `<div class="flex gap-3"><div class="w-2 h-2 rounded-full bg-accent-blue mt-1.5 shrink-0"></div><div><div class="text-xs font-medium">Governor evaluation passed</div><div class="text-[10px] text-surface-400">G1-G4 gates cleared</div></div></div>` : ''}
-      </div>
-    </div>`;
+    content.innerHTML =
+      '<button onclick="renderTradeCommandCenter()" class="text-xs text-surface-400 hover:text-white mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back to trades</button>' +
+      '<div class="glass-card p-5 mb-4">' +
+        '<div class="flex items-center justify-between mb-3"><div><span class="font-mono text-brand-300 text-lg">' + (trade.ustn || ustn) + '</span><p class="text-sm text-surface-400 mt-1">' + (trade.commodity_type || '') + ' · ' + (trade.incoterm || '') + ' · ' + usd(trade.total_value || 0) + '</p></div>' + badge(trade.status || 'ACTIVE', 'blue') + '</div>' +
+        '<div class="grid grid-cols-3 gap-3 text-center">' +
+          [['Buyer', trade.buyer_name || trade.importer_tenant_id || '-'], ['Seller', trade.seller_name || trade.exporter_tenant_id || '-'], ['Created', time(trade.created_at)]].map(function(c) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500 uppercase">' + c[0] + '</div><div class="text-sm text-surface-200 mt-1 truncate">' + c[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      '<div class="glass-card p-5 mb-4">' +
+        '<h3 class="text-sm font-semibold text-surface-200 mb-4"><i class="fas fa-stream mr-2 text-brand-400"></i>Phase Timeline</h3>' +
+        '<div class="flex items-center gap-1">' +
+          phases.map(function(p) {
+            var cls = p.num < currentPhase ? 'bg-emerald-500/30 text-emerald-300' : (p.num === currentPhase ? 'bg-brand-500 text-white ring-2 ring-brand-400' : 'bg-dark-700 text-surface-500');
+            return '<div class="flex-1 text-center"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold ' + cls + '">' + (p.num < currentPhase ? '<i class="fas fa-check"></i>' : p.num) + '</div><div class="text-[9px] text-surface-500 mt-1 leading-tight">' + p.name + '</div></div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      (data.recent_activity ? '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3">Recent Activity</h3><div class="space-y-2">' + (data.recent_activity || []).map(function(a) { return '<div class="flex items-center gap-3 text-xs"><div class="w-2 h-2 rounded-full bg-brand-400 flex-shrink-0"></div><span class="text-surface-300 flex-1">' + (a.description || a.event || a.action) + '</span><span class="text-surface-500">' + timeAgo(a.created_at || a.timestamp) + '</span></div>'; }).join('') + '</div></div>' : '');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error loading trade: ' + e.message + '</div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SHIPMENTS VAULT (Blueprint 6.1.6)
-// Universal table component — role-specific columns
+// SHIPMENTS VAULT (Blueprint 6.2.x shared)
 // ═══════════════════════════════════════════════════════════
-async function renderShipmentsVault() {
-  setTitle('Shipments Vault', 'Real-time shipment tracking with role-specific views');
-  const { data } = await api('/shipments');
-  
-  const rows = data.map(s => `<tr class="hover:bg-surface-50 cursor-pointer" onclick="showShipmentModal('${s.id}')">
-    <td class="font-mono text-xs text-sgtx-600">${s.ustn}</td>
-    <td class="text-sm">${s.origin_port || '—'}</td>
-    <td class="text-sm">${s.destination_port || '—'}</td>
-    <td class="text-center">${badge(s.status)}</td>
-    <td class="text-center text-xs">${s.current_milestone || '—'}</td>
-    <td class="text-xs text-surface-400">${timeAgo(s.created_at)}</td>
-  </tr>`);
 
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions(
-      `${data.length} shipments tracked`,
-      data.filter(s=>s.status==='IN_TRANSIT').length ? 'Monitor in-transit shipments' : 'No active shipments',
-      data.filter(s=>s.status==='DISTRESSED').length ? 'Distressed cargo needs attention' : 'None',
-      'Milestones auto-confirm via barcode/IoT'
-    )}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-ship', 'Total Shipments', data.length, null, 'blue')}
-      ${metricCard('fa-truck-fast', 'In Transit', data.filter(s=>s.status==='IN_TRANSIT').length, null, 'cyan')}
-      ${metricCard('fa-check-double', 'Delivered', data.filter(s=>s.status==='DELIVERED').length, null, 'green')}
-      ${metricCard('fa-fire', 'Distressed', data.filter(s=>s.status==='DISTRESSED').length, null, 'rose')}
-    </div>
-    ${dataTable(['USTN', 'Origin', 'Destination', 'Status', 'Milestone', 'Updated'], rows, { title: 'All Shipments' })}`;
+async function renderShipmentsVault() {
+  setTitle('Shipments Vault', 'Track all shipments with milestones and documents');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/shipments?tenant_id=' + tenant.id);
+    var shipments = res.data || [];
+    content.innerHTML =
+      fourQuestions('All shipments for your active trades.', 'Click a shipment to see milestones, barcodes, and documents.', '', 'Upload documents, track milestones, print barcodes.') +
+      dataTable(
+        ['USTN', 'Origin', 'Destination', 'Status', 'ETD', 'ETA', ''],
+        shipments.map(function(s) {
+          return [
+            '<span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span>',
+            s.origin_port || '-',
+            s.dest_port || '-',
+            badge(s.status || 'PENDING', s.status === 'DELIVERED' ? 'emerald' : s.status === 'IN_TRANSIT' ? 'blue' : 'amber'),
+            s.etd ? time(s.etd) : '-',
+            s.eta ? time(s.eta) : '-',
+            '<button onclick="showShipmentModal(\'' + s.id + '\')" class="text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-eye"></i></button>'
+          ];
+        })
+      );
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
 async function showShipmentModal(id) {
-  const { data } = await api(`/shipments/${id}`);
-  const milestones = ['GATE_IN','LOADED','DEPARTED','IN_TRANSIT','ARRIVED','CUSTOMS_CLEARED','DELIVERED'];
-  const confirmed = new Set((data.milestones||[]).map(m => m.milestone));
-  showModal(`
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-bold"><i class="fas fa-ship text-sgtx-500 mr-2"></i>Shipment Detail</h2>
-      <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center"><i class="fas fa-times text-surface-400"></i></button>
-    </div>
-    <div class="font-mono text-sm text-sgtx-600 bg-sgtx-50 px-4 py-2 rounded-lg mb-4">${data.ustn}</div>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-6">
-      <div><span class="text-surface-400">Status:</span> ${badge(data.status)}</div>
-      <div><span class="text-surface-400">Origin:</span> ${data.origin_port || '—'}</div>
-      <div><span class="text-surface-400">Destination:</span> ${data.destination_port || '—'}</div>
-      <div><span class="text-surface-400">Vessel:</span> ${data.vessel_name || '—'}</div>
-    </div>
-    <h4 class="text-xs font-semibold text-surface-500 uppercase mb-3">Milestone Tracker</h4>
-    <div class="flex items-center gap-1 mb-4">${milestones.map(m => `
-      <div class="flex-1 text-center">
-        <div class="w-8 h-8 mx-auto rounded-lg ${confirmed.has(m) ? 'bg-emerald-500 text-white' : 'bg-surface-100 text-surface-300'} flex items-center justify-center text-[10px]">
-          ${confirmed.has(m) ? '<i class="fas fa-check"></i>' : ''}
-        </div>
-        <div class="text-[8px] mt-1 text-surface-400">${m.replace(/_/g,' ')}</div>
-      </div>`).join('<div class="w-3 h-0.5 bg-surface-200 rounded-full"></div>')}</div>
-  `);
+  try {
+    var res = await api('/shipments/' + id);
+    var s = res.data || res;
+    showModal('Shipment Details',
+      '<div class="space-y-4">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['USTN', s.ustn || '-'], ['Status', s.status || '-'], ['Origin', s.origin_port || '-'], ['Destination', s.dest_port || '-'], ['Vessel', s.vessel_name || '-'], ['Container', s.container_number || '-'], ['ETD', s.etd ? time(s.etd) : '-'], ['ETA', s.eta ? time(s.eta) : '-']].map(function(pair) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + pair[0] + '</div><div class="text-sm text-surface-200">' + pair[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (s.milestones ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Milestones</h4><div class="space-y-2">' + (s.milestones || []).map(function(m) { return '<div class="flex items-center gap-2 text-xs"><div class="w-2.5 h-2.5 rounded-full ' + (m.completed ? 'bg-emerald-400' : 'bg-dark-600 border border-surface-500') + '"></div><span class="text-surface-300 flex-1">' + (m.name || m.milestone) + '</span><span class="text-surface-500">' + (m.completed_at ? time(m.completed_at) : 'Pending') + '</span></div>'; }).join('') + '</div></div>' : '') +
+        (s.barcodes ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Barcodes</h4><div class="space-y-1">' + (s.barcodes || []).map(function(b) { return '<div class="font-mono text-xs text-brand-300 bg-dark-800/50 rounded p-2">' + (b.sscc || b.barcode || b) + '</div>'; }).join('') + '</div></div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error loading shipment: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// PLATFORM DASHBOARD
+// PLATFORM DASHBOARD / TENANTS / GOVERNOR / JURISDICTIONS
 // ═══════════════════════════════════════════════════════════
+
 async function renderPlatformDashboard() {
-  setTitle('Platform Overview', 'SGTX v6.3 — Sovereign, AI-Governed, Non-Custodial Trade Execution');
-  const { data: stats } = await api('/stats');
-  const { data: decisions } = await api('/governor/decisions?limit=5');
-
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-building', 'Tenants', stats.tenants, 12, 'purple')}
-      ${metricCard('fa-handshake', 'Trades', stats.trade_requests, 8, 'blue')}
-      ${metricCard('fa-file-contract', 'Contracts', stats.contracts, null, 'cyan')}
-      ${metricCard('fa-ship', 'Shipments', stats.shipments, null, 'green')}
-    </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-gavel text-sgtx-500 mr-2"></i>Recent Governor Decisions</h3>
-        <div class="space-y-2">${(decisions||[]).map(d => `
-          <div class="flex items-center justify-between p-3 rounded-lg bg-surface-50 hover:bg-surface-100 cursor-pointer transition" onclick="showDecisionModal('${d.decision_id}')">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg ${d.verdict === 'ALLOW' ? 'bg-emerald-50 text-emerald-600' : d.verdict === 'DENY' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'} flex items-center justify-center">
-                <i class="fas ${d.verdict === 'ALLOW' ? 'fa-check' : d.verdict === 'DENY' ? 'fa-xmark' : 'fa-question'} text-xs"></i>
-              </div>
-              <div>
-                <div class="text-xs font-medium text-surface-700">${d.decision_type}</div>
-                <div class="text-[10px] text-surface-400">${timeAgo(d.created_at)}</div>
-              </div>
-            </div>
-            ${verdictBadge(d.verdict)}
-          </div>`).join('')}</div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-shield-halved text-sgtx-500 mr-2"></i>Governance Health</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-            <div class="text-xs text-emerald-600 font-medium">G1: Execution Gated</div>
-            <div class="text-lg font-bold text-emerald-800 mt-1"><i class="fas fa-check-circle"></i> Enforced</div>
-          </div>
-          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-            <div class="text-xs text-emerald-600 font-medium">G2: AI Advisory Only</div>
-            <div class="text-lg font-bold text-emerald-800 mt-1"><i class="fas fa-check-circle"></i> Active</div>
-          </div>
-          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-            <div class="text-xs text-emerald-600 font-medium">G3: Non-Custodial</div>
-            <div class="text-lg font-bold text-emerald-800 mt-1"><i class="fas fa-check-circle"></i> Structural</div>
-          </div>
-          <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
-            <div class="text-xs text-emerald-600 font-medium">G4: Attributable</div>
-            <div class="text-lg font-bold text-emerald-800 mt-1"><i class="fas fa-check-circle"></i> Signed</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-cubes text-sgtx-500 mr-2"></i>Microservices Architecture (47 Services)</h3>
-      <div class="grid grid-cols-4 md:grid-cols-8 gap-2">
-        ${['Governor','Identity','Trade','Quote','Contract','Finance','Shipment','Settlement','Payment','Inbox','Workflow','Export','Preference','Multi-Ship','Fee Split','DeFi'].map(s => 
-          `<div class="text-center py-2 px-1 rounded-lg bg-surface-50 border border-surface-100 text-[10px] font-medium text-surface-600 hover:border-sgtx-200 transition">${s}</div>`).join('')}
-      </div>
-    </div>`;
+  setTitle('Platform Dashboard', 'Overview of your trading activity');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/stats');
+    var stats = res.data || res;
+    content.innerHTML =
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-handshake', 'Active Trades', stats.active_trades || stats.trades || 0, null, 'blue') +
+        metricCard('fa-ship', 'Shipments', stats.shipments || 0, null, 'cyan') +
+        metricCard('fa-file-signature', 'Contracts', stats.contracts || 0, null, 'purple') +
+        metricCard('fa-dollar-sign', 'Total Value', usd(stats.total_value || 0), null, 'emerald') +
+      '</div>' +
+      '<div class="grid grid-cols-2 gap-4">' +
+        '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-clock mr-2 text-brand-400"></i>Recent Trades</h3><div id="dash-trades" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
+        '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-bell mr-2 text-amber-400"></i>Inbox Preview</h3><div id="dash-inbox" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
+      '</div>';
+    // Load sub-data
+    api('/trades?tenant_id=' + tenant.id + '&limit=5').then(function(r) {
+      var el = document.getElementById('dash-trades');
+      if (!el) return;
+      var trades = r.data || [];
+      el.innerHTML = trades.length ? trades.map(function(t) { return '<div class="flex justify-between"><span class="font-mono text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || 'DRAFT', 'blue') + '</div>'; }).join('') : '<p class="text-surface-500">No trades yet</p>';
+    });
+    api('/inbox?tenant_id=' + tenant.id + '&limit=5').then(function(r) {
+      var el = document.getElementById('dash-inbox');
+      if (!el) return;
+      var items = r.data || [];
+      el.innerHTML = items.length ? items.slice(0, 5).map(function(i) { return '<div class="flex justify-between"><span>' + (i.title || 'Item') + '</span><span class="text-surface-500">' + timeAgo(i.created_at) + '</span></div>'; }).join('') : '<p class="text-surface-500">No items</p>';
+    });
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
-// ═══════════════════════════════════════════════════════════
-// TENANTS
-// ═══════════════════════════════════════════════════════════
 async function renderTenants() {
-  setTitle('Tenants', 'Organisation registry — GTID system');
-  const { data } = await api('/tenants');
-  const rows = data.map(t => `<tr class="hover:bg-surface-50 cursor-pointer" onclick="showTenantModal('${t.id}')">
-    <td class="font-mono text-xs text-sgtx-600">${t.gtid}</td>
-    <td class="font-medium text-sm">${t.legal_name}</td>
-    <td class="text-center"><span class="text-xs bg-surface-100 px-2 py-0.5 rounded-md">${t.jurisdiction}</span></td>
-    <td class="text-center text-xs">${t.type}</td>
-    <td class="text-center">${badge(t.kyb_status)}</td>
-    <td class="text-center font-semibold ${(t.trust_score||0)>=80?'text-emerald-600':(t.trust_score||0)>=60?'text-amber-600':'text-red-600'}">${t.trust_score||'—'}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-building', 'Total Tenants', data.length, null, 'purple')}
-      ${metricCard('fa-check-circle', 'Verified', data.filter(t=>t.kyb_status==='VERIFIED').length, null, 'green')}
-      ${metricCard('fa-clock', 'Pending', data.filter(t=>t.kyb_status==='PENDING').length, null, 'amber')}
-      ${metricCard('fa-globe', 'Jurisdictions', [...new Set(data.map(t=>t.jurisdiction))].length, null, 'blue')}
-    </div>
-    ${dataTable(['GTID', 'Legal Name', 'Jurisdiction', 'Type', 'KYB', 'Trust'], rows, { title: `${data.length} Registered Tenants` })}`;
+  setTitle('Tenants', 'Platform tenant directory');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/tenants');
+    var tenants = res.data || [];
+    content.innerHTML =
+      dataTable(['Name', 'Type', 'Country', 'Trust Score', 'Status', ''],
+        tenants.map(function(t) {
+          var trust = Math.max(0, Math.min(100, 100 - (t.risk_score || 25)));
+          return [
+            '<span class="font-medium text-surface-200">' + (t.company_name || t.name || '-') + '</span>',
+            badge(t.tenant_type || '-', 'blue'),
+            t.country || '-',
+            '<span class="font-mono text-' + (trust >= 70 ? 'emerald' : trust >= 40 ? 'amber' : 'red') + '-400">' + trust + '</span>',
+            badge(t.status || 'ACTIVE', t.status === 'ACTIVE' ? 'emerald' : 'amber'),
+            '<button onclick="showTenantModal(\'' + t.id + '\')" class="text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-eye"></i></button>'
+          ];
+        })
+      );
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
 async function showTenantModal(id) {
-  const { data } = await api(`/tenants/${id}`);
-  showModal(`
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-bold"><i class="fas fa-building text-sgtx-500 mr-2"></i>${data.legal_name}</h2>
-      <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center"><i class="fas fa-times text-surface-400"></i></button>
-    </div>
-    <div class="grid grid-cols-2 gap-4 text-sm">
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">GTID</span><div class="font-mono text-sgtx-600 mt-1">${data.gtid}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Jurisdiction</span><div class="font-medium mt-1">${data.jurisdiction}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Type</span><div class="font-medium mt-1">${data.type}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">KYB Status</span><div class="mt-1">${badge(data.kyb_status)}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Risk Score</span><div class="font-bold mt-1">${data.risk_score ?? '—'}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Sanctions</span><div class="mt-1">${data.sanctions_cleared ? '<span class="text-emerald-600"><i class="fas fa-check-circle mr-1"></i>Cleared</span>' : '<span class="text-red-500"><i class="fas fa-xmark mr-1"></i>Not Cleared</span>'}</div></div>
-    </div>
-    ${data.employees?.length ? `<h4 class="font-semibold text-xs text-surface-500 uppercase mt-6 mb-3">Employees (${data.employees.length})</h4>
-      <div class="space-y-2">${data.employees.map(e => `<div class="flex justify-between items-center p-2 bg-surface-50 rounded-lg text-xs"><span>${e.full_name} (${e.email})</span>${badge(e.status)}</div>`).join('')}</div>` : ''}
-  `);
+  try {
+    var res = await api('/tenants/' + id);
+    var t = res.data || res;
+    var trust = Math.max(0, Math.min(100, 100 - (t.risk_score || 25)));
+    showModal(t.company_name || 'Tenant Detail',
+      '<div class="space-y-3">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['ID', t.id], ['Type', t.tenant_type], ['Country', t.country], ['Trust Score', trust + '/100'], ['Status', t.status], ['Created', time(t.created_at)]].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + (p[1] || '-') + '</div></div>';
+          }).join('') +
+        '</div>' +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-// ═══════════════════════════════════════════════════════════
-// GOVERNOR DECISIONS
-// ═══════════════════════════════════════════════════════════
 async function renderGovernor() {
-  setTitle('Governor Decisions', 'OPA + WasmEdge + Loom — Single point of truth');
-  const { data } = await api('/governor/decisions?limit=100');
-  const counts = { ALLOW: 0, DENY: 0, CONDITIONAL: 0, ESCALATE: 0 };
-  data.forEach(d => counts[d.verdict] = (counts[d.verdict] || 0) + 1);
-
-  const rows = data.map(d => `<tr class="hover:bg-surface-50 cursor-pointer" onclick="showDecisionModal('${d.decision_id}')">
-    <td class="font-mono text-[10px]">${d.decision_id?.slice(0,12)}...</td>
-    <td class="text-xs">${d.decision_type}</td>
-    <td class="text-center">${verdictBadge(d.verdict)}</td>
-    <td class="text-center text-xs">${d.confidence ? (d.confidence*100).toFixed(0)+'%' : '—'}</td>
-    <td class="text-xs text-surface-400">${timeAgo(d.created_at)}</td>
-  </tr>`);
-
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-check', 'Allowed', counts.ALLOW, null, 'green')}
-      ${metricCard('fa-xmark', 'Denied', counts.DENY, null, 'rose')}
-      ${metricCard('fa-question', 'Conditional', counts.CONDITIONAL, null, 'amber')}
-      ${metricCard('fa-arrow-up', 'Escalated', counts.ESCALATE, null, 'purple')}
-    </div>
-    ${dataTable(['Decision ID', 'Type', 'Verdict', 'Confidence', 'Time'], rows, { title: `${data.length} Decisions` })}`;
+  setTitle('Governor', 'Decision log and compliance review');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/decisions?tenant_id=' + tenant.id);
+    var decisions = res.data || [];
+    content.innerHTML =
+      fourQuestions('All governance decisions affecting your account.', 'Review each decision. Click for plain-language explanation.', decisions.filter(function(d) { return d.verdict === 'DENIED'; }).length > 0 ? 'Some requests were denied — review details.' : '', 'Address any conditions or resubmit with guidance.') +
+      (decisions.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No decisions yet.</div>' :
+        '<div class="space-y-3">' + decisions.map(function(d) {
+          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDecisionModal(\'' + d.id + '\')">' +
+            '<div class="flex items-center justify-between mb-1">' +
+              '<span class="font-medium text-sm text-surface-200">' + (d.gate_name || d.type || 'Decision') + '</span>' +
+              verdictBadge(d.verdict) +
+            '</div>' +
+            '<p class="text-xs text-surface-400">' + (d.reason || 'No details') + '</p>' +
+            '<span class="text-[10px] text-surface-500 mt-1 inline-block">' + timeAgo(d.created_at) + '</span>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
-async function showDecisionModal(id) {
-  const { data } = await api(`/governor/decisions/${id}`);
-  showModal(`
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-bold"><i class="fas fa-gavel text-sgtx-500 mr-2"></i>Governor Decision</h2>
-      <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center"><i class="fas fa-times text-surface-400"></i></button>
-    </div>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Verdict</span><div class="mt-1">${verdictBadge(data.verdict)}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Confidence</span><div class="font-bold mt-1">${data.confidence ? (data.confidence*100).toFixed(1)+'%' : '—'}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Type</span><div class="mt-1">${data.decision_type}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Policy</span><div class="mt-1 font-mono text-xs">${data.policy_version || '—'}</div></div>
-    </div>
-    <div class="p-4 bg-surface-50 rounded-xl mb-4">
-      <h4 class="text-xs font-semibold text-surface-500 mb-2">PlainLanguage Explanation</h4>
-      <p class="text-sm text-surface-700">${data.explainability || 'No explanation available.'}</p>
-    </div>
-    <div class="p-4 bg-surface-50 rounded-xl">
-      <h4 class="text-xs font-semibold text-surface-500 mb-2">Cryptographic Proof</h4>
-      <div class="space-y-2 text-[10px] font-mono text-surface-500 break-all">
-        <div><span class="text-surface-400">Loom Hash:</span> ${data.loom_hash || '—'}</div>
-        <div><span class="text-surface-400">Signature:</span> ${(data.cryptographic_signature || '—').slice(0,64)}...</div>
-      </div>
-    </div>
-  `);
+function showDecisionModal(id) {
+  api('/decisions/' + id).then(function(res) {
+    var d = res.data || res;
+    showModal('Decision Detail',
+      plainLanguageDecisionPanel(d) +
+      '<div class="space-y-2 text-xs">' +
+        '<div class="bg-dark-800/50 rounded-lg p-3"><strong class="text-surface-300">Gate:</strong> <span class="text-surface-400">' + (d.gate_name || d.type || '-') + '</span></div>' +
+        '<div class="bg-dark-800/50 rounded-lg p-3"><strong class="text-surface-300">USTN:</strong> <span class="font-mono text-brand-300">' + (d.ustn || '-') + '</span></div>' +
+        '<div class="bg-dark-800/50 rounded-lg p-3"><strong class="text-surface-300">Decided:</strong> <span class="text-surface-400">' + (d.decided_at ? time(d.decided_at) : 'Pending') + '</span></div>' +
+      '</div>'
+    );
+  }).catch(function(e) { showToast('Error: ' + e.message, 'error'); });
 }
 
-// ═══════════════════════════════════════════════════════════
-// JURISDICTIONS
-// ═══════════════════════════════════════════════════════════
 async function renderJurisdictions() {
-  setTitle('Jurisdictions', 'Global coverage — sanctions matrix + DeFi permissions');
-  const { data } = await api('/jurisdictions');
-  const rows = data.map(j => `<tr class="${j.sanctions_level==='BLOCKED'?'bg-red-50/50':j.sanctions_level==='HIGH_RISK'?'bg-amber-50/50':''}">
-    <td class="text-center font-bold text-sm">${j.code}</td>
-    <td class="text-sm">${j.name}</td>
-    <td class="text-center">${badge(j.sanctions_level)}</td>
-    <td class="text-center text-xs">T${j.kyc_tier_required}</td>
-    <td class="text-center text-xs">${j.cbdc_status || '—'}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      ${metricCard('fa-check-circle', 'Clear', data.filter(j=>j.sanctions_level==='NONE').length, null, 'green')}
-      ${metricCard('fa-exclamation-circle', 'High Risk', data.filter(j=>j.sanctions_level==='HIGH_RISK').length, null, 'amber')}
-      ${metricCard('fa-ban', 'Blocked', data.filter(j=>j.sanctions_level==='BLOCKED').length, null, 'rose')}
-    </div>
-    ${dataTable(['Code', 'Country', 'Sanctions', 'KYC Tier', 'CBDC'], rows, { title: `${data.length} Jurisdictions` })}`;
+  setTitle('Jurisdictions', 'Regulatory reference by country');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(3);
+  try {
+    var res = await api('/ref/jurisdictions');
+    var jurisdictions = res.data || [];
+    content.innerHTML =
+      '<div class="grid grid-cols-2 gap-3">' +
+        (jurisdictions.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400 col-span-2">No jurisdiction data available.</div>' :
+          jurisdictions.map(function(j) {
+            return '<div class="glass-card p-4"><div class="flex items-center gap-2 mb-2"><i class="fas fa-globe text-brand-400"></i><span class="font-medium text-surface-200">' + (j.name || j.country || '-') + '</span></div>' +
+              '<div class="text-xs text-surface-400 space-y-1">' +
+                '<div><strong>Code:</strong> ' + (j.code || j.country_code || '-') + '</div>' +
+                '<div><strong>Currency:</strong> ' + (j.currency || '-') + '</div>' +
+                '<div><strong>Regulatory Body:</strong> ' + (j.regulatory_body || '-') + '</div>' +
+              '</div></div>';
+          }).join('')) +
+      '</div>';
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
-// CONTACTS
+// CONTACTS (Trust Portrait Cards) + DISPUTES
 // ═══════════════════════════════════════════════════════════
+
 async function renderContacts() {
-  setTitle('Saved Contacts', 'Network — auto-populated from trade interactions');
-  if (!tenant?.id) { document.getElementById('content').innerHTML = renderComingSoon('contacts'); return; }
-  const { data } = await api(`/tenants/${tenant.id}/contacts`);
-  const rows = data.map(c => `<tr>
-    <td class="font-mono text-xs text-sgtx-600">${c.contact_gtid}</td>
-    <td class="text-sm font-medium">${c.legal_name || '—'}</td>
-    <td class="text-center text-xs">${c.type || '—'}</td>
-    <td class="text-center font-semibold">${c.trust_score || '—'}</td>
-    <td class="text-center">${c.trade_count}</td>
-    <td class="text-xs text-surface-400">${timeAgo(c.last_interaction)}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = dataTable(['GTID', 'Name', 'Type', 'Trust', 'Trades', 'Last'], rows, { title: `${data.length} Contacts` });
+  setTitle('Contacts', 'Your trading partners with trust portraits');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/contacts?tenant_id=' + tenant.id);
+    var contacts = res.data || [];
+    content.innerHTML =
+      fourQuestions('Your trusted trading partners and their trust profiles.', 'Click a contact to view full details. Add new contacts by GTID.', '', 'Build your network to unlock faster trade matching.') +
+      '<div class="flex justify-end mb-4"><button onclick="showAddContactForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 transition"><i class="fas fa-plus mr-2"></i>Add Contact</button></div>' +
+      (contacts.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-address-book text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No contacts yet. Add your first trading partner.</p></div>' :
+        '<div class="grid grid-cols-2 gap-4">' +
+          contacts.map(function(c) {
+            var trust = c.trust_score || Math.max(0, 100 - (c.risk_score || 25));
+            var trustColor = trust >= 70 ? 'emerald' : trust >= 40 ? 'amber' : 'red';
+            return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5 transition" onclick="showContactDetail(\'' + (c.gtid || c.contact_tenant_id || c.id) + '\')">' +
+              '<div class="flex items-start gap-3">' +
+                '<div class="w-12 h-12 rounded-xl bg-brand-500/20 flex items-center justify-center"><i class="fas fa-building text-brand-400 text-lg"></i></div>' +
+                '<div class="flex-1">' +
+                  '<div class="font-medium text-surface-200">' + (c.company_name || c.name || 'Unknown') + '</div>' +
+                  '<div class="text-xs text-surface-400 mt-0.5">' + (c.gtid || c.contact_tenant_id || '') + '</div>' +
+                  '<div class="flex items-center gap-3 mt-2">' +
+                    '<div class="flex items-center gap-1"><div class="w-16 h-1.5 bg-dark-700 rounded-full overflow-hidden"><div class="h-full bg-' + trustColor + '-400 rounded-full" style="width:' + trust + '%"></div></div><span class="text-[10px] font-mono text-' + trustColor + '-400">' + trust + '</span></div>' +
+                    (c.country ? '<span class="text-[10px] text-surface-500">' + c.country + '</span>' : '') +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
-// ═══════════════════════════════════════════════════════════
-// DISPUTES
-// ═══════════════════════════════════════════════════════════
+async function showContactDetail(gtid) {
+  try {
+    var res = await api('/trade-form/gtid-resolve?gtid=' + encodeURIComponent(gtid));
+    var c = res.data || res;
+    showModal(c.company_name || 'Contact Detail',
+      '<div class="space-y-3">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['GTID', c.gtid || gtid], ['Company', c.company_name || '-'], ['Country', c.country || c.jurisdiction || '-'], ['Trust Score', (c.trust_score || '-') + '/100'], ['Sanctions', c.sanctions_clear ? 'Clear' : 'Flagged'], ['Status', c.status || 'ACTIVE']].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+      '</div>'
+    );
+  } catch (e) { showToast('Could not resolve contact: ' + e.message, 'error'); }
+}
+
+function showAddContactForm() {
+  showModal('Add Contact',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Partner GTID</label><input id="add-contact-gtid" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-XX-XX-XXXX-XXXX"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Nickname (optional)</label><input id="add-contact-nick" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. Cairo Oranges Ltd"></div>' +
+      '<button onclick="addContact()" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Add Contact</button>' +
+    '</div>'
+  );
+}
+
+async function addContact() {
+  var gtid = document.getElementById('add-contact-gtid').value.trim();
+  var nick = document.getElementById('add-contact-nick').value.trim();
+  if (!gtid) { showToast('GTID is required', 'error'); return; }
+  try {
+    await apiPost('/contacts', { tenant_id: tenant.id, contact_gtid: gtid, nickname: nick });
+    closeModal();
+    showToast('Contact added', 'success');
+    renderContacts();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ── Disputes ─────────────────────────────────────────────
+
 async function renderDisputes() {
-  setTitle('Disputes', 'Phase 10 — AI mediation & arbitration');
-  const { data } = await api('/disputes');
-  const rows = data.map(d => `<tr class="hover:bg-surface-50 cursor-pointer" onclick="showDisputeModal('${d.id}')">
-    <td class="font-mono text-[10px]">${d.id?.slice(0,8)}...</td>
-    <td><span class="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded-md font-medium">${d.dispute_type}</span></td>
-    <td class="text-xs">${d.filing_party_name || d.filing_party_gtid || '—'}</td>
-    <td class="text-center">${badge(d.status)}</td>
-    <td class="text-center text-xs">${d.severity ? `${d.severity}/5` : '—'}</td>
-    <td class="text-xs text-surface-400">${timeAgo(d.filed_at)}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-gavel', 'Total', data.length, null, 'rose')}
-      ${metricCard('fa-clock', 'Pending', data.filter(d=>d.status==='FILED'||d.status==='IN_MEDIATION').length, null, 'amber')}
-      ${metricCard('fa-check-circle', 'Resolved', data.filter(d=>['RESOLVED','SETTLED'].includes(d.status)).length, null, 'green')}
-      ${metricCard('fa-shield-halved', 'Fee Frozen', data.filter(d=>d.status==='FILED').length, null, 'purple')}
-    </div>
-    ${dataTable(['ID', 'Type', 'Filer', 'Status', 'Severity', 'Filed'], rows, { 
-      title: 'Dispute Registry',
-      action: `<button onclick="showFileDisputeForm()" class="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-red-600 transition"><i class="fas fa-plus mr-1"></i>File Dispute</button>`
-    })}`;
+  setTitle('Disputes', 'File and track trade disputes');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/disputes?tenant_id=' + tenant.id);
+    var disputes = res.data || [];
+    content.innerHTML =
+      fourQuestions('All disputes filed by or against your company.', 'Click a dispute to view evidence and settlement options.', disputes.filter(function(d) { return d.status === 'OPEN'; }).length > 0 ? 'Open disputes require attention.' : '', 'File a new dispute or propose settlement on existing ones.') +
+      slaTransparencyPanel([
+        { label: 'Dispute Review', responsible: 'SGTX Compliance', estimated_time: '24-48 hours' },
+        { label: 'Evidence Compilation', responsible: 'Auto-Compile AI', estimated_time: '< 5 minutes' }
+      ]) +
+      '<div class="flex justify-end mb-4"><button onclick="showFileDisputeForm()" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"><i class="fas fa-gavel mr-2"></i>File Dispute</button></div>' +
+      (disputes.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-peace text-emerald-400 text-4xl mb-3"></i><p class="text-surface-400">No disputes. Everything is running smoothly.</p></div>' :
+        '<div class="space-y-3">' + disputes.map(function(d) {
+          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDisputeModal(\'' + d.id + '\')">' +
+            '<div class="flex items-center justify-between mb-1"><span class="font-medium text-sm text-surface-200">' + (d.type || d.dispute_type || 'Dispute') + '</span>' + badge(d.status || 'OPEN', d.status === 'RESOLVED' ? 'emerald' : d.status === 'OPEN' ? 'red' : 'amber') + '</div>' +
+            '<p class="text-xs text-surface-400">' + (d.description || d.reason || '') + '</p>' +
+            '<div class="flex items-center gap-3 mt-2 text-[10px] text-surface-500">' +
+              (d.ustn ? '<span class="font-mono">' + d.ustn + '</span>' : '') +
+              '<span>' + timeAgo(d.created_at) + '</span>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
 async function showDisputeModal(id) {
-  const { data } = await api(`/disputes/${id}`);
-  showModal(`
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-lg font-bold"><i class="fas fa-gavel text-red-500 mr-2"></i>Dispute Detail</h2>
-      <button onclick="closeModal()" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center"><i class="fas fa-times text-surface-400"></i></button>
-    </div>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Type</span><div class="mt-1 font-medium">${data.dispute_type}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Status</span><div class="mt-1">${badge(data.status)}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Filer</span><div class="mt-1">${data.filing_party_name || data.filing_party_gtid || '—'}</div></div>
-      <div class="p-3 bg-surface-50 rounded-lg"><span class="text-surface-400 text-xs">Respondent</span><div class="mt-1">${data.respondent_name || data.respondent_gtid || '—'}</div></div>
-    </div>
-    ${data.description ? `<div class="p-4 bg-surface-50 rounded-xl mb-4"><p class="text-sm">${data.description}</p></div>` : ''}
-  `);
+  try {
+    var res = await api('/disputes/' + id);
+    var d = res.data || res;
+    showModal('Dispute Detail',
+      '<div class="space-y-4">' +
+        plainLanguageDecisionPanel({ verdict: d.resolution_verdict || d.status, reason: d.resolution_reason || d.description, decided_at: d.resolved_at }) +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['Type', d.type || d.dispute_type], ['USTN', d.ustn || '-'], ['Status', d.status], ['Filed', time(d.created_at)]].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + (p[1] || '-') + '</div></div>';
+          }).join('') +
+        '</div>' +
+        '<div class="flex gap-2">' +
+          '<button onclick="autoCompileEvidence(\'' + (d.ustn || '') + '\', \'' + d.id + '\')" class="flex-1 py-2 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/30"><i class="fas fa-robot mr-1"></i>Auto-Compile Evidence</button>' +
+          '<button onclick="proposeSettlement(\'' + d.id + '\')" class="flex-1 py-2 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-medium hover:bg-emerald-500/30"><i class="fas fa-handshake mr-1"></i>Propose Settlement</button>' +
+        '</div>' +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 function showFileDisputeForm() {
-  showModal(`
-    <h2 class="text-lg font-bold mb-4"><i class="fas fa-gavel text-red-500 mr-2"></i>File Dispute</h2>
-    <form onsubmit="submitDispute(event)" class="space-y-4">
-      <div><label class="text-xs font-medium text-surface-600">Dispute Type</label>
-        <select id="disp-type" class="w-full mt-1 border border-surface-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sgtx-500/20"><option>QUALITY</option><option>DELIVERY</option><option>PAYMENT</option><option>DOCUMENTATION</option><option>CUSTOMS</option></select></div>
-      <div><label class="text-xs font-medium text-surface-600">Trade/Contract USTN</label>
-        <input id="disp-ustn" class="w-full mt-1 border border-surface-200 rounded-lg px-3 py-2 text-sm" placeholder="SGTX-..." required></div>
-      <div><label class="text-xs font-medium text-surface-600">Description</label>
-        <textarea id="disp-desc" rows="4" class="w-full mt-1 border border-surface-200 rounded-lg px-3 py-2 text-sm" placeholder="Describe the dispute..." required></textarea></div>
-      <button type="submit" class="w-full bg-red-500 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-red-600 transition">File Dispute (Governor Gated)</button>
-    </form>`);
+  showModal('File a Dispute',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="dispute-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Dispute Type</label><select id="dispute-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="QUALITY">Quality Issue</option><option value="DELIVERY">Late Delivery</option><option value="DOCUMENTATION">Documentation Mismatch</option><option value="PAYMENT">Payment Dispute</option><option value="OTHER">Other</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Description</label><textarea id="dispute-desc" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Describe the issue..."></textarea></div>' +
+      '<button onclick="submitDispute()" class="w-full py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">Submit Dispute</button>' +
+    '</div>'
+  );
 }
-async function submitDispute(e) {
-  e.preventDefault();
-  const r = await apiPost('/disputes', { dispute_type: document.getElementById('disp-type').value, related_ustn: document.getElementById('disp-ustn').value, description: document.getElementById('disp-desc').value, filing_party_gtid: tenant?.gtid, filing_party_name: tenant?.legal_name });
-  if (r.error) { showToast('Error: ' + r.error, 'error'); return; }
-  showToast('Dispute filed successfully', 'success');
-  closeModal(); navigate('disputes');
+
+async function submitDispute() {
+  var ustn = document.getElementById('dispute-ustn').value.trim();
+  var type = document.getElementById('dispute-type').value;
+  var desc = document.getElementById('dispute-desc').value.trim();
+  if (!ustn || !desc) { showToast('USTN and description are required', 'error'); return; }
+  try {
+    await apiPost('/disputes', { tenant_id: tenant.id, ustn: ustn, dispute_type: type, description: desc });
+    closeModal();
+    showToast('Dispute filed successfully', 'success');
+    renderDisputes();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function autoCompileEvidence(ustn, disputeId) {
+  try {
+    showToast('Compiling evidence...', 'info');
+    await apiPost('/dispute/evidence/auto-compile', { ustn: ustn, dispute_id: disputeId });
+    showToast('Evidence compiled successfully', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function proposeSettlement(disputeId) {
+  showModal('Propose Settlement',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Settlement Type</label><select id="settle-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="PARTIAL_REFUND">Partial Refund</option><option value="FULL_REFUND">Full Refund</option><option value="REPLACEMENT">Replacement Shipment</option><option value="CREDIT_NOTE">Credit Note</option><option value="MUTUAL_RELEASE">Mutual Release</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Proposed Amount (USD)</label><input id="settle-amount" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="0.00"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Terms</label><textarea id="settle-terms" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Describe settlement terms..."></textarea></div>' +
+      '<button onclick="submitSettlement(\'' + disputeId + '\')" class="w-full py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600">Submit Proposal</button>' +
+    '</div>'
+  );
+}
+
+async function submitSettlement(disputeId) {
+  var type = document.getElementById('settle-type').value;
+  var amount = parseFloat(document.getElementById('settle-amount').value) || 0;
+  var terms = document.getElementById('settle-terms').value.trim();
+  try {
+    await apiPost('/dispute/settlement-proposal', { dispute_id: disputeId, settlement_type: type, amount: amount, terms: terms, proposer_tenant_id: tenant.id });
+    closeModal();
+    showToast('Settlement proposed', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// TRADER PORTAL — BUYER TABS
+// BUYER: NEW TRADE REQUEST (Blueprint 6.2.1 — Phase 1)
+// Container-level form with GTID resolve & HS lookup
 // ═══════════════════════════════════════════════════════════
+
+var newTradeContainers = [{ commodities: [{}] }];
+
 async function renderNewTrade() {
-  setTitle('New Trade Request', 'Phase 1 — Structured container & commodity entry');
-  if (typeof showTradeWizardV2 === 'function') { showTradeWizardV2(); return; }
-  document.getElementById('content').innerHTML = `<div class="sgtx-card text-center py-12">
-    <i class="fas fa-plus-circle text-4xl text-sgtx-300 mb-4"></i>
-    <p class="text-sm text-surface-500">Loading trade form...</p>
-  </div>`;
+  setTitle('New Trade Request', 'Create a structured trade request with containers and commodities');
+  var content = document.getElementById('content');
+  content.innerHTML =
+    fourQuestions('Create a new trade request to send to a seller.', 'Fill in the seller GTID, incoterm, containers, and commodities. Submit when ready.', '', 'After submission the seller will receive your request and respond with a quote.') +
+    guidedRecoveryBanner('abandonment') +
+    '<div class="glass-card p-5 mb-4">' +
+      '<h3 class="text-sm font-semibold text-surface-200 mb-4"><i class="fas fa-file-import mr-2 text-brand-400"></i>Trade Details</h3>' +
+      '<div class="grid grid-cols-2 gap-4 mb-4">' +
+        '<div><label class="text-xs text-surface-400 block mb-1">Seller GTID</label><div class="flex gap-2"><input id="nt-seller-gtid" type="text" class="flex-1 bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-XX-XX-XXXX-XXXX"><button onclick="resolveSellerGTID()" class="px-3 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs hover:bg-brand-500/30"><i class="fas fa-search"></i></button></div><div id="nt-seller-info" class="text-xs text-surface-500 mt-1"></div></div>' +
+        '<div><label class="text-xs text-surface-400 block mb-1">Incoterm</label><select id="nt-incoterm" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="FOB">FOB</option><option value="CIF">CIF</option><option value="CFR">CFR</option><option value="EXW">EXW</option><option value="DDP">DDP</option><option value="DAP">DAP</option></select></div>' +
+      '</div>' +
+      '<div class="grid grid-cols-2 gap-4 mb-4">' +
+        '<div><label class="text-xs text-surface-400 block mb-1">Origin Country</label><input id="nt-origin" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. EG"></div>' +
+        '<div><label class="text-xs text-surface-400 block mb-1">Destination Country</label><input id="nt-dest" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. AE"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Notes</label><textarea id="nt-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Special requirements..."></textarea></div>' +
+    '</div>' +
+    '<div id="nt-containers"></div>' +
+    '<div class="flex gap-3 mt-4">' +
+      '<button onclick="newTradeContainers.push({commodities:[{}]}); renderContainerRows()" class="px-4 py-2 glass-card text-surface-300 rounded-lg text-sm hover:bg-white/5"><i class="fas fa-plus mr-1"></i>Add Container</button>' +
+      '<button onclick="submitNewTradeRequest()" class="px-6 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 ml-auto"><i class="fas fa-paper-plane mr-2"></i>Submit Request</button>' +
+    '</div>';
+  renderContainerRows();
 }
+
+function renderContainerRows() {
+  var el = document.getElementById('nt-containers');
+  if (!el) return;
+  el.innerHTML = newTradeContainers.map(function(container, ci) {
+    return '<div class="glass-card p-4 mb-3">' +
+      '<div class="flex items-center justify-between mb-3"><h4 class="text-sm font-semibold text-surface-200"><i class="fas fa-box mr-1 text-cyan-400"></i>Container ' + (ci + 1) + '</h4>' +
+        (ci > 0 ? '<button onclick="newTradeContainers.splice(' + ci + ',1); renderContainerRows()" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>' : '') +
+      '</div>' +
+      '<div class="grid grid-cols-3 gap-3 mb-3">' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Container Type</label><select id="nt-ct-' + ci + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="20RF">20ft Reefer</option><option value="40RF">40ft Reefer</option><option value="40HC">40ft High Cube</option><option value="20GP">20ft Standard</option></select></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Temperature (C)</label><input id="nt-temp-' + ci + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" value="4"></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Qty</label><input id="nt-qty-' + ci + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" value="1" min="1"></div>' +
+      '</div>' +
+      '<div class="space-y-2">' +
+        container.commodities.map(function(comm, ri) {
+          return '<div class="bg-dark-800/30 rounded-lg p-3 flex gap-3 items-end">' +
+            '<div class="flex-1"><label class="text-[10px] text-surface-500 block mb-1">HS Code</label><div class="flex gap-1"><input id="nt-hs-' + ci + '-' + ri + '" type="text" class="flex-1 bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200 font-mono" placeholder="0805.10"><button onclick="lookupHSCode(' + ci + ',' + ri + ')" class="px-2 py-1.5 bg-brand-500/20 text-brand-300 rounded text-[10px]"><i class="fas fa-search"></i></button></div><div id="nt-hs-info-' + ci + '-' + ri + '" class="text-[10px] text-surface-500 mt-0.5"></div></div>' +
+            '<div class="w-24"><label class="text-[10px] text-surface-500 block mb-1">Weight (kg)</label><input id="nt-wt-' + ci + '-' + ri + '" type="number" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20000"></div>' +
+            '<div class="w-24"><label class="text-[10px] text-surface-500 block mb-1">Variety</label><input id="nt-var-' + ci + '-' + ri + '" type="text" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="Navel"></div>' +
+            (ri > 0 ? '<button onclick="newTradeContainers[' + ci + '].commodities.splice(' + ri + ',1); renderContainerRows()" class="text-red-400 hover:text-red-300 text-xs px-2"><i class="fas fa-times"></i></button>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<button onclick="newTradeContainers[' + ci + '].commodities.push({}); renderContainerRows()" class="mt-2 text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-plus mr-1"></i>Add Commodity</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function resolveSellerGTID() {
+  var gtid = document.getElementById('nt-seller-gtid').value.trim();
+  if (!gtid) return;
+  var infoEl = document.getElementById('nt-seller-info');
+  infoEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Resolving...';
+  try {
+    var res = await api('/trade-form/gtid-resolve?gtid=' + encodeURIComponent(gtid));
+    var d = res.data || res;
+    infoEl.innerHTML = '<i class="fas fa-check-circle text-emerald-400 mr-1"></i>' + (d.company_name || 'Unknown') + ' (' + (d.country || d.jurisdiction || '?') + ') — Trust: ' + (d.trust_score || '?') + (d.sanctions_clear === false ? ' <span class="text-red-400">SANCTIONS FLAG</span>' : '');
+  } catch (e) {
+    infoEl.innerHTML = '<i class="fas fa-times-circle text-red-400 mr-1"></i>Could not resolve: ' + e.message;
+  }
+}
+
+async function lookupHSCode(ci, ri) {
+  var code = document.getElementById('nt-hs-' + ci + '-' + ri).value.trim();
+  if (!code) return;
+  var infoEl = document.getElementById('nt-hs-info-' + ci + '-' + ri);
+  try {
+    var res = await api('/trade-form/hs-lookup?hs_code=' + encodeURIComponent(code));
+    var d = res.data || res;
+    infoEl.textContent = (d.product_name || d.commodity || 'Found') + (d.commodity_type ? ' (' + d.commodity_type + ')' : '');
+  } catch (e) { infoEl.textContent = 'Not found'; }
+}
+
+async function submitNewTradeRequest() {
+  var sellerGtid = document.getElementById('nt-seller-gtid').value.trim();
+  var incoterm = document.getElementById('nt-incoterm').value;
+  var origin = document.getElementById('nt-origin').value.trim();
+  var dest = document.getElementById('nt-dest').value.trim();
+  var notes = document.getElementById('nt-notes').value.trim();
+
+  if (!sellerGtid) { showToast('Seller GTID is required', 'error'); return; }
+
+  var containers = newTradeContainers.map(function(c, ci) {
+    var type = document.getElementById('nt-ct-' + ci).value;
+    var temp = document.getElementById('nt-temp-' + ci).value;
+    var qty = document.getElementById('nt-qty-' + ci).value;
+    var commodities = c.commodities.map(function(_, ri) {
+      return {
+        hs_code: document.getElementById('nt-hs-' + ci + '-' + ri).value.trim(),
+        weight_kg: parseFloat(document.getElementById('nt-wt-' + ci + '-' + ri).value) || 0,
+        variety: document.getElementById('nt-var-' + ci + '-' + ri).value.trim()
+      };
+    });
+    return { container_type: type, temperature_celsius: parseFloat(temp), quantity: parseInt(qty) || 1, commodities: commodities };
+  });
+
+  try {
+    await apiPost('/trade/initiate', {
+      importer_tenant_id: tenant.id,
+      exporter_gtid: sellerGtid,
+      incoterm: incoterm,
+      origin_country: origin,
+      destination_country: dest,
+      notes: notes,
+      containers: containers
+    });
+    showToast('Trade request submitted!', 'success');
+    newTradeContainers = [{ commodities: [{}] }];
+    navigateTo('trade-command-center');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUYER: QUOTE REVIEW (Blueprint 6.2.1 — Phase 3)
+// ═══════════════════════════════════════════════════════════
 
 async function renderQuoteReview() {
-  setTitle('Quote Review & Negotiation', 'Compare delivery options, landed cost breakdown');
-  const { data } = await api('/trades');
-  const quoted = data.filter(t => t.status === 'QUOTE_SUBMITTED' || t.status === 'QUOTED');
-  
-  const rows = quoted.map(t => `<tr class="hover:bg-surface-50 cursor-pointer">
-    <td class="font-mono text-xs text-sgtx-600">${t.id?.slice(0,8)}...</td>
-    <td class="text-sm">${t.exporter_name || '—'}</td>
-    <td class="text-center">${badge(t.status)}</td>
-    <td class="text-xs text-surface-400">${timeAgo(t.created_at)}</td>
-    <td class="text-center"><button class="text-xs bg-sgtx-500 text-white px-3 py-1 rounded-lg">Review</button></td>
-  </tr>`);
-
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions(
-      `${quoted.length} quotes awaiting review`,
-      quoted.length ? 'Compare options and accept best quote' : 'No quotes to review',
-      quoted.length === 0 ? 'Waiting for seller responses' : 'None',
-      'Accept quote → Contract phase begins'
-    )}
-    ${dataTable(['Trade ID', 'Seller', 'Status', 'Received', 'Action'], rows, { title: 'Quotes Pending Review' })}`;
+  setTitle('Quote Review', 'Review seller quotes with landed cost breakdown');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=QUOTED');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Quotes submitted by sellers for your trade requests.', 'Review each quote, accept, negotiate price, or amend non-price terms.', trades.length === 0 ? '' : trades.length + ' quote(s) awaiting your review.', 'Accept to move to contract signing, or negotiate for better terms.') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-invoice-dollar text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No pending quotes.</p></div>' :
+        '<div class="space-y-3">' + trades.map(function(t) {
+          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showQuoteDetail(\'' + t.id + '\')">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge('QUOTED', 'purple') + '</div>' +
+            '<p class="text-sm text-surface-300">' + (t.commodity_type || 'Trade') + ' — ' + (t.incoterm || '') + '</p>' +
+            '<div class="flex items-center gap-4 mt-2 text-xs text-surface-500"><span>' + usd(t.total_value || t.quoted_price || 0) + '</span><span>' + timeAgo(t.updated_at || t.created_at) + '</span></div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+async function showQuoteDetail(tradeId) {
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(6);
+  try {
+    var res = await api('/contract/quote-review/' + tradeId);
+    var q = res.data || res;
+    content.innerHTML =
+      '<button onclick="renderQuoteReview()" class="text-xs text-surface-400 hover:text-white mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back to quotes</button>' +
+      '<div class="glass-card p-5 mb-4">' +
+        '<h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-file-invoice-dollar mr-2 text-purple-400"></i>Quote Summary</h3>' +
+        '<div class="grid grid-cols-3 gap-3 mb-4">' +
+          [['EXW Price', usd(q.exw_price || 0)], ['Logistics', usd(q.logistics_cost || 0)], ['Insurance', usd(q.insurance_cost || 0)], ['SGTX Fee', usd(q.sgtx_fee || 0)], ['Total Landed', usd(q.total_landed_cost || q.total_value || 0)], ['Per Unit', usd(q.per_unit_cost || 0)]].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-3 text-center"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm font-semibold text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (q.breakdown ? '<div class="text-xs text-surface-400 bg-dark-800/30 rounded-lg p-3 mb-4"><strong>Breakdown:</strong> ' + (typeof q.breakdown === 'string' ? q.breakdown : JSON.stringify(q.breakdown)) + '</div>' : '') +
+      '</div>' +
+      '<div class="flex gap-3">' +
+        '<button onclick="acceptQuote(\'' + tradeId + '\')" class="flex-1 py-3 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600"><i class="fas fa-check mr-2"></i>Accept Quote</button>' +
+        '<button onclick="showNegotiateForm(\'' + tradeId + '\')" class="flex-1 py-3 bg-amber-500/20 text-amber-300 rounded-lg text-sm font-medium hover:bg-amber-500/30"><i class="fas fa-comments-dollar mr-2"></i>Negotiate Price</button>' +
+        '<button onclick="amendQuote(\'' + tradeId + '\')" class="flex-1 py-3 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-medium hover:bg-blue-500/30"><i class="fas fa-edit mr-2"></i>Amend Terms</button>' +
+      '</div>';
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
+}
+
+async function acceptQuote(tradeId) {
+  try {
+    await apiPost('/contract/mutual-confirm', { trade_request_id: tradeId, confirmer_tenant_id: tenant.id });
+    showToast('Quote accepted! Moving to contract signing.', 'success');
+    navigateTo('contract-signing');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function showNegotiateForm(tradeId) {
+  showModal('Negotiate Price',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Your Counter-Price (USD)</label><input id="neg-price" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="0.00"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Justification</label><textarea id="neg-reason" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Why this price is fair..."></textarea></div>' +
+      '<button onclick="submitNegotiation(\'' + tradeId + '\')" class="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">Submit Counter-Offer</button>' +
+    '</div>'
+  );
+}
+
+async function submitNegotiation(tradeId) {
+  var price = parseFloat(document.getElementById('neg-price').value) || 0;
+  var reason = document.getElementById('neg-reason').value.trim();
+  try {
+    await apiPost('/contract/amend', { trade_request_id: tradeId, amendment_type: 'PRICE', proposed_value: price, reason: reason, proposer_tenant_id: tenant.id });
+    closeModal();
+    showToast('Counter-offer submitted', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function amendQuote(tradeId) {
+  showModal('Amend Non-Price Terms',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Amendment Type</label><select id="amend-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="INCOTERM">Incoterm Change</option><option value="DELIVERY_DATE">Delivery Date</option><option value="QUANTITY">Quantity Adjustment</option><option value="PACKAGING">Packaging Requirements</option><option value="OTHER">Other</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Proposed Change</label><textarea id="amend-value" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Describe the change..."></textarea></div>' +
+      '<button onclick="submitAmendment(\'' + tradeId + '\')" class="w-full py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">Submit Amendment</button>' +
+    '</div>'
+  );
+}
+
+async function submitAmendment(tradeId) {
+  var type = document.getElementById('amend-type').value;
+  var value = document.getElementById('amend-value').value.trim();
+  try {
+    await apiPost('/contract/amend', { trade_request_id: tradeId, amendment_type: type, proposed_value: value, proposer_tenant_id: tenant.id });
+    closeModal();
+    showToast('Amendment submitted', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUYER: CONTRACT SIGNING (Blueprint 6.2.1 — Phase 3)
+// ═══════════════════════════════════════════════════════════
 
 async function renderContractSigning() {
-  setTitle('Contract Signing', 'Phase 3 — Review and sign with passkey');
-  const { data } = await api('/contracts');
-  const rows = data.map(c => `<tr class="hover:bg-surface-50">
-    <td class="font-mono text-xs">${c.id?.slice(0,8)}...</td>
-    <td class="text-sm">${c.importer_name || '—'}</td>
-    <td class="text-sm">${c.exporter_name || '—'}</td>
-    <td class="text-center"><span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium">${c.incoterm}</span></td>
-    <td class="text-center">${badge(c.status)}</td>
-    <td class="text-center">${c.status==='DRAFT' ? '<button class="text-xs bg-emerald-500 text-white px-3 py-1 rounded-lg">Sign</button>' : timeAgo(c.locked_at || c.created_at)}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = dataTable(['ID', 'Buyer', 'Seller', 'Incoterm', 'Status', 'Action'], rows, { title: 'Contracts' });
+  setTitle('Contract Signing', 'Sign contracts with SGTX Witness Clause');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,PENDING_SIGNATURE');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Contracts ready for your signature.', 'Review terms and sign to proceed. SGTX acts as digital witness.', '', 'After both parties sign, the trade moves to financing.') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-signature text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No contracts pending signature.</p></div>' :
+        '<div class="space-y-3">' + trades.map(function(t) {
+          var signed = t.buyer_signed || t.importer_signed;
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(signed ? 'SIGNED' : 'PENDING', signed ? 'emerald' : 'amber') + '</div>' +
+            '<p class="text-sm text-surface-300 mb-3">' + (t.commodity_type || '') + ' — ' + usd(t.total_value || 0) + '</p>' +
+            '<div class="bg-dark-800/30 rounded-lg p-3 mb-3 text-xs text-surface-400 border border-surface-700">' +
+              '<div class="flex items-center gap-2 mb-1"><i class="fas fa-gavel text-brand-400"></i><strong class="text-surface-300">SGTX Witness Clause</strong></div>' +
+              '<p>By signing, both parties acknowledge that SGTX Platform records this agreement as a digital witness. This contract is governed by the terms agreed in the platform and the applicable jurisdiction rules.</p>' +
+            '</div>' +
+            (signed ? '<div class="text-xs text-emerald-400"><i class="fas fa-check-circle mr-1"></i>You have signed this contract.</div>' :
+              '<button onclick="showSignContractModal(\'' + t.id + '\')" class="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-signature mr-2"></i>Sign Contract</button>') +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+function showSignContractModal(tradeId) {
+  showModal('Sign Contract',
+    '<div class="space-y-4">' +
+      '<div class="bg-dark-800/50 rounded-lg p-4 text-xs text-surface-400">' +
+        '<p class="mb-2"><strong class="text-surface-200">Digital Signature Confirmation</strong></p>' +
+        '<p>By clicking "Sign", you confirm that you have read and agree to all contract terms. SGTX Platform will record your signature timestamp and digital fingerprint as witness.</p>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Type your full name to confirm</label><input id="sign-name" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Full legal name"></div>' +
+      '<button onclick="signContract(\'' + tradeId + '\')" class="w-full py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600"><i class="fas fa-signature mr-2"></i>Sign & Lock Contract</button>' +
+    '</div>'
+  );
+}
+
+async function signContract(tradeId) {
+  var name = document.getElementById('sign-name').value.trim();
+  if (!name) { showToast('Please type your name to confirm', 'error'); return; }
+  try {
+    await apiPost('/contract/sign-lock', { trade_request_id: tradeId, signer_tenant_id: tenant.id, signer_name: name });
+    closeModal();
+    showToast('Contract signed successfully!', 'success');
+    renderContractSigning();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUYER: CUSTOMS READINESS (Blueprint 6.2.1 — Phase 5/9)
+// Dynamic traffic-light document checklist
+// ═══════════════════════════════════════════════════════════
 
 async function renderCustomsReadiness() {
-  setTitle('Customs Readiness', 'Dynamic document checklist — traffic-light status');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Document compliance tracking', 'Upload required documents', 'Missing certificates flagged in red', 'Auto-submit to customs on completion')}
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-clipboard-check text-sgtx-500 mr-2"></i>Document Checklist</h3>
-      <div class="space-y-3">
-        ${['Commercial Invoice', 'Packing List', 'Bill of Lading', 'Certificate of Origin', 'Insurance Certificate', 'Phytosanitary Certificate'].map((doc, i) => {
-          const status = i < 2 ? 'ready' : i < 4 ? 'pending' : 'missing';
-          const colors = { ready: 'bg-emerald-50 border-emerald-200 text-emerald-700', pending: 'bg-amber-50 border-amber-200 text-amber-700', missing: 'bg-red-50 border-red-200 text-red-700' };
-          const icons = { ready: 'fa-check-circle text-emerald-500', pending: 'fa-clock text-amber-500', missing: 'fa-xmark-circle text-red-500' };
-          return `<div class="flex items-center justify-between p-3 rounded-xl border ${colors[status]}">
-            <div class="flex items-center gap-3"><i class="fas ${icons[status]}"></i><span class="text-sm font-medium">${doc}</span></div>
-            <span class="text-xs font-semibold uppercase">${status}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
+  setTitle('Customs Readiness', 'Document checklist for import clearance');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACTIVE,SIGNED,IN_TRANSIT');
+    var trades = res.data || [];
+    if (!trades.length) {
+      content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-clipboard-check text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No active trades requiring customs preparation.</p></div>';
+      return;
+    }
+    content.innerHTML =
+      fourQuestions('Document readiness for customs clearance on your active trades.', 'Green = ready, Amber = in progress, Red = missing. Click to upload or request from seller.', '', 'Ensure all documents are green before cargo arrives at port.') +
+      '<div id="customs-list" class="space-y-4">' + trades.map(function(t) {
+        return '<div class="glass-card p-4"><div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || '', 'blue') + '</div><div id="customs-docs-' + (t.ustn || t.id) + '" class="text-xs text-surface-500">Loading requirements...</div></div>';
+      }).join('') + '</div>';
+
+    // Load doc requirements for each trade
+    trades.forEach(function(t) {
+      var ustn = t.ustn || t.id;
+      api('/physical/document-requirements/' + ustn).then(function(r) {
+        var el = document.getElementById('customs-docs-' + ustn);
+        if (!el) return;
+        var docs = r.data || r.documents || [];
+        if (!docs.length) { el.innerHTML = '<span class="text-surface-500">No requirements defined.</span>'; return; }
+        el.innerHTML = '<div class="space-y-2">' + docs.map(function(doc) {
+          var color = doc.status === 'READY' ? 'emerald' : doc.status === 'IN_PROGRESS' ? 'amber' : 'red';
+          var icon = doc.status === 'READY' ? 'fa-check-circle' : doc.status === 'IN_PROGRESS' ? 'fa-clock' : 'fa-times-circle';
+          return '<div class="flex items-center justify-between bg-dark-800/40 rounded-lg p-2">' +
+            '<div class="flex items-center gap-2"><i class="fas ' + icon + ' text-' + color + '-400"></i><span class="text-surface-300">' + (doc.name || doc.document_type || 'Document') + '</span></div>' +
+            '<div class="flex items-center gap-2">' +
+              (doc.status !== 'READY' ? '<button onclick="showDocUploadForm(\'' + ustn + '\', \'' + (doc.document_type || doc.name) + '\')" class="text-[10px] px-2 py-1 bg-brand-500/20 text-brand-300 rounded hover:bg-brand-500/30">Upload</button>' +
+              '<button onclick="requestDocFromSeller(\'' + ustn + '\', \'' + (doc.document_type || doc.name) + '\')" class="text-[10px] px-2 py-1 bg-purple-500/20 text-purple-300 rounded hover:bg-purple-500/30">Request</button>' : '<span class="text-[10px] text-emerald-400">Complete</span>') +
+            '</div></div>';
+        }).join('') + '</div>';
+      }).catch(function() {
+        var el = document.getElementById('customs-docs-' + ustn);
+        if (el) el.innerHTML = '<span class="text-red-400">Failed to load requirements.</span>';
+      });
+    });
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+function showDocUploadForm(ustn, docType) {
+  showModal('Upload Document',
+    '<div class="space-y-4">' +
+      '<p class="text-xs text-surface-400">Upload <strong class="text-surface-200">' + docType + '</strong> for trade <span class="font-mono text-brand-300">' + ustn + '</span></p>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Document Reference</label><input id="doc-ref" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Reference number"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Notes</label><textarea id="doc-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"></textarea></div>' +
+      '<button onclick="handleDocUpload(\'' + ustn + '\', \'' + docType + '\')" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-upload mr-2"></i>Upload</button>' +
+    '</div>'
+  );
+}
+
+async function handleDocUpload(ustn, docType) {
+  var ref = document.getElementById('doc-ref').value.trim();
+  var notes = document.getElementById('doc-notes').value.trim();
+  try {
+    await apiPost('/documents', { ustn: ustn, document_type: docType, reference: ref, notes: notes, uploader_tenant_id: tenant.id, status: 'UPLOADED' });
+    closeModal();
+    showToast('Document uploaded', 'success');
+    renderCustomsReadiness();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function requestDocFromSeller(ustn, docType) {
+  try {
+    await apiPost('/inbox', { tenant_id: tenant.id, target_tenant_id: null, ustn: ustn, category: 'DOCUMENT', title: 'Document Request: ' + docType, message: 'Please upload ' + docType + ' for trade ' + ustn, urgency_score: 60 });
+    showToast('Request sent to seller', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUYER: FINANCING (Blueprint 6.2.1 — Phase 4)
+// ═══════════════════════════════════════════════════════════
 
 async function renderFinancing() {
-  setTitle('Financing', 'Phase 4 — Universal trade finance');
-  const { data } = await api('/financing');
-  const rows = data.map(f => `<tr>
-    <td class="font-mono text-xs">${f.id?.slice(0,8)}...</td>
-    <td class="text-sm">${f.requester_name || '—'}</td>
-    <td class="text-center font-semibold">${usd(f.amount)}</td>
-    <td class="text-center text-xs">${f.financing_type}</td>
-    <td class="text-center">${badge(f.status)}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-landmark', 'Active Requests', data.length, null, 'blue')}
-      ${metricCard('fa-gavel', 'Bidding', data.filter(f=>f.status==='BIDDING').length, null, 'amber')}
-      ${metricCard('fa-check', 'Awarded', data.filter(f=>f.status==='AWARDED').length, null, 'green')}
-      ${metricCard('fa-percent', 'Fee Rate', '0.25%', null, 'purple')}
-    </div>
-    ${dataTable(['ID', 'Requester', 'Amount', 'Type', 'Status'], rows, { title: 'Financing Requests' })}`;
+  setTitle('Financing', 'Trade finance requests and offers');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/financing?tenant_id=' + tenant.id);
+    var items = res.data || [];
+    content.innerHTML =
+      fourQuestions('Your trade finance requests and available offers.', 'Submit a financing request or review existing bids.', '', 'Once financing is awarded, proceed with physical operations.') +
+      '<div class="flex justify-end mb-4"><button onclick="showFinancingRequestForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-university mr-2"></i>Request Financing</button></div>' +
+      (items.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-university text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No financing requests yet.</p></div>' :
+        '<div class="space-y-3">' + items.map(function(f) {
+          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showFinancingDetail(\'' + f.id + '\')">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (f.ustn || f.trade_id || '-') + '</span>' + badge(f.status || 'PENDING', f.status === 'FUNDED' ? 'emerald' : f.status === 'APPROVED' ? 'blue' : 'amber') + '</div>' +
+            '<div class="flex items-center gap-4 text-xs text-surface-400"><span>Amount: ' + usd(f.amount || 0) + '</span><span>LTV: ' + (f.ltv || '-') + '%</span><span>' + timeAgo(f.created_at) + '</span></div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+function showFinancingRequestForm() {
+  showModal('Request Trade Finance',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="fin-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Requested Amount (USD)</label><input id="fin-amount" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="0.00"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Finance Type</label><select id="fin-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="PRE_SHIPMENT">Pre-Shipment</option><option value="POST_SHIPMENT">Post-Shipment</option><option value="LETTER_OF_CREDIT">Letter of Credit</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Purpose / Notes</label><textarea id="fin-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Purpose of financing..."></textarea></div>' +
+      '<button onclick="submitFinancingRequest()" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Submit Request</button>' +
+    '</div>'
+  );
+}
+
+async function submitFinancingRequest() {
+  var ustn = document.getElementById('fin-ustn').value.trim();
+  var amount = parseFloat(document.getElementById('fin-amount').value) || 0;
+  var type = document.getElementById('fin-type').value;
+  var notes = document.getElementById('fin-notes').value.trim();
+  if (!ustn || !amount) { showToast('USTN and amount are required', 'error'); return; }
+  try {
+    await apiPost('/trade-finance/request', { ustn: ustn, tenant_id: tenant.id, amount: amount, finance_type: type, notes: notes });
+    closeModal();
+    showToast('Financing request submitted', 'success');
+    renderFinancing();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function showFinancingDetail(id) {
+  try {
+    var res = await api('/financing/' + id);
+    var f = res.data || res;
+    showModal('Financing Detail',
+      '<div class="space-y-3">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['USTN', f.ustn || '-'], ['Amount', usd(f.amount || 0)], ['LTV', (f.ltv || '-') + '%'], ['Type', f.finance_type || '-'], ['Status', f.status || '-'], ['AI Score', f.ai_credit_score || '-']].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (f.bids ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Bids</h4>' + (f.bids || []).map(function(b) { return '<div class="bg-dark-800/40 rounded-lg p-2 text-xs flex justify-between"><span>' + (b.financier || '-') + '</span><span>' + (b.rate || '-') + '%</span>' + badge(b.status || 'PENDING', 'blue') + '</div>'; }).join('') + '</div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUYER: DISTRESSED CARGO (Blueprint 6.2.1 — Phase 10)
+// ═══════════════════════════════════════════════════════════
 
 async function renderDistressedBuy() {
-  setTitle('Distressed Cargo', 'Available distressed cargo from your network');
-  const { data } = await api('/distressed');
-  const rows = data.map(d => `<tr>
-    <td class="text-sm">${d.exporter_name || '—'}</td>
-    <td class="text-sm">${d.current_location || '—'}</td>
-    <td class="text-center">${d.quantity} ${d.unit}</td>
-    <td class="text-center font-semibold">${usd(d.price_expectation)}</td>
-    <td class="text-center">${badge(d.status)}</td>
-  </tr>`);
-  document.getElementById('content').innerHTML = dataTable(['Seller', 'Location', 'Qty', 'Price', 'Status'], rows, { title: 'Distressed Cargo Listings' });
+  setTitle('Distressed Cargo Market', 'Browse and bid on distressed cargo listings');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/distressed-listings?status=ACTIVE');
+    var listings = res.data || [];
+    content.innerHTML =
+      fourQuestions('Available distressed cargo listings from sellers seeking quick resolution.', 'Browse listings and submit offers for cargo below market price.', '', 'Accepted offers create a micro-contract for immediate fulfillment.') +
+      (listings.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-box-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No distressed listings available at this time.</p></div>' :
+        '<div class="grid grid-cols-2 gap-4">' + listings.map(function(l) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-medium text-sm text-surface-200">' + (l.commodity_type || l.title || 'Cargo') + '</span>' + badge(l.condition_grade || 'B', l.condition_grade === 'A' ? 'emerald' : 'amber') + '</div>' +
+            '<div class="text-xs text-surface-400 space-y-1 mb-3">' +
+              '<div>Quantity: ' + (l.quantity || '-') + ' ' + (l.unit || 'kg') + '</div>' +
+              '<div>Location: ' + (l.location || '-') + '</div>' +
+              '<div>Ask Price: ' + usd(l.asking_price || 0) + '</div>' +
+              '<div>Market Value: ' + usd(l.market_value || 0) + '</div>' +
+            '</div>' +
+            '<button onclick="showDistressedOfferForm(\'' + l.id + '\')" class="w-full py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs font-medium hover:bg-brand-500/30"><i class="fas fa-hand-holding-usd mr-1"></i>Make Offer</button>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
+}
+
+function showDistressedOfferForm(listingId) {
+  showModal('Make Offer',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Your Offer (USD)</label><input id="dist-offer" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="0.00"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Notes / Conditions</label><textarea id="dist-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Any conditions..."></textarea></div>' +
+      '<button onclick="submitDistressedOffer(\'' + listingId + '\')" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Submit Offer</button>' +
+    '</div>'
+  );
+}
+
+async function submitDistressedOffer(listingId) {
+  var offer = parseFloat(document.getElementById('dist-offer').value) || 0;
+  var notes = document.getElementById('dist-notes').value.trim();
+  if (!offer) { showToast('Offer amount required', 'error'); return; }
+  try {
+    await apiPost('/distressed/micro-contract', { listing_id: listingId, buyer_tenant_id: tenant.id, offer_amount: offer, notes: notes });
+    closeModal();
+    showToast('Offer submitted!', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// TRADER PORTAL — SELLER TABS
+// BUYER/SELLER: COMPANY ADMIN (Blueprint 6.2.x)
 // ═══════════════════════════════════════════════════════════
+
+async function renderCompanyAdmin() {
+  setTitle('Company Admin', 'Manage employees, roles, and company settings');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/employees?tenant_id=' + tenant.id);
+    var employees = res.data || [];
+    content.innerHTML =
+      fourQuestions('Manage your company team and access permissions.', 'Invite new employees, assign roles, deactivate accounts.', '', 'Keep your team roster up to date for compliance.') +
+      '<div class="grid grid-cols-3 gap-4 mb-6">' +
+        metricCard('fa-users', 'Total Staff', employees.length, null, 'blue') +
+        metricCard('fa-user-check', 'Active', employees.filter(function(e) { return e.status === 'ACTIVE'; }).length, null, 'emerald') +
+        metricCard('fa-building', 'Company', tenant.company_name || tenant.name || '-', null, 'purple') +
+      '</div>' +
+      '<div class="flex justify-end mb-4"><button onclick="showInviteEmployeeForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-user-plus mr-2"></i>Invite Employee</button></div>' +
+      dataTable(['Name', 'Email', 'Role', 'Status', ''],
+        employees.map(function(emp) {
+          return [
+            '<span class="font-medium text-surface-200">' + (emp.full_name || emp.name || '-') + '</span>',
+            emp.email || '-',
+            badge(emp.role || 'VIEWER', 'blue'),
+            badge(emp.status || 'ACTIVE', emp.status === 'ACTIVE' ? 'emerald' : 'red'),
+            emp.status === 'ACTIVE' ? '<button onclick="deactivateEmployee(\'' + emp.id + '\')" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-user-slash"></i></button>' : ''
+          ];
+        })
+      );
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
+}
+
+function showInviteEmployeeForm() {
+  showModal('Invite Employee',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Full Name</label><input id="emp-name" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Jane Doe"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Email</label><input id="emp-email" type="email" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="jane@company.com"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Role</label><select id="emp-role" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="ADMIN">Admin</option><option value="OPERATOR">Operator</option><option value="VIEWER">Viewer</option><option value="FINANCE">Finance</option></select></div>' +
+      '<button onclick="inviteEmployee()" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Send Invite</button>' +
+    '</div>'
+  );
+}
+
+async function inviteEmployee() {
+  var name = document.getElementById('emp-name').value.trim();
+  var email = document.getElementById('emp-email').value.trim();
+  var role = document.getElementById('emp-role').value;
+  if (!name || !email) { showToast('Name and email are required', 'error'); return; }
+  try {
+    await apiPost('/employees', { tenant_id: tenant.id, full_name: name, email: email, role: role });
+    closeModal();
+    showToast('Employee invited', 'success');
+    renderCompanyAdmin();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function deactivateEmployee(id) {
+  if (!confirm('Deactivate this employee?')) return;
+  try {
+    await apiPatch('/employees/' + id, { status: 'INACTIVE' });
+    showToast('Employee deactivated', 'success');
+    renderCompanyAdmin();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: PENDING REQUESTS (Blueprint 6.2.2 — Phase 1)
+// ═══════════════════════════════════════════════════════════
+
 async function renderPendingRequests() {
-  setTitle('Pending Requests', 'Incoming trade requests awaiting your response');
-  const { data } = await api('/trades');
-  const pending = data.filter(t => ['PENDING_EXPORTER_RESPONSE','DRAFT','INITIATED'].includes(t.status));
-  const rows = pending.map(t => `<tr class="hover:bg-surface-50">
-    <td class="font-mono text-xs text-sgtx-600">${t.id?.slice(0,8)}...</td>
-    <td class="text-sm">${t.importer_name || '—'}</td>
-    <td class="text-center"><span class="text-xs">${t.importer_jurisdiction || '—'}</span></td>
-    <td class="text-center">${badge(t.status)}</td>
-    <td class="text-xs text-surface-400">${timeAgo(t.created_at)}</td>
-    <td class="text-center"><button onclick="event.stopPropagation();showQuoteFormForTrade('${t.id}')" class="text-xs bg-emerald-500 text-white px-3 py-1 rounded-lg font-medium">Submit Quote</button></td>
-  </tr>`);
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions(
-      `${pending.length} requests waiting`,
-      pending.length ? 'Review requests and submit quotes' : 'No pending requests',
-      'None — requests auto-expire after SLA',
-      'Submit quote → buyer review → contract'
-    )}
-    ${dataTable(['Trade ID', 'Buyer', 'Origin', 'Status', 'Received', 'Action'], rows, { title: 'Incoming Requests' })}`;
+  setTitle('Pending Requests', 'Trade requests from buyers awaiting your response');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
+    var requests = res.data || [];
+    content.innerHTML =
+      fourQuestions('Trade requests sent to you by buyers.', 'Accept to begin quoting, decline, or counter with different terms.', requests.length > 0 ? requests.length + ' request(s) awaiting your response.' : '', 'Accepted requests move to the EXW pricing stage.') +
+      (requests.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-inbox text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No pending requests from buyers.</p></div>' :
+        '<div class="space-y-3">' + requests.map(function(r) {
+          var specs = '';
+          try { specs = r.specifications ? (typeof r.specifications === 'string' ? r.specifications : JSON.stringify(r.specifications)) : ''; } catch(e) {}
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (r.ustn || r.id) + '</span>' + badge('PENDING', 'amber') + '</div>' +
+            '<p class="text-sm text-surface-300 mb-1">' + (r.commodity_type || 'Trade Request') + ' — ' + (r.incoterm || '') + '</p>' +
+            (specs ? '<p class="text-xs text-surface-500 mb-2 truncate">' + specs + '</p>' : '') +
+            '<div class="flex items-center gap-4 text-xs text-surface-500 mb-3"><span>From: ' + (r.buyer_name || r.importer_tenant_id || '-') + '</span><span>' + timeAgo(r.created_at) + '</span></div>' +
+            '<div class="flex gap-2">' +
+              '<button onclick="acceptTradeRequest(\'' + r.id + '\')" class="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-check mr-1"></i>Accept</button>' +
+              '<button onclick="declineTradeRequest(\'' + r.id + '\')" class="flex-1 py-2 bg-red-500/20 text-red-300 rounded-lg text-xs font-medium hover:bg-red-500/30"><i class="fas fa-times mr-1"></i>Decline</button>' +
+              '<button onclick="showCounterForm(\'' + r.id + '\')" class="flex-1 py-2 bg-amber-500/20 text-amber-300 rounded-lg text-xs font-medium hover:bg-amber-500/30"><i class="fas fa-exchange-alt mr-1"></i>Counter</button>' +
+              '<button onclick="showRequestDetail(\'' + r.id + '\')" class="px-3 py-2 glass-card text-surface-400 rounded-lg text-xs hover:text-white"><i class="fas fa-eye"></i></button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
-function showQuoteFormForTrade(tradeId) {
-  if (typeof showExporterQuoteFormV2 === 'function') { showExporterQuoteFormV2(tradeId); }
-  else { showToast('Quote form module not loaded', 'error'); }
+async function acceptTradeRequest(id) {
+  try {
+    await apiPatch('/trades/' + id, { status: 'ACCEPTED' });
+    showToast('Request accepted! Proceed to EXW pricing.', 'success');
+    renderPendingRequests();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
+
+async function declineTradeRequest(id) {
+  if (!confirm('Decline this trade request?')) return;
+  try {
+    await apiPatch('/trades/' + id, { status: 'REJECTED' });
+    showToast('Request declined', 'info');
+    renderPendingRequests();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function showCounterForm(id) {
+  showModal('Counter-Offer',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Counter Terms</label><textarea id="counter-terms" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Propose alternative terms..."></textarea></div>' +
+      '<button onclick="submitCounter(\'' + id + '\')" class="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">Submit Counter</button>' +
+    '</div>'
+  );
+}
+
+async function submitCounter(id) {
+  var terms = document.getElementById('counter-terms').value.trim();
+  if (!terms) { showToast('Please specify counter terms', 'error'); return; }
+  try {
+    await apiPost('/contract/amend', { trade_request_id: id, amendment_type: 'COUNTER', proposed_value: terms, proposer_tenant_id: tenant.id });
+    closeModal();
+    showToast('Counter submitted', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function showRequestDetail(id) {
+  try {
+    var res = await api('/seller-quote/request-detail?trade_request_id=' + id + '&seller_tenant_id=' + tenant.id);
+    var r = res.data || res;
+    showModal('Request Detail',
+      '<div class="space-y-3">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['USTN', r.ustn || '-'], ['Buyer', r.buyer_name || r.importer_tenant_id || '-'], ['Commodity', r.commodity_type || '-'], ['Incoterm', r.incoterm || '-'], ['Origin', r.origin_country || '-'], ['Destination', r.destination_country || '-']].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (r.containers ? '<div class="text-xs text-surface-400 bg-dark-800/30 rounded-lg p-3"><strong>Containers:</strong> ' + (typeof r.containers === 'string' ? r.containers : JSON.stringify(r.containers)) + '</div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: EXW PRICE LOCK (Blueprint 6.2.2 — Phase 2)
+// ═══════════════════════════════════════════════════════════
 
 async function renderEXWPriceLock() {
-  setTitle('EXW Price Lock', 'AI-recommended range, live market chart, post-lock watch');
-  const { data: trades } = await api('/trades');
-  const pending = trades.filter(t => ['PENDING_EXPORTER_RESPONSE','INITIATED'].includes(t.status));
-
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('EXW pricing with AI advisory', 'Lock your ex-works price for pending requests', 'Price valid until lock expires (24h default)', 'Locked price feeds into final quote calculation')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-lock', 'Locked Prices', pending.filter(t=>t.exw_price).length, null, 'green')}
-      ${metricCard('fa-clock', 'Pending Lock', pending.filter(t=>!t.exw_price).length, null, 'amber')}
-      ${metricCard('fa-robot', 'AI Confidence', '87%', 3, 'purple')}
-      ${metricCard('fa-chart-line', 'Market Trend', '↑ 2.1%', null, 'blue')}
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <div class="md:col-span-2 sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-chart-line text-sgtx-500 mr-2"></i>Market Price Chart (30-Day)</h3>
-        <div class="h-48 bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl flex items-center justify-center relative overflow-hidden">
-          <div class="absolute inset-0 flex items-end px-4 pb-4 gap-1">
-            ${Array.from({length:30}, (_,i) => {const h = 30 + Math.random()*60; return `<div class="flex-1 bg-gradient-to-t from-sgtx-500/40 to-sgtx-300/20 rounded-t" style="height:${h}%"></div>`;}).join('')}
-          </div>
-          <div class="relative z-10 text-center">
-            <div class="text-2xl font-bold text-surface-800">$1,245</div>
-            <div class="text-xs text-surface-400">Avg. market price / MT</div>
-          </div>
-        </div>
-        <div class="flex justify-between mt-3 text-[10px] text-surface-400">
-          <span>30 days ago</span><span>Today</span>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-robot text-sgtx-500 mr-2"></i>AI Recommendation</h3>
-        <div class="space-y-4">
-          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-            <div class="text-[10px] font-bold text-emerald-700 uppercase">Fair Price Range</div>
-            <div class="text-lg font-bold text-emerald-800 mt-1">$1,180 — $1,310</div>
-            <div class="text-[10px] text-emerald-600 mt-1">Based on 200+ market signals</div>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <div class="text-[10px] font-bold text-surface-500 uppercase">Confidence Score</div>
-            <div class="mt-2 h-2 bg-surface-200 rounded-full"><div class="h-2 bg-sgtx-500 rounded-full" style="width:87%"></div></div>
-            <div class="text-xs mt-1 text-surface-600">High (87%)</div>
-          </div>
-          <div class="p-3 bg-amber-50 rounded-xl border border-amber-100">
-            <div class="text-[10px] font-bold text-amber-700"><i class="fas fa-info-circle mr-1"></i>Advisory Only (A1)</div>
-            <div class="text-[10px] text-amber-600 mt-1">AI cannot enforce — G2 compliant</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-list text-sgtx-500 mr-2"></i>Trades Pending EXW Lock</h3>
-      ${pending.length ? `<div class="space-y-3">${pending.map(t => `
-        <div class="flex items-center justify-between p-4 rounded-xl border border-surface-100 hover:border-sgtx-200 hover:bg-sgtx-50/30 transition">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center"><i class="fas fa-handshake text-surface-500"></i></div>
-            <div>
-              <div class="text-sm font-medium">${t.importer_name || 'Unknown Buyer'}</div>
-              <div class="text-xs text-surface-400 font-mono">${t.id?.slice(0,12)}...</div>
-            </div>
-          </div>
-          <div class="flex items-center gap-3">
-            ${badge(t.status)}
-            <button class="px-4 py-2 bg-sgtx-500 text-white text-xs font-semibold rounded-lg hover:bg-sgtx-600 transition"><i class="fas fa-lock mr-1"></i>Lock EXW</button>
-          </div>
-        </div>`).join('')}</div>` : '<p class="text-sm text-surface-400 text-center py-8">No trades pending EXW price lock</p>'}
-    </div>`;
+  setTitle('EXW Price Lock', 'Lock your ex-works price for accepted trades');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED&role=seller');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Set your EXW (ex-works) price for accepted trade requests.', 'Enter your price per unit and lock it. This becomes the base for the full quote.', '', 'After locking EXW, proceed to containerisation and logistics.') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-tag text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No accepted trades awaiting EXW pricing.</p></div>' :
+        '<div class="space-y-3">' + trades.map(function(t) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
+            '<div class="grid grid-cols-3 gap-3 mb-3">' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Price per Unit (USD)</label><input id="exw-price-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="0.00"></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Unit</label><select id="exw-unit-' + t.id + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="KG">per kg</option><option value="TON">per ton</option><option value="CARTON">per carton</option><option value="PALLET">per pallet</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Valid Until</label><input id="exw-valid-' + t.id + '" type="date" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"></div>' +
+            '</div>' +
+            '<button onclick="lockEXWPrice(\'' + t.id + '\')" class="w-full py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+async function lockEXWPrice(tradeId) {
+  var price = parseFloat(document.getElementById('exw-price-' + tradeId).value) || 0;
+  var unit = document.getElementById('exw-unit-' + tradeId).value;
+  var validUntil = document.getElementById('exw-valid-' + tradeId).value;
+  if (!price) { showToast('Price is required', 'error'); return; }
+  try {
+    await apiPost('/seller-quote/exw-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, exw_price: price, price_unit: unit, valid_until: validUntil || null });
+    showToast('EXW price locked!', 'success');
+    renderEXWPriceLock();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: CONTAINERISATION (Blueprint 6.2.2 — Phase 5)
+// ═══════════════════════════════════════════════════════════
 
 async function renderContainerisation() {
-  setTitle('Containerisation & Packing', 'Palletisation solver (ORTools), 3D viewer');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Container loading optimization', 'Configure packing plan for active trades', 'Awaiting commodity dimensions from buyer', 'AI optimizes load via ORTools + 3D visualization')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-boxes-stacked', 'Active Packing Plans', 3, null, 'blue')}
-      ${metricCard('fa-cube', 'Containers', 5, null, 'purple')}
-      ${metricCard('fa-weight-hanging', 'Avg Utilization', '92%', 4, 'green')}
-      ${metricCard('fa-robot', 'AI Suggestions', 8, null, 'amber')}
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <div class="md:col-span-2 sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-cube text-sgtx-500 mr-2"></i>3D Container Viewer</h3>
-        <div class="h-64 bg-gradient-to-br from-surface-900 to-surface-800 rounded-xl flex items-center justify-center relative overflow-hidden">
-          <div class="absolute inset-4 border border-surface-600 rounded-lg flex items-end p-2 gap-1">
-            ${Array.from({length:8}, (_,i) => `<div class="flex-1 bg-gradient-to-t ${['from-sgtx-500/60 to-sgtx-400/40','from-emerald-500/60 to-emerald-400/40','from-amber-500/60 to-amber-400/40','from-blue-500/60 to-blue-400/40'][i%4]} rounded" style="height:${50+Math.random()*45}%"></div>`).join('')}
-          </div>
-          <div class="relative z-10 text-center">
-            <div class="text-white text-sm font-medium"><i class="fas fa-cube mr-2"></i>40ft HC Container</div>
-            <div class="text-surface-300 text-xs mt-1">67.6 m³ capacity • 92% filled</div>
-          </div>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-list-check text-sgtx-500 mr-2"></i>Packing Details</h3>
-        <div class="space-y-3">
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <div class="text-[10px] text-surface-400">Container Type</div>
-            <div class="text-sm font-semibold">40ft High Cube</div>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <div class="text-[10px] text-surface-400">Max Payload</div>
-            <div class="text-sm font-semibold">26,580 kg</div>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <div class="text-[10px] text-surface-400">Pallets</div>
-            <div class="text-sm font-semibold">24 standard EUR pallets</div>
-          </div>
-          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-            <div class="text-[10px] text-emerald-700 font-bold">ORTools Optimized</div>
-            <div class="text-xs text-emerald-600 mt-1">+8% space efficiency vs manual</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-th text-sgtx-500 mr-2"></i>Commodity Layers</h3>
-      <div class="grid grid-cols-4 gap-3">
-        ${[{name:'Cotton Bales',qty:200,wt:'12,000 kg',fill:'85%'},{name:'Fabric Rolls',qty:80,wt:'6,400 kg',fill:'92%'},{name:'Garments (boxed)',qty:500,wt:'4,000 kg',fill:'78%'},{name:'Accessories',qty:120,wt:'960 kg',fill:'65%'}].map(c => `
-          <div class="p-3 rounded-xl border border-surface-100 hover:border-sgtx-200 transition">
-            <div class="text-xs font-semibold text-surface-800">${c.name}</div>
-            <div class="text-[10px] text-surface-400 mt-1">${c.qty} units • ${c.wt}</div>
-            <div class="mt-2 h-1.5 bg-surface-100 rounded-full"><div class="h-1.5 bg-sgtx-500 rounded-full" style="width:${c.fill}"></div></div>
-            <div class="text-[10px] text-surface-400 mt-1">${c.fill} filled</div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+  setTitle('Containerisation', 'Define packing plan and packaging types');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED&role=seller');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Define how cargo will be packed into containers.', 'Select packaging type, specify palletisation, and lock the plan.', '', 'After packing plan is locked, proceed to logistics RFQ.') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-boxes text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades ready for containerisation.</p></div>' :
+        '<div class="space-y-4">' + trades.map(function(t) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
+            '<div class="grid grid-cols-3 gap-3 mb-3">' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Packaging Type</label><select id="pack-type-' + t.id + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="MESH_BAGS">Mesh Bags</option><option value="CARTONS">Cartons</option><option value="CRATES">Wooden Crates</option><option value="PALLETS">Pallets</option><option value="BULK">Bulk</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Pack Weight (kg)</label><input id="pack-wt-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="15"></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Packs per Pallet</label><input id="pack-pp-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="80"></div>' +
+            '</div>' +
+            '<div class="grid grid-cols-2 gap-3 mb-3">' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Pallets per Container</label><input id="pack-pc-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20"></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-1">Total Weight (kg)</label><input id="pack-tw-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20000"></div>' +
+            '</div>' +
+            '<button onclick="submitPackingPlan(\'' + t.id + '\')" class="w-full py-2 bg-brand-500 text-white rounded-lg text-xs font-medium hover:bg-brand-600"><i class="fas fa-box mr-2"></i>Lock Packing Plan</button>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+async function submitPackingPlan(tradeId) {
+  var type = document.getElementById('pack-type-' + tradeId).value;
+  var wt = parseFloat(document.getElementById('pack-wt-' + tradeId).value) || 0;
+  var pp = parseInt(document.getElementById('pack-pp-' + tradeId).value) || 0;
+  var pc = parseInt(document.getElementById('pack-pc-' + tradeId).value) || 0;
+  var tw = parseFloat(document.getElementById('pack-tw-' + tradeId).value) || 0;
+  try {
+    await apiPost('/seller-quote/packing-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, packaging_type: type, pack_weight_kg: wt, packs_per_pallet: pp, pallets_per_container: pc, total_weight_kg: tw });
+    showToast('Packing plan locked!', 'success');
+    renderContainerisation();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: LOGISTICS BUILDER (Blueprint 6.2.2 — Phase 8)
+// Mode A = Auto-Bundle, Mode B = Manual RFQ
+// ═══════════════════════════════════════════════════════════
+
+var logisticsMode = 'A';
 
 async function renderLogisticsBuilder() {
-  setTitle('Logistics Builder', 'RFQ distribution, manual cost entry, alternative ports');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Build logistics cost structure', 'Send RFQs or enter costs manually', 'Need EXW price lock before quoting', 'Logistics costs combine with EXW for final quote')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-paper-plane', 'RFQs Sent', 4, null, 'blue')}
-      ${metricCard('fa-comments', 'Responses', 2, null, 'green')}
-      ${metricCard('fa-ship', 'Routes Compared', 3, null, 'cyan')}
-      ${metricCard('fa-tag', 'Best Rate', '$2,450', null, 'amber')}
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-paper-plane text-sgtx-500 mr-2"></i>Distribute RFQ</h3>
-        <div class="space-y-3">
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Origin Port</label>
-            <select class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm"><option>Ho Chi Minh City (VNSGN)</option><option>Hai Phong (VNHPH)</option></select>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Destination Port</label>
-            <select class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm"><option>Alexandria (EGALY)</option><option>Port Said (EGPSD)</option><option>Sokhna (EGSOK)</option></select>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Container Spec</label>
-            <div class="text-sm">2 × 40ft HC</div>
-          </div>
-          <button class="w-full bg-sgtx-500 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-sgtx-600 transition"><i class="fas fa-broadcast-tower mr-2"></i>Broadcast to Providers</button>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-keyboard text-sgtx-500 mr-2"></i>Manual Cost Entry</h3>
-        <div class="space-y-3">
-          ${[{label:'Ocean Freight',val:'$2,450'},{label:'THC Origin',val:'$180'},{label:'THC Destination',val:'$220'},{label:'Customs Clearance',val:'$150'},{label:'Inland Transport',val:'$380'},{label:'Insurance',val:'$120'}].map(c => `
-            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-50">
-              <span class="text-xs text-surface-600">${c.label}</span>
-              <input type="text" value="${c.val}" class="w-24 text-right text-xs font-mono bg-surface-50 border border-surface-200 rounded px-2 py-1">
-            </div>`).join('')}
-          <div class="flex items-center justify-between p-3 bg-sgtx-50 rounded-xl border border-sgtx-200">
-            <span class="text-sm font-semibold text-sgtx-700">Total Logistics</span>
-            <span class="text-sm font-bold text-sgtx-700">$3,500</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-route text-sgtx-500 mr-2"></i>Alternative Port Pricing</h3>
-      <div class="grid grid-cols-3 gap-3">
-        ${[{port:'Alexandria (EGALY)',cost:'$3,500',days:'18',best:true},{port:'Port Said (EGPSD)',cost:'$3,250',days:'16',best:false},{port:'Sokhna (EGSOK)',cost:'$3,680',days:'20',best:false}].map(p => `
-          <div class="p-4 rounded-xl border ${p.best ? 'border-sgtx-300 bg-sgtx-50' : 'border-surface-100'} hover:border-sgtx-200 transition cursor-pointer">
-            <div class="text-xs font-semibold ${p.best ? 'text-sgtx-700' : 'text-surface-800'}">${p.port}</div>
-            <div class="text-lg font-bold mt-2 ${p.best ? 'text-sgtx-600' : 'text-surface-700'}">${p.cost}</div>
-            <div class="text-[10px] text-surface-400 mt-1">${p.days} transit days</div>
-            ${p.best ? '<div class="text-[10px] text-sgtx-600 font-bold mt-2"><i class="fas fa-star mr-1"></i>SELECTED</div>' : ''}
-          </div>`).join('')}
-      </div>
-    </div>`;
+  setTitle('Logistics Builder', 'Build logistics quotes — auto or manual');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED,PACKING_LOCKED&role=seller');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Get logistics quotes for your shipments.', 'Mode A: Auto-bundle finds best rates. Mode B: Send manual RFQs to specific providers.', '', 'Once logistics is quoted, assemble and submit the full quote to buyer.') +
+      '<div class="flex gap-2 mb-4">' +
+        '<button onclick="logisticsMode=\'A\'; renderLogisticsBuilder()" class="px-4 py-2 rounded-lg text-sm font-medium transition ' + (logisticsMode === 'A' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400') + '"><i class="fas fa-magic mr-1"></i>Auto-Bundle (A)</button>' +
+        '<button onclick="logisticsMode=\'B\'; renderLogisticsBuilder()" class="px-4 py-2 rounded-lg text-sm font-medium transition ' + (logisticsMode === 'B' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400') + '"><i class="fas fa-envelope mr-1"></i>Manual RFQ (B)</button>' +
+      '</div>' +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No trades ready for logistics.</div>' :
+        '<div class="space-y-3">' + trades.map(function(t) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
+            (logisticsMode === 'A' ?
+              '<button onclick="autoBundleLogistics(\'' + t.id + '\')" class="w-full py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-magic mr-2"></i>Auto-Bundle Best Rate</button>' :
+              '<div class="space-y-2"><div><label class="text-[10px] text-surface-500 block mb-1">Provider GTID (optional)</label><input id="rfq-provider-' + t.id + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="Leave blank for open RFQ"></div><button onclick="submitManualRFQ(\'' + t.id + '\')" class="w-full py-2 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600"><i class="fas fa-paper-plane mr-2"></i>Send RFQ</button></div>') +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+async function autoBundleLogistics(tradeId) {
+  try {
+    showToast('Finding best rates...', 'info');
+    await apiPost('/seller-quote/logistics-rfq', { trade_request_id: tradeId, seller_tenant_id: tenant.id, mode: 'AUTO_BUNDLE' });
+    showToast('Auto-bundle complete! Best rate found.', 'success');
+    renderLogisticsBuilder();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function submitManualRFQ(tradeId) {
+  var provider = (document.getElementById('rfq-provider-' + tradeId) || {}).value || '';
+  try {
+    await apiPost('/seller-quote/logistics-rfq', { trade_request_id: tradeId, seller_tenant_id: tenant.id, mode: 'MANUAL', provider_gtid: provider.trim() || null });
+    showToast('RFQ sent!', 'success');
+    renderLogisticsBuilder();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: QUOTE SUBMISSION (Blueprint 6.2.2 — Phase 2)
+// ═══════════════════════════════════════════════════════════
 
 async function renderQuoteSubmit() {
-  setTitle('Quote Submission', 'Assemble total price (EXW + logistics + SGTX fee)');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Final quote assembly ready', 'Review all components and submit', 'All price components must be locked', 'Buyer receives quote for review & negotiation')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-calculator', 'Draft Quotes', 2, null, 'blue')}
-      ${metricCard('fa-paper-plane', 'Submitted', 5, null, 'green')}
-      ${metricCard('fa-check-double', 'Accepted', 3, null, 'purple')}
-      ${metricCard('fa-clock', 'Avg Response', '4.2h', null, 'amber')}
-    </div>
-    <div class="sgtx-card mb-6">
-      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-calculator text-sgtx-500 mr-2"></i>Quote Package Builder</h3>
-      <div class="space-y-4">
-        <div class="grid grid-cols-3 gap-4">
-          <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
-            <div class="text-[10px] font-bold text-emerald-700 uppercase">EXW Price</div>
-            <div class="text-xl font-bold text-emerald-800 mt-1">$24,900</div>
-            <div class="text-[10px] text-emerald-600"><i class="fas fa-lock mr-1"></i>Locked</div>
-          </div>
-          <div class="p-4 rounded-xl bg-blue-50 border border-blue-100 text-center">
-            <div class="text-[10px] font-bold text-blue-700 uppercase">Logistics</div>
-            <div class="text-xl font-bold text-blue-800 mt-1">$3,500</div>
-            <div class="text-[10px] text-blue-600"><i class="fas fa-check mr-1"></i>Confirmed</div>
-          </div>
-          <div class="p-4 rounded-xl bg-sgtx-50 border border-sgtx-100 text-center">
-            <div class="text-[10px] font-bold text-sgtx-700 uppercase">SGTX Fee</div>
-            <div class="text-xl font-bold text-sgtx-800 mt-1">$569</div>
-            <div class="text-[10px] text-sgtx-600">2% × EXW</div>
-          </div>
-        </div>
-        <div class="p-4 rounded-xl bg-gradient-to-r from-sgtx-500 to-sgtx-600 text-white text-center">
-          <div class="text-[10px] font-bold uppercase opacity-80">Total Quoted Price (CIF)</div>
-          <div class="text-3xl font-bold mt-1">$28,969</div>
-          <div class="text-xs opacity-70 mt-1">EXW + Logistics + SGTX Fee • Delivered Alexandria</div>
-        </div>
-        <button class="w-full py-3 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition text-sm"><i class="fas fa-paper-plane mr-2"></i>Submit Quote to Buyer</button>
-      </div>
-    </div>`;
+  setTitle('Submit Quote', 'Assemble and submit final quote to buyer');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=QUOTE_READY,LOGISTICS_QUOTED&role=seller');
+    var trades = res.data || [];
+    content.innerHTML =
+      fourQuestions('Trades with all components ready for final quote assembly.', 'Click to calculate SGTX fee and submit the complete landed cost quote.', '', 'Once submitted, the buyer can accept, negotiate, or amend.') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-paper-plane text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades ready for quote submission. Complete EXW, packing, and logistics first.</p></div>' :
+        '<div class="space-y-3">' + trades.map(function(t) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || '', 'blue') + '</div>' +
+            '<p class="text-sm text-surface-300 mb-3">' + (t.commodity_type || '') + ' — ' + (t.incoterm || '') + '</p>' +
+            '<button onclick="assembleAndSubmitQuote(\'' + t.id + '\')" class="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-calculator mr-2"></i>Calculate Fee & Submit</button>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+async function assembleAndSubmitQuote(tradeId) {
+  try {
+    showToast('Calculating SGTX fee...', 'info');
+    var res = await apiPost('/seller-quote/fee-calculate', { trade_request_id: tradeId, seller_tenant_id: tenant.id });
+    var fee = res.data || res;
+    showModal('Confirm Quote Submission',
+      '<div class="space-y-4">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['EXW Total', usd(fee.exw_total || 0)], ['Logistics', usd(fee.logistics_cost || 0)], ['SGTX Fee', usd(fee.sgtx_fee || 0)], ['Total Landed', usd(fee.total_landed || 0)]].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-3 text-center"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm font-semibold text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        '<button onclick="doSubmitQuote(\'' + tradeId + '\')" class="w-full py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600"><i class="fas fa-paper-plane mr-2"></i>Confirm & Submit to Buyer</button>' +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function doSubmitQuote(tradeId) {
+  try {
+    await apiPost('/seller-quote/submit', { trade_request_id: tradeId, seller_tenant_id: tenant.id });
+    closeModal();
+    showToast('Quote submitted to buyer!', 'success');
+    renderQuoteSubmit();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: QC BOOKING (Blueprint 6.2.2 — Phase 6)
+// ═══════════════════════════════════════════════════════════
 
 async function renderQCBooking() {
-  setTitle('QC Booking', 'Select QC provider, AI-recommended inspection points');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Quality control scheduling', 'Book inspection for traded commodities', 'Requires confirmed trade contract', 'Inspection results feed into compliance checklist')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-microscope', 'Booked', 2, null, 'blue')}
-      ${metricCard('fa-clock', 'Scheduled', 1, null, 'amber')}
-      ${metricCard('fa-check-circle', 'Completed', 5, null, 'green')}
-      ${metricCard('fa-star', 'Avg Score', '4.7', null, 'purple')}
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-user-doctor text-sgtx-500 mr-2"></i>Available QC Providers</h3>
-        <div class="space-y-3">
-          ${[{name:'London QC Services',rating:'4.9',loc:'GB',speciality:'Textiles',available:true},{name:'SGS Vietnam',rating:'4.7',loc:'VN',speciality:'General',available:true},{name:'Bureau Veritas',rating:'4.6',loc:'FR',speciality:'Agricultural',available:false}].map(p => `
-            <div class="flex items-center justify-between p-3 rounded-xl border border-surface-100 hover:border-sgtx-200 transition ${!p.available ? 'opacity-50' : ''}">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-sgtx-100 flex items-center justify-center text-sgtx-600 text-[10px] font-bold">${p.loc}</div>
-                <div>
-                  <div class="text-xs font-medium">${p.name}</div>
-                  <div class="text-[10px] text-surface-400">${p.speciality} • <i class="fas fa-star text-amber-400"></i> ${p.rating}</div>
-                </div>
-              </div>
-              ${p.available ? '<button class="px-3 py-1.5 bg-sgtx-500 text-white text-[10px] rounded-lg font-semibold">Book</button>' : '<span class="text-[10px] text-surface-400">Unavailable</span>'}
-            </div>`).join('')}
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-robot text-sgtx-500 mr-2"></i>AI Inspection Recommendations</h3>
-        <div class="space-y-3">
-          ${[{point:'Pre-shipment visual',priority:'HIGH',reason:'Required for EG customs'},{point:'AQL sampling (Level II)',priority:'HIGH',reason:'ISO 28591 compliance'},{point:'Weight verification',priority:'MEDIUM',reason:'Container weight declaration'},{point:'Lab testing (fiber content)',priority:'LOW',reason:'Optional for textiles'}].map(r => `
-            <div class="p-3 rounded-xl border border-surface-100">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-medium">${r.point}</span>
-                <span class="text-[10px] font-bold ${r.priority==='HIGH' ? 'text-red-600' : r.priority==='MEDIUM' ? 'text-amber-600' : 'text-surface-400'}">${r.priority}</span>
-              </div>
-              <div class="text-[10px] text-surface-400 mt-1">${r.reason}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
+  setTitle('QC Booking', 'Book quality control inspections');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/qc/jobs?exporter_id=' + tenant.id);
+    var jobs = res.data || [];
+    content.innerHTML =
+      fourQuestions('Quality control inspections for your shipments.', 'Book a new inspection or review results of existing ones.', '', 'QC results feed into the documentation and compliance phase.') +
+      '<div class="flex justify-end mb-4"><button onclick="showBookQCForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-microscope mr-2"></i>Book Inspection</button></div>' +
+      (jobs.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-microscope text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No QC jobs booked yet.</p></div>' :
+        dataTable(['USTN', 'Inspector', 'Status', 'Date', ''],
+          jobs.map(function(j) {
+            return [
+              '<span class="font-mono text-xs text-brand-300">' + (j.ustn || j.trade_id || '-') + '</span>',
+              j.inspector_name || j.inspector || '-',
+              badge(j.status || 'SCHEDULED', j.status === 'PASSED' ? 'emerald' : j.status === 'FAILED' ? 'red' : 'amber'),
+              j.scheduled_date ? time(j.scheduled_date) : '-',
+              '<button onclick="showQCJobDetail(\'' + j.id + '\')" class="text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-eye"></i></button>'
+            ];
+          })
+        ));
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+function showBookQCForm() {
+  showModal('Book QC Inspection',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="qc-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Inspection Type</label><select id="qc-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="PRE_SHIPMENT">Pre-Shipment</option><option value="LOADING">Loading Supervision</option><option value="CONTAINER">Container Inspection</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Preferred Date</label><input id="qc-date" type="date" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Notes</label><textarea id="qc-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Special requirements..."></textarea></div>' +
+      '<button onclick="bookQCInspection()" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Book Inspection</button>' +
+    '</div>'
+  );
+}
+
+async function bookQCInspection() {
+  var ustn = document.getElementById('qc-ustn').value.trim();
+  var type = document.getElementById('qc-type').value;
+  var date = document.getElementById('qc-date').value;
+  var notes = document.getElementById('qc-notes').value.trim();
+  if (!ustn) { showToast('Trade USTN is required', 'error'); return; }
+  try {
+    await apiPost('/qc/jobs', { ustn: ustn, exporter_tenant_id: tenant.id, inspection_type: type, scheduled_date: date || null, notes: notes });
+    closeModal();
+    showToast('QC inspection booked!', 'success');
+    renderQCBooking();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function showQCJobDetail(id) {
+  try {
+    var res = await api('/qc/jobs/' + id);
+    var j = res.data || res;
+    showModal('QC Job Detail',
+      '<div class="space-y-3">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['USTN', j.ustn || '-'], ['Type', j.inspection_type || '-'], ['Status', j.status || '-'], ['Inspector', j.inspector_name || '-'], ['Scheduled', j.scheduled_date ? time(j.scheduled_date) : '-'], ['Result', j.result || 'Pending']].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (j.inspection_logs ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Inspection Logs</h4><div class="space-y-1 text-xs text-surface-400">' + (j.inspection_logs || []).map(function(l) { return '<div class="bg-dark-800/40 rounded p-2">' + (l.note || l.description || JSON.stringify(l)) + '</div>'; }).join('') + '</div></div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: DOCUMENT FINALISATION (Blueprint 6.2.2 — Phase 7)
+// ═══════════════════════════════════════════════════════════
+
+async function renderDocFinalisation() {
+  setTitle('Document Finalisation', 'Sign packing lists and commercial invoices');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/shipments?tenant_id=' + tenant.id);
+    var shipments = res.data || [];
+    content.innerHTML =
+      fourQuestions('Finalize and sign trade documents for your shipments.', 'Sign packing lists and commercial invoices before cargo departs.', '', 'Signed documents trigger the logistics and customs phases.') +
+      (shipments.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-signature text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No shipments requiring document finalisation.</p></div>' :
+        '<div class="space-y-3">' + shipments.map(function(s) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span>' + badge(s.status || '', 'blue') + '</div>' +
+            '<div class="grid grid-cols-2 gap-3">' +
+              '<button onclick="signDocument(\'' + (s.ustn || s.id) + '\', \'PACKING_LIST\')" class="py-3 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/30 text-center"><i class="fas fa-list mr-1"></i>Sign Packing List</button>' +
+              '<button onclick="signDocument(\'' + (s.ustn || s.id) + '\', \'COMMERCIAL_INVOICE\')" class="py-3 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/30 text-center"><i class="fas fa-file-invoice mr-1"></i>Sign Commercial Invoice</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
+}
+
+async function signDocument(ustn, docType) {
+  try {
+    await apiPost('/documents', { ustn: ustn, document_type: docType, signer_tenant_id: tenant.id, signed: true, status: 'SIGNED' });
+    showToast(docType.replace(/_/g, ' ') + ' signed!', 'success');
+    renderDocFinalisation();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: BARCODE PRINT (Blueprint 6.2.2 — Phase 5)
+// ═══════════════════════════════════════════════════════════
 
 async function renderBarcodePrint() {
-  setTitle('Barcode Print', 'Generate ZPL/PDF label sheets — GS1-128 + QR');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Label generation for shipments', 'Generate and print barcode labels', 'Requires confirmed packing plan', 'Labels used for tracking & milestone confirmation')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-barcode', 'Labels Generated', 48, null, 'blue')}
-      ${metricCard('fa-print', 'Print Jobs', 3, null, 'purple')}
-      ${metricCard('fa-qrcode', 'QR Codes', 24, null, 'cyan')}
-      ${metricCard('fa-box', 'Pallets Tagged', 24, null, 'green')}
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-cog text-sgtx-500 mr-2"></i>Label Configuration</h3>
-        <div class="space-y-3">
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Barcode Format</label>
-            <select class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm"><option>GS1-128 (SSCC-18)</option><option>QR Code (USTN)</option><option>Code 128</option></select>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Output Format</label>
-            <div class="flex gap-2 mt-1">
-              <button class="flex-1 py-2 bg-sgtx-500 text-white rounded-lg text-xs font-semibold">ZPL</button>
-              <button class="flex-1 py-2 bg-surface-200 text-surface-600 rounded-lg text-xs font-semibold">PDF</button>
-              <button class="flex-1 py-2 bg-surface-200 text-surface-600 rounded-lg text-xs font-semibold">PNG</button>
-            </div>
-          </div>
-          <div class="p-3 bg-surface-50 rounded-xl">
-            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Quantity</label>
-            <input type="number" value="24" class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <button class="w-full py-2.5 bg-sgtx-500 text-white rounded-lg text-sm font-semibold hover:bg-sgtx-600 transition"><i class="fas fa-print mr-2"></i>Generate Labels</button>
-        </div>
-      </div>
-      <div class="sgtx-card">
-        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-eye text-sgtx-500 mr-2"></i>Label Preview</h3>
-        <div class="bg-white border-2 border-dashed border-surface-200 rounded-xl p-6 text-center">
-          <div class="font-mono text-lg tracking-wider mb-2">|||||||||||||||||||</div>
-          <div class="font-mono text-xs text-surface-600 mb-3">(00) 3 4012345 000000014 5</div>
-          <div class="border-t border-surface-200 pt-3 mt-3">
-            <div class="text-[10px] text-surface-500">SSCC-18 | GS1-128</div>
-            <div class="font-mono text-xs text-sgtx-600 mt-1">SGTX-CIRO-SGTX-20240115-A1B2C3D4</div>
-          </div>
-          <div class="mt-4 inline-block p-3 border border-surface-200 rounded-lg">
-            <div class="w-16 h-16 bg-surface-900 rounded grid grid-cols-4 grid-rows-4 gap-px p-1">
-              ${Array.from({length:16}, () => `<div class="${Math.random()>0.4?'bg-white':'bg-surface-900'} rounded-sm"></div>`).join('')}
-            </div>
-            <div class="text-[9px] text-surface-400 mt-1">QR Code</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+  setTitle('Barcode Print', 'SSCC barcode labels for your shipments');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/shipments?tenant_id=' + tenant.id);
+    var shipments = res.data || [];
+    content.innerHTML =
+      fourQuestions('Print SSCC barcode labels for each shipment.', 'Click print to generate a printable barcode label.', '', 'Barcodes enable tracking through the logistics chain.') +
+      (shipments.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No shipments with barcodes.</div>' :
+        '<div class="space-y-3">' + shipments.map(function(s) {
+          return '<div class="glass-card p-4">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span><span class="text-xs text-surface-500">' + (s.container_number || '-') + '</span></div>' +
+            '<div class="flex items-center gap-3">' +
+              '<div class="flex-1 font-mono text-xs text-surface-300 bg-dark-800/50 rounded-lg p-2">' + (s.sscc || s.barcode || 'N/A') + '</div>' +
+              '<button onclick="printBarcode(\'' + (s.sscc || s.barcode || '') + '\')" class="px-4 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs font-medium hover:bg-brand-500/30"><i class="fas fa-print mr-1"></i>Print</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
+
+function printBarcode(sscc) {
+  if (!sscc) { showToast('No barcode available', 'error'); return; }
+  showModal('Print Barcode',
+    '<div class="text-center space-y-4">' +
+      '<div class="bg-white rounded-lg p-6 inline-block">' +
+        '<div class="text-black font-mono text-lg font-bold tracking-widest">' + sscc + '</div>' +
+        '<div class="mt-2 flex justify-center gap-px">' + sscc.split('').map(function(c) { var h = 20 + (parseInt(c) || 5) * 3; return '<div class="w-1 bg-black" style="height:' + h + 'px"></div>'; }).join('') + '</div>' +
+      '</div>' +
+      '<p class="text-xs text-surface-400">SSCC: ' + sscc + '</p>' +
+      '<button onclick="window.print()" class="px-6 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium"><i class="fas fa-print mr-2"></i>Print Label</button>' +
+    '</div>'
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: CASH POSITION (Blueprint 6.2.2 — Finance Overview)
+// ═══════════════════════════════════════════════════════════
 
 async function renderCashPosition() {
-  setTitle('Cash Position', '90-day rolling cash forecast');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Cash flow visualization across all trades', 'Review upcoming inflows and outflows', 'Delayed payments flagged below', 'AI predicts cash needs 90 days ahead')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-wallet', 'Current Balance', '$142,500', 8, 'green')}
-      ${metricCard('fa-arrow-down', 'Expected Inflow', '$89,000', null, 'blue')}
-      ${metricCard('fa-arrow-up', 'Expected Outflow', '$52,300', null, 'rose')}
-      ${metricCard('fa-chart-line', 'Net Position', '+$36,700', 12, 'purple')}
-    </div>
-    <div class="sgtx-card mb-6">
-      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-chart-area text-sgtx-500 mr-2"></i>90-Day Cash Forecast</h3>
-      <div class="h-48 relative overflow-hidden rounded-xl bg-gradient-to-br from-surface-50 to-surface-100">
-        <svg class="w-full h-full" viewBox="0 0 360 120" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="cashGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4E3FE8" stop-opacity="0.3"/><stop offset="100%" stop-color="#4E3FE8" stop-opacity="0"/></linearGradient>
-          </defs>
-          <path d="M0,80 C30,75 60,60 90,65 C120,70 150,45 180,40 C210,35 240,50 270,35 C300,20 330,25 360,15 L360,120 L0,120 Z" fill="url(#cashGrad)"/>
-          <path d="M0,80 C30,75 60,60 90,65 C120,70 150,45 180,40 C210,35 240,50 270,35 C300,20 330,25 360,15" fill="none" stroke="#4E3FE8" stroke-width="2"/>
-        </svg>
-        <div class="absolute top-3 left-4 text-xs text-surface-500">Projected Net Cash</div>
-        <div class="absolute bottom-3 left-4 text-[10px] text-surface-400">Today</div>
-        <div class="absolute bottom-3 right-4 text-[10px] text-surface-400">+90 days</div>
-      </div>
-    </div>
-    <div class="sgtx-card">
-      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-list text-sgtx-500 mr-2"></i>Upcoming Transactions</h3>
-      <div class="space-y-2">
-        ${[{type:'INFLOW',desc:'Settlement from Cairo Imports',amt:'+$45,000',date:'In 5 days',status:'confirmed'},{type:'OUTFLOW',desc:'SGTX Fee Payment',amt:'-$1,200',date:'In 7 days',status:'confirmed'},{type:'INFLOW',desc:'QC Service Payment',amt:'+$3,200',date:'In 12 days',status:'pending'},{type:'OUTFLOW',desc:'Logistics - Hamburg Shipping',amt:'-$8,500',date:'In 15 days',status:'confirmed'},{type:'INFLOW',desc:'Trade Settlement - T-00234',amt:'+$38,000',date:'In 22 days',status:'pending'}].map(tx => `
-          <div class="flex items-center justify-between p-3 rounded-xl hover:bg-surface-50 transition">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg ${tx.type==='INFLOW' ? 'bg-emerald-100' : 'bg-red-100'} flex items-center justify-center">
-                <i class="fas ${tx.type==='INFLOW' ? 'fa-arrow-down text-emerald-600' : 'fa-arrow-up text-red-600'} text-xs"></i>
-              </div>
-              <div>
-                <div class="text-xs font-medium text-surface-800">${tx.desc}</div>
-                <div class="text-[10px] text-surface-400">${tx.date} • ${tx.status}</div>
-              </div>
-            </div>
-            <span class="text-sm font-semibold ${tx.type==='INFLOW' ? 'text-emerald-600' : 'text-red-600'}">${tx.amt}</span>
-          </div>`).join('')}
-      </div>
-    </div>`;
+  setTitle('Cash Position', 'Financial overview: contracts, receivables, financing');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var stats = {};
+    try { var r1 = await api('/stats'); stats = r1.data || r1; } catch(e) {}
+    var finRes = { data: [] };
+    try { finRes = await api('/financing?tenant_id=' + tenant.id); } catch(e) {}
+    var financing = finRes.data || [];
+
+    content.innerHTML =
+      fourQuestions('Your financial position across all active trades.', 'Monitor receivables, active financing, and settlement status.', '', 'Track cash flow and ensure timely settlements.') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-file-signature', 'Active Contracts', stats.contracts || 0, null, 'purple') +
+        metricCard('fa-hand-holding-usd', 'Receivables', usd(stats.receivables || 0), null, 'emerald') +
+        metricCard('fa-university', 'Active Financing', financing.filter(function(f) { return f.status === 'FUNDED' || f.status === 'ACTIVE'; }).length, null, 'blue') +
+        metricCard('fa-check-double', 'Settlements', stats.settlements || 0, null, 'cyan') +
+      '</div>' +
+      (financing.length > 0 ? '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3">Active Financing</h3>' +
+        dataTable(['Trade', 'Amount', 'Status', 'Type'],
+          financing.map(function(f) {
+            return [
+              '<span class="font-mono text-xs text-brand-300">' + (f.ustn || f.trade_id || '-') + '</span>',
+              usd(f.amount || 0),
+              badge(f.status || 'PENDING', f.status === 'FUNDED' ? 'emerald' : 'amber'),
+              f.finance_type || '-'
+            ];
+          })
+        ) + '</div>' : '');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
 }
 
+// ═══════════════════════════════════════════════════════════
+// SELLER: DISTRESSED & OUTREACH (Blueprint 6.2.2 — Phase 10)
+// ═══════════════════════════════════════════════════════════
+
 async function renderDistressedSell() {
-  setTitle('Distressed Cargo & Outreach', 'Declare distressed, triage, accelerated outreach');
-  const { data } = await api('/distressed');
-  document.getElementById('content').innerHTML = `
-    <div class="grid grid-cols-3 gap-4 mb-6">
-      ${metricCard('fa-fire', 'Active Listings', data.length, null, 'rose')}
-      ${metricCard('fa-users', 'Notified Contacts', 0, null, 'blue')}
-      ${metricCard('fa-handshake', 'Offers Received', 0, null, 'green')}
-    </div>
-    <div class="sgtx-card">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-semibold text-sm"><i class="fas fa-fire text-red-500 mr-2"></i>Distressed Cargo Management</h3>
-        <button class="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg font-medium">Declare Distressed</button>
-      </div>
-      <p class="text-sm text-surface-500">List distressed cargo for accelerated outreach to your saved contacts. Triage paths: Sell, Comply, or Insurance.</p>
-    </div>`;
+  setTitle('Distressed Cargo', 'Declare and manage distressed cargo listings');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/distressed-listings?seller_tenant_id=' + tenant.id);
+    var listings = res.data || [];
+    content.innerHTML =
+      fourQuestions('Manage cargo in distress — compliance issues, quality degradation, or market shifts.', 'Declare distressed cargo, choose triage path, launch buyer outreach.', '', 'Triage options: Sell at discount, Comply & re-export, or Claim insurance.') +
+      '<div class="flex justify-end mb-4"><button onclick="showDeclareDistressedForm()" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>Declare Distressed</button></div>' +
+      (listings.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-box-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No distressed listings.</p></div>' :
+        '<div class="space-y-3">' + listings.map(function(l) {
+          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDistressedListingDetail(\'' + l.id + '\')">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-medium text-sm text-surface-200">' + (l.commodity_type || l.title || 'Listing') + '</span>' + badge(l.status || 'ACTIVE', l.status === 'SOLD' ? 'emerald' : l.status === 'ACTIVE' ? 'amber' : 'gray') + '</div>' +
+            '<div class="text-xs text-surface-400 flex gap-4"><span>Ask: ' + usd(l.asking_price || 0) + '</span><span>Qty: ' + (l.quantity || '-') + '</span><span>' + timeAgo(l.created_at) + '</span></div>' +
+          '</div>';
+        }).join('') + '</div>');
+  } catch (e) {
+    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+  }
+}
+
+function showDeclareDistressedForm() {
+  showModal('Declare Distressed Cargo',
+    '<div class="space-y-4">' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="dist-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Reason</label><select id="dist-reason" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="QUALITY_DEGRADATION">Quality Degradation</option><option value="COMPLIANCE_BLOCK">Compliance Block</option><option value="MARKET_SHIFT">Market Shift</option><option value="LOGISTICS_FAILURE">Logistics Failure</option></select></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Asking Price (USD)</label><input id="dist-price" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Discounted price"></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Description</label><textarea id="dist-desc" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Describe cargo condition..."></textarea></div>' +
+      '<button onclick="submitDeclareDistressed()" class="w-full py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">Declare & List</button>' +
+    '</div>'
+  );
+}
+
+async function submitDeclareDistressed() {
+  var ustn = document.getElementById('dist-ustn').value.trim();
+  var reason = document.getElementById('dist-reason').value;
+  var price = parseFloat(document.getElementById('dist-price').value) || 0;
+  var desc = document.getElementById('dist-desc').value.trim();
+  if (!ustn) { showToast('USTN is required', 'error'); return; }
+  try {
+    await apiPost('/distressed-listings', { seller_tenant_id: tenant.id, ustn: ustn, reason: reason, asking_price: price, description: desc });
+    closeModal();
+    showToast('Cargo declared distressed', 'success');
+    renderDistressedSell();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function showDistressedListingDetail(id) {
+  api('/distressed-listings/' + id).then(function(res) {
+    var l = res.data || res;
+    showModal('Distressed Listing',
+      '<div class="space-y-4">' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['USTN', l.ustn || '-'], ['Reason', l.reason || '-'], ['Ask Price', usd(l.asking_price || 0)], ['Status', l.status || '-'], ['Condition', l.condition_grade || '-'], ['Listed', time(l.created_at)]].map(function(p) {
+            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        '<div class="text-xs text-surface-400 font-semibold mb-2">Triage Options:</div>' +
+        '<div class="grid grid-cols-3 gap-2">' +
+          '<button class="py-2 bg-amber-500/20 text-amber-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-tag mr-1"></i>Sell</button>' +
+          '<button class="py-2 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-redo mr-1"></i>Comply</button>' +
+          '<button class="py-2 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-shield-alt mr-1"></i>Insurance</button>' +
+        '</div>' +
+        '<button onclick="launchOutreach(\'' + id + '\')" class="w-full py-2 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-medium hover:bg-emerald-500/30"><i class="fas fa-bullhorn mr-1"></i>Launch Buyer Outreach</button>' +
+      '</div>'
+    );
+  }).catch(function(e) { showToast('Error: ' + e.message, 'error'); });
+}
+
+async function launchOutreach(listingId) {
+  try {
+    await apiPost('/distressed/outreach/campaign', { listing_id: listingId, seller_tenant_id: tenant.id });
+    showToast('Outreach campaign launched!', 'success');
+    closeModal();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2909,104 +3643,6 @@ async function renderUsageAnalytics() {
           </div>`).join('')}
       </div>
     </div>`;
-}
-
-// ═══════════════════════════════════════════════════════════
-// SHARED COMPONENTS — Blueprint 6.1
-// PlainLanguage Decision Panel, Guided Recovery, SLA Transparency
-// ═══════════════════════════════════════════════════════════
-
-// Blueprint 6.1.3 — PlainLanguage Governor Decision Panel
-// Translates DENY/CONDITIONAL verdicts into jargon-free explanations
-function plainLanguageDecisionPanel(decision) {
-  if (!decision) return '';
-  const verdictColors = { ALLOW: 'emerald', DENY: 'red', CONDITIONAL: 'amber', ESCALATE: 'purple', PENDING: 'surface' };
-  const color = verdictColors[decision.verdict] || 'surface';
-  return `<div class="sgtx-card border-${color}-200 bg-${color}-50/30 mb-4">
-    <div class="flex items-start gap-3">
-      <div class="w-10 h-10 rounded-xl bg-${color}-100 flex items-center justify-center shrink-0">
-        <i class="fas ${decision.verdict==='ALLOW'?'fa-check-circle':decision.verdict==='DENY'?'fa-times-circle':decision.verdict==='CONDITIONAL'?'fa-exclamation-circle':'fa-question-circle'} text-${color}-600 text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-bold text-${color}-800">Governor Decision: ${decision.verdict}</span>
-          <span class="text-[10px] px-2 py-0.5 rounded bg-${color}-100 text-${color}-700 font-semibold">${decision.policy || 'trade.request'}</span>
-        </div>
-        <p class="text-xs text-${color}-700 mb-3">${decision.plain_language || decision.message || 'No explanation provided.'}</p>
-        ${decision.conditions ? `<div class="space-y-1.5 mb-3">
-          <div class="text-[10px] font-bold text-${color}-800 uppercase">Conditions to Clear:</div>
-          ${decision.conditions.map(c => `<div class="flex items-center gap-2 text-xs text-${color}-700"><i class="fas ${c.met?'fa-check-circle text-emerald-500':'fa-circle text-surface-300'} text-xs"></i><span>${c.label}</span></div>`).join('')}
-        </div>` : ''}
-        <div class="flex gap-2">
-          ${decision.verdict === 'CONDITIONAL' ? '<button class="px-3 py-1.5 bg-amber-500 text-white text-[10px] rounded-lg font-semibold">Complete Conditions</button>' : ''}
-          ${decision.verdict === 'DENY' ? '<button class="px-3 py-1.5 bg-sgtx-500 text-white text-[10px] rounded-lg font-semibold">Request Human Review</button>' : ''}
-          <button class="px-3 py-1.5 bg-surface-100 text-surface-600 text-[10px] rounded-lg font-semibold">View Full Decision</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
-// Blueprint 6.1.9 — Guided Recovery System
-// Detects user friction and offers proactive help
-function guidedRecoveryBanner(type, context = {}) {
-  const recoveryTypes = {
-    repeated_submission: { icon: 'fa-rotate', color: 'amber', title: 'Having trouble submitting?', message: 'We noticed multiple attempts. Would you like guided help completing this form?', actions: ['Guide Me', 'Dismiss'] },
-    abandonment: { icon: 'fa-hand', color: 'blue', title: 'Need help completing this?', message: 'Your progress has been saved. You can resume anytime or get assistance.', actions: ['Resume', 'Save & Exit', 'Get Help'] },
-    denial_loop: { icon: 'fa-shield-halved', color: 'purple', title: 'Governor keeps blocking?', message: 'Multiple denials detected. Let us help you understand what\'s needed to proceed.', actions: ['Explain Requirements', 'Request Human Review'] },
-    sla_breach: { icon: 'fa-clock', color: 'red', title: 'Response overdue', message: `The expected response time has passed. You can escalate or wait.`, actions: ['Escalate', 'Wait'] },
-  };
-  const r = recoveryTypes[type] || recoveryTypes.abandonment;
-  return `<div class="sgtx-card border-${r.color}-200 bg-${r.color}-50/30 mb-4 animate-fade-in">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-${r.color}-100 flex items-center justify-center"><i class="fas ${r.icon} text-${r.color}-600"></i></div>
-      <div class="flex-1">
-        <div class="text-xs font-bold text-${r.color}-800">${r.title}</div>
-        <div class="text-[10px] text-${r.color}-600 mt-0.5">${r.message}</div>
-      </div>
-      <div class="flex gap-2">${r.actions.map((a,i) => `<button class="px-3 py-1.5 ${i===0?`bg-${r.color}-500 text-white`:'bg-white text-surface-600 border border-surface-200'} text-[10px] rounded-lg font-semibold">${a}</button>`).join('')}</div>
-    </div>
-  </div>`;
-}
-
-// Blueprint 6.1.10 — SLA Transparency Indicators
-// Every pending human action shows estimated response time
-function slaIndicator(action, estimatedMinutes, queuePosition, responsibleParty, escalationPath) {
-  const urgency = estimatedMinutes <= 30 ? 'emerald' : estimatedMinutes <= 120 ? 'amber' : 'red';
-  const timeStr = estimatedMinutes < 60 ? `${estimatedMinutes} min` : estimatedMinutes < 1440 ? `${Math.round(estimatedMinutes/60)}h` : `${Math.round(estimatedMinutes/1440)}d`;
-  return `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-${urgency}-50 border border-${urgency}-100 text-[10px]">
-    <i class="fas fa-clock text-${urgency}-500"></i>
-    <span class="text-${urgency}-700 font-medium">${action}</span>
-    <span class="text-${urgency}-600">~${timeStr}</span>
-    ${queuePosition ? `<span class="text-${urgency}-500">#${queuePosition} in queue</span>` : ''}
-    <span class="text-${urgency}-400">→ ${responsibleParty}</span>
-  </div>`;
-}
-
-// Combined SLA panel for page-level display
-function slaTransparencyPanel(pendingActions) {
-  if (!pendingActions || !pendingActions.length) return '';
-  return `<div class="sgtx-card !p-4 mb-4 border-surface-200">
-    <div class="flex items-center gap-2 mb-3">
-      <i class="fas fa-clock text-sgtx-500 text-sm"></i>
-      <span class="text-xs font-semibold text-surface-700">SLA Transparency — Pending Actions</span>
-    </div>
-    <div class="space-y-2">
-      ${pendingActions.map(a => `
-        <div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-50">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-${a.minutes<=30?'emerald':a.minutes<=120?'amber':'red'}-500"></span>
-            <span class="text-xs text-surface-700">${a.action}</span>
-          </div>
-          <div class="flex items-center gap-3 text-[10px]">
-            <span class="text-surface-500">~${a.minutes < 60 ? a.minutes + 'min' : Math.round(a.minutes/60) + 'h'}</span>
-            ${a.queue ? `<span class="text-surface-400">#${a.queue}</span>` : ''}
-            <span class="text-surface-400">${a.party}</span>
-            <button class="text-sgtx-600 hover:underline">Escalate</button>
-          </div>
-        </div>`).join('')}
-    </div>
-  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
