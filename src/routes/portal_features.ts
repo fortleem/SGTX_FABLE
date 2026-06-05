@@ -728,4 +728,48 @@ portalFeatures.post('/ai-assistant', async (c) => {
   return c.json({ data: response });
 });
 
+// ─── Logistics Provider Quotes for Seller ──────────────
+// Used by seller's logistics builder to view responses to their RFQs
+portalFeatures.get('/logistics/provider-quotes', async (c) => {
+  const tenantId = c.req.query('tenant_id');
+  const tradeRequestId = c.req.query('trade_request_id');
+  
+  let sql = `SELECT pq.*, t.legal_name as provider_name 
+    FROM provider_quotes pq 
+    LEFT JOIN tenants t ON pq.provider_tenant_id = t.id 
+    WHERE pq.status != 'RFQ_SENT'`;
+  
+  if (tradeRequestId) {
+    sql += ` AND pq.trade_request_id = '${tradeRequestId}'`;
+  }
+  
+  sql += ` ORDER BY pq.price ASC, pq.created_at DESC LIMIT 50`;
+  
+  const { results } = await c.env.DB.prepare(sql).all();
+  
+  // Also check logistics_rfq_responses table
+  let rfqResponses: any[] = [];
+  if (tradeRequestId) {
+    try {
+      const { results: rfqRes } = await c.env.DB.prepare(`
+        SELECT r.*, t.legal_name as provider_name 
+        FROM logistics_rfq_responses r 
+        JOIN tenants t ON r.logistics_tenant_id = t.id
+        JOIN logistics_rfqs rfq ON r.rfq_id = rfq.id
+        WHERE rfq.trade_request_id = ?
+        ORDER BY r.total_price ASC
+      `).bind(tradeRequestId).all();
+      rfqResponses = rfqRes || [];
+    } catch(e) { /* table may not exist */ }
+  }
+  
+  // Merge both sources
+  const allQuotes = [
+    ...(results || []),
+    ...rfqResponses.map((r: any) => ({ ...r, price: r.total_price, transit_days: r.transit_time_days }))
+  ];
+  
+  return c.json({ data: allQuotes });
+});
+
 export default portalFeatures;

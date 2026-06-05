@@ -42,6 +42,8 @@ import sellerQuote from './routes/seller_quote_form';
 import tradeFinance from './routes/trade_finance';
 // Blueprint Gap Closure: Phase 5 Physical Execution, Phase 7/8 Distressed, Phase 10 Disputes, QC AQL
 import gapClosure from './routes/gap_closure';
+// Trader Portal: Consolidated endpoints for all trader tabs (inbox, contacts, employees, decisions, etc.)
+import traderPortal from './routes/trader_portal';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -64,6 +66,8 @@ app.get('/trade-request', (c) => c.html(tradeRequestFormHTML()));
 app.get('/seller-quote', (c) => c.html(sellerQuoteFormHTML()));
 
 // ─── API Routes ───────────────────────────────────────────
+// Trader Portal consolidated routes (first priority — overrides older route defs)
+app.route('/api/v1', traderPortal);
 app.route('/api/v1/auth', auth);
 app.route('/api/v1', identity);
 app.route('/api/v1', trade);

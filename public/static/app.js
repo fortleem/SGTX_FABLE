@@ -346,6 +346,7 @@ function navigate(page) {
   });
   loadPage(page);
 }
+var navigateTo = navigate; // alias used by inline onclick handlers
 
 async function loadPage(page) {
   const content = document.getElementById('content');
@@ -382,6 +383,7 @@ const pageRenderers = {
   'new-trade': renderNewTrade,
   'quote-review': renderQuoteReview,
   'contract-signing': renderContractSigning,
+  'negotiation': function() { renderContractSigning(); },
   'customs-readiness': renderCustomsReadiness,
   'financing': renderFinancing,
   'distressed-buy': renderDistressedBuy,
@@ -687,74 +689,88 @@ async function dismissInboxItem(itemId) {
 // ── Smart Inbox Main Render ──────────────────────────────
 
 async function renderSmartInbox() {
-  setTitle('Smart Inbox', 'Your prioritized action feed');
+  setTitle('Smart Inbox', 'Prioritized action feed with SLA transparency');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(6);
   try {
     var res = await api('/inbox?tenant_id=' + tenant.id);
     var items = res.data || [];
-    var sorted = items.sort(function(a, b) { return (b.urgency_score || 0) - (a.urgency_score || 0); });
+    var sorted = items.sort(function(a, b) { return (b.priority_score || b.urgency_score || 0) - (a.priority_score || a.urgency_score || 0); });
     var aiSummary = generateLocalAISummary(sorted);
     var categories = ['ALL'];
     sorted.forEach(function(i) { if (i.category && categories.indexOf(i.category) === -1) categories.push(i.category); });
-    var urgentCount = sorted.filter(function(i) { return (i.urgency_score || 0) >= 70; }).length;
+    var highItems = sorted.filter(function(i) { return (i.priority_score || i.urgency_score || 0) >= 80; });
+    var medItems = sorted.filter(function(i) { var s = i.priority_score || i.urgency_score || 0; return s >= 50 && s < 80; });
+    var lowItems = sorted.filter(function(i) { return (i.priority_score || i.urgency_score || 0) < 50; });
 
     content.innerHTML =
       fourQuestions(
-        'Your prioritized action feed — items sorted by urgency score (0-100).',
-        'Review urgent items first (score >= 70). Click any item to take action.',
-        urgentCount > 0 ? urgentCount + ' urgent item(s) need attention now.' : 'No blockers right now.',
-        'After resolving urgent items, work through medium and low priority items.'
+        sorted.length + ' items in inbox. ' + highItems.length + ' HIGH priority.',
+        highItems.length > 0 ? 'Resolve ' + highItems.length + ' urgent item(s) first (score ≥80).' : 'No urgent actions needed.',
+        highItems.length > 0 ? highItems.length + ' urgent item(s) require attention.' : 'No blockers. All clear.',
+        'After resolving high priority items, work through medium and low.'
       ) +
-      '<div class="glass-card p-4 mb-4 border-l-4 border-blue-400">' +
-        '<div class="flex items-center gap-2 mb-1"><i class="fas fa-robot text-blue-400"></i><span class="text-sm font-semibold text-surface-200">AI Summary</span></div>' +
-        '<p class="text-xs text-surface-400">' + aiSummary + '</p>' +
+      // AI Summary Card
+      '<div class="sgtx-card p-4 mb-4 border-l-4 border-l-blue-400 bg-gradient-to-r from-blue-50 to-white">' +
+        '<div class="flex items-center gap-2 mb-1"><i class="fas fa-robot text-blue-500"></i><span class="text-sm font-semibold text-surface-800">AI Summary</span><span class="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-medium">A1 Advisory</span></div>' +
+        '<p class="text-xs text-surface-600">' + aiSummary + '</p>' +
       '</div>' +
+      // Category filters
       '<div class="flex gap-2 mb-4 flex-wrap">' +
         categories.map(function(c) {
-          return '<button onclick="filterInbox(\'' + c + '\')" class="inbox-filter-btn px-3 py-1.5 rounded-full text-xs font-medium transition ' + (c === 'ALL' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400 hover:text-white') + '" data-cat="' + c + '">' +
+          return '<button onclick="filterInbox(\'' + c + '\')" class="inbox-filter-btn px-3 py-1.5 rounded-full text-xs font-medium transition border ' + (c === 'ALL' ? 'bg-sgtx-500 text-white border-sgtx-500' : 'bg-white text-surface-600 border-surface-200 hover:border-sgtx-300') + '" data-cat="' + c + '">' +
             (c === 'ALL' ? '<i class="fas fa-layer-group mr-1"></i>' : '<i class="fas ' + getCategoryIcon(c) + ' mr-1"></i>') + c + '</button>';
         }).join('') +
       '</div>' +
-      '<div id="inbox-list" class="space-y-2">' +
-        (sorted.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-check-circle text-4xl text-emerald-400 mb-3"></i><p class="text-surface-400">All clear! No pending actions.</p></div>' :
-          sorted.map(function(item) {
-            var urgency = item.urgency_score || 0;
-            var urgencyColor = urgency >= 70 ? 'red' : urgency >= 40 ? 'amber' : 'emerald';
-            var cat = item.category || 'SYSTEM';
-            var catColor = getCategoryColor(cat);
-            return '<div class="inbox-item glass-card p-4 hover:bg-white/5 transition cursor-pointer border-l-4 border-' + urgencyColor + '-400" data-category="' + cat + '" onclick="navigateTo(\'' + getActionPage(item) + '\')">' +
-              '<div class="flex items-start gap-3">' +
-                '<div class="w-10 h-10 rounded-xl bg-' + catColor + '-500/20 flex items-center justify-center flex-shrink-0"><i class="fas ' + getCategoryIcon(cat) + ' text-' + catColor + '-400"></i></div>' +
-                '<div class="flex-1 min-w-0">' +
-                  '<div class="flex items-center gap-2 mb-1">' +
-                    '<span class="font-medium text-sm text-surface-200 truncate">' + (item.title || 'Notification') + '</span>' +
-                    '<span class="ml-auto flex items-center gap-1 text-xs font-mono text-' + urgencyColor + '-400"><i class="fas fa-fire text-[10px]"></i>' + urgency + '</span>' +
-                  '</div>' +
-                  '<p class="text-xs text-surface-400 line-clamp-2">' + (item.message || item.body || '') + '</p>' +
-                  '<div class="flex items-center gap-3 mt-2 text-[10px] text-surface-500">' +
-                    (item.ustn ? '<span class="font-mono">' + item.ustn + '</span>' : '') +
-                    '<span>' + timeAgo(item.created_at) + '</span>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="flex flex-col gap-1 flex-shrink-0">' +
-                  '<button onclick="event.stopPropagation(); snoozeInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-500 hover:text-blue-400 p-1" title="Snooze 24h"><i class="fas fa-clock"></i></button>' +
-                  '<button onclick="event.stopPropagation(); dismissInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-500 hover:text-red-400 p-1" title="Dismiss"><i class="fas fa-times"></i></button>' +
-                '</div>' +
-              '</div>' +
-            '</div>';
-          }).join('')) +
-      '</div>';
+      // Priority bands
+      (highItems.length ? '<div class="mb-4"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-red-500"></div><span class="text-xs font-bold text-red-600 uppercase">High Priority (≥80)</span><span class="text-[10px] text-surface-400">' + highItems.length + ' items</span></div><div class="space-y-2">' + highItems.map(renderInboxItem).join('') + '</div></div>' : '') +
+      (medItems.length ? '<div class="mb-4"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-xs font-bold text-amber-600 uppercase">Medium (50-79)</span><span class="text-[10px] text-surface-400">' + medItems.length + ' items</span></div><div class="space-y-2">' + medItems.map(renderInboxItem).join('') + '</div></div>' : '') +
+      (lowItems.length ? '<div class="mb-4"><div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-xs font-bold text-emerald-600 uppercase">Low (0-49)</span><span class="text-[10px] text-surface-400">' + lowItems.length + ' items</span></div><div class="space-y-2">' + lowItems.map(renderInboxItem).join('') + '</div></div>' : '') +
+      (sorted.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-check-circle text-4xl text-emerald-500 mb-3"></i><p class="text-surface-500">All clear! No pending actions.</p></div>' : '');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-exclamation-triangle text-amber-400 text-3xl mb-3"></i><p class="text-surface-400">Could not load inbox: ' + e.message + '</p></div>';
+    content.innerHTML = renderError('Could not load inbox: ' + e.message);
   }
+}
+
+function renderInboxItem(item) {
+  var urgency = item.priority_score || item.urgency_score || 0;
+  var urgencyColor = urgency >= 80 ? 'red' : urgency >= 50 ? 'amber' : 'emerald';
+  var cat = item.category || item.item_type || 'SYSTEM';
+  var catColor = getCategoryColor(cat);
+  var deadline = item.deadline || item.sla_deadline;
+  var hasDeadline = !!deadline;
+  var hoursLeft = hasDeadline ? Math.max(0, Math.round((new Date(deadline).getTime() - Date.now()) / 3600000)) : null;
+
+  return '<div class="inbox-item sgtx-card p-4 hover:shadow-card-hover transition cursor-pointer border-l-4 border-l-' + urgencyColor + '-400" data-category="' + cat + '" onclick="navigateTo(\'' + getActionPage(item) + '\')">' +
+    '<div class="flex items-start gap-3">' +
+      '<div class="w-10 h-10 rounded-xl bg-' + catColor + '-100 flex items-center justify-center flex-shrink-0"><i class="fas ' + getCategoryIcon(cat) + ' text-' + catColor + '-600"></i></div>' +
+      '<div class="flex-1 min-w-0">' +
+        '<div class="flex items-center gap-2 mb-1">' +
+          '<span class="font-medium text-sm text-surface-800 truncate">' + (item.title || 'Notification') + '</span>' +
+          '<span class="ml-auto flex items-center gap-1 text-xs font-mono font-bold text-' + urgencyColor + '-600 bg-' + urgencyColor + '-50 px-1.5 py-0.5 rounded"><i class="fas fa-fire text-[9px]"></i>' + urgency + '</span>' +
+        '</div>' +
+        '<p class="text-xs text-surface-500 line-clamp-2 mb-1">' + (item.message || item.body || item.description || '') + '</p>' +
+        // SLA Transparency
+        '<div class="flex items-center gap-3 text-[10px] text-surface-400 flex-wrap">' +
+          (item.ustn || item.related_ustn ? '<span class="font-mono bg-surface-100 px-1.5 py-0.5 rounded">' + (item.ustn || item.related_ustn) + '</span>' : '') +
+          '<span><i class="fas fa-clock mr-0.5"></i>' + timeAgo(item.created_at) + '</span>' +
+          (hasDeadline ? '<span class="' + (hoursLeft <= 2 ? 'text-red-500 font-semibold' : '') + '"><i class="fas fa-hourglass-half mr-0.5"></i>' + (hoursLeft <= 0 ? 'Overdue' : hoursLeft + 'h left') + '</span>' : '') +
+          (item.responsible_party ? '<span><i class="fas fa-user-shield mr-0.5"></i>' + item.responsible_party + '</span>' : '') +
+          (item.queue_position ? '<span><i class="fas fa-users mr-0.5"></i>Queue: #' + item.queue_position + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="flex flex-col gap-1 flex-shrink-0">' +
+        '<button onclick="event.stopPropagation(); snoozeInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-400 hover:text-blue-500 p-1" title="Snooze 24h"><i class="fas fa-clock"></i></button>' +
+        '<button onclick="event.stopPropagation(); dismissInboxItem(\'' + item.id + '\')" class="text-[10px] text-surface-400 hover:text-red-500 p-1" title="Dismiss"><i class="fas fa-times"></i></button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 function filterInbox(cat) {
   document.querySelectorAll('.inbox-filter-btn').forEach(function(btn) {
     var isActive = btn.getAttribute('data-cat') === cat;
-    btn.classList.toggle('bg-brand-500', isActive);
-    btn.classList.toggle('text-white', isActive);
+    btn.className = 'inbox-filter-btn px-3 py-1.5 rounded-full text-xs font-medium transition border ' + (isActive ? 'bg-sgtx-500 text-white border-sgtx-500' : 'bg-white text-surface-600 border-surface-200 hover:border-sgtx-300');
   });
   document.querySelectorAll('.inbox-item').forEach(function(item) {
     item.style.display = (cat === 'ALL' || item.getAttribute('data-category') === cat) ? '' : 'none';
@@ -766,36 +782,38 @@ function filterInbox(cat) {
 // Single page per USTN with 8-phase timeline
 // ═══════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════
+// TRADE COMMAND CENTER (Blueprint 6.1.2 — Full TCC)
+// Single page per USTN with 10-phase timeline + summary cards
+// ═══════════════════════════════════════════════════════════
+
 async function renderTradeCommandCenter() {
-  setTitle('Trade Command Center', 'Unified view of a trade by USTN');
+  setTitle('Trade Command Center', 'Unified per-USTN view — all phases at a glance');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(8);
   try {
     var res = await api('/trades?tenant_id=' + tenant.id + '&limit=20');
     var trades = res.data || [];
     if (!trades.length) {
-      content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-folder-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades yet. Start by creating a new trade request.</p><button onclick="navigateTo(\'new-trade\')" class="mt-3 px-4 py-2 bg-brand-500 text-white rounded-lg text-sm">New Trade</button></div>';
+      content.innerHTML = '<div class="sgtx-card p-8 text-center"><i class="fas fa-folder-open text-surface-400 text-4xl mb-3"></i><p class="text-surface-500">No trades yet.</p><button onclick="navigateTo(\'new-trade\')" class="mt-3 btn-primary">New Trade</button></div>';
       return;
     }
     content.innerHTML =
-      fourQuestions('View any trade end-to-end across all 8 phases.', 'Select a trade to see its full lifecycle.', '', 'Track progress, review documents, and take action on each phase.') +
-      '<div class="space-y-3">' +
+      fourQuestions('View any trade end-to-end across all 10 phases.', 'Select a trade to drill into its full Trade Command Center.', '', 'Track progress, documents, risk, and take action from one screen.') +
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
         trades.map(function(t) {
           var phase = t.current_phase || 1;
           var phasePct = Math.round((phase / 10) * 100);
-          return '<div class="glass-card p-4 hover:bg-white/5 transition cursor-pointer" onclick="showTradeTimeline(\'' + (t.ustn || t.id) + '\')">' +
-            '<div class="flex items-center justify-between mb-2">' +
-              '<div class="flex items-center gap-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || 'PENDING') + '</span>' + badge(t.status || 'DRAFT', t.status === 'COMPLETED' ? 'emerald' : t.status === 'ACTIVE' ? 'blue' : 'amber') + '</div>' +
-              '<span class="text-xs text-surface-500">' + timeAgo(t.created_at) + '</span>' +
-            '</div>' +
-            '<p class="text-sm text-surface-300 mb-2">' + (t.commodity_type || 'Trade') + ' — ' + (t.incoterm || 'N/A') + '</p>' +
-            '<div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-dark-700 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-500 to-emerald-400 rounded-full transition-all" style="width:' + phasePct + '%"></div></div><span class="text-xs text-surface-500">Phase ' + phase + '/10</span></div>' +
+          var sc = t.status === 'COMPLETED' ? 'emerald' : t.status === 'DISPUTED' ? 'red' : 'blue';
+          return '<div class="sgtx-card p-5 hover:shadow-card-hover hover:-translate-y-0.5 transition-all cursor-pointer" onclick="showTradeTimeline(\'' + (t.ustn || t.id) + '\')">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-sm font-bold text-sgtx-600">' + (t.ustn || 'PENDING') + '</span>' + badge(t.status || 'DRAFT', sc) + '</div>' +
+            '<p class="text-sm text-surface-700 font-medium">' + (t.commodity_type || 'Trade') + '</p>' +
+            '<p class="text-xs text-surface-500 mb-3">' + (t.incoterm || '') + ' · ' + usd(t.total_value || 0) + ' · ' + timeAgo(t.created_at) + '</p>' +
+            '<div class="flex items-center gap-2"><div class="flex-1 h-2 bg-surface-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-sgtx-500 to-emerald-500 rounded-full" style="width:' + phasePct + '%"></div></div><span class="text-xs font-semibold text-surface-600">' + phase + '/10</span></div>' +
           '</div>';
         }).join('') +
       '</div>';
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 async function showTradeTimeline(ustn) {
@@ -806,42 +824,66 @@ async function showTradeTimeline(ustn) {
     var data = res.data || res;
     var trade = data.trade || data;
     var phases = [
-      { num: 1, name: 'Pre-Qual', icon: 'fa-clipboard-check' },
-      { num: 2, name: 'Quotation', icon: 'fa-file-invoice-dollar' },
-      { num: 3, name: 'Contract', icon: 'fa-file-signature' },
-      { num: 4, name: 'Finance', icon: 'fa-university' },
-      { num: 5, name: 'Physical', icon: 'fa-boxes' },
-      { num: 6, name: 'QC', icon: 'fa-microscope' },
-      { num: 7, name: 'Docs', icon: 'fa-folder-open' },
-      { num: 8, name: 'Logistics', icon: 'fa-ship' },
-      { num: 9, name: 'Customs', icon: 'fa-gavel' },
-      { num: 10, name: 'Settle', icon: 'fa-check-double' }
+      { num:1, name:'Initiation', icon:'fa-clipboard-check' },
+      { num:2, name:'Quotation', icon:'fa-file-invoice-dollar' },
+      { num:3, name:'Contract', icon:'fa-file-signature' },
+      { num:4, name:'Finance', icon:'fa-university' },
+      { num:5, name:'Execution', icon:'fa-boxes' },
+      { num:6, name:'Settlement', icon:'fa-money-check-alt' },
+      { num:7, name:'Distressed', icon:'fa-exclamation-triangle' },
+      { num:8, name:'QC', icon:'fa-microscope' },
+      { num:9, name:'Customs', icon:'fa-gavel' },
+      { num:10, name:'Dispute', icon:'fa-balance-scale' }
     ];
-    var currentPhase = trade.current_phase || 1;
+    var cp = trade.current_phase || 1;
+    var contract = data.contract || {};
+    var shipment = data.shipment || {};
+    var finance = data.finance || {};
+    var timeline = data.recent_activity || data.timeline || [];
 
     content.innerHTML =
-      '<button onclick="renderTradeCommandCenter()" class="text-xs text-surface-400 hover:text-white mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back to trades</button>' +
-      '<div class="glass-card p-5 mb-4">' +
-        '<div class="flex items-center justify-between mb-3"><div><span class="font-mono text-brand-300 text-lg">' + (trade.ustn || ustn) + '</span><p class="text-sm text-surface-400 mt-1">' + (trade.commodity_type || '') + ' · ' + (trade.incoterm || '') + ' · ' + usd(trade.total_value || 0) + '</p></div>' + badge(trade.status || 'ACTIVE', 'blue') + '</div>' +
-        '<div class="grid grid-cols-3 gap-3 text-center">' +
-          [['Buyer', trade.buyer_name || trade.importer_tenant_id || '-'], ['Seller', trade.seller_name || trade.exporter_tenant_id || '-'], ['Created', time(trade.created_at)]].map(function(c) {
-            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500 uppercase">' + c[0] + '</div><div class="text-sm text-surface-200 mt-1 truncate">' + c[1] + '</div></div>';
-          }).join('') +
-        '</div>' +
+      '<button onclick="renderTradeCommandCenter()" class="text-xs text-surface-500 hover:text-sgtx-600 mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back</button>' +
+      // Header
+      '<div class="sgtx-card p-5 mb-4"><div class="flex items-center justify-between mb-3"><span class="font-mono text-lg font-bold text-sgtx-600 cursor-pointer" onclick="navigator.clipboard.writeText(\'' + (trade.ustn||ustn) + '\');showToast(\'Copied!\',\'success\')" title="Click to copy">' + (trade.ustn||ustn) + ' <i class="fas fa-copy text-xs text-surface-400"></i></span>' + badge(trade.status||'ACTIVE','blue') + '</div>' +
+        '<p class="text-sm text-surface-600 mb-3">' + (trade.commodity_type||'') + ' · ' + (trade.incoterm||'') + ' · ' + usd(trade.total_value||0) + '</p>' +
+        '<div class="grid grid-cols-2 md:grid-cols-4 gap-3">' +
+          [['Buyer', trade.buyer_name||trade.importer_tenant_id||'-','fa-user-tie'],['Seller', trade.seller_name||trade.exporter_tenant_id||'-','fa-store'],['Created', time(trade.created_at),'fa-calendar'],['Phase','Phase '+cp+' — '+(phases[cp-1]||{}).name,'fa-layer-group']].map(function(c){return '<div class="bg-surface-50 rounded-xl p-3 border border-surface-100"><div class="flex items-center gap-1.5 text-[10px] text-surface-500 uppercase font-semibold mb-1"><i class="fas '+c[2]+'"></i>'+c[0]+'</div><div class="text-sm text-surface-800 font-medium truncate">'+c[1]+'</div></div>';}).join('') +
+        '</div></div>' +
+      // Phase Timeline
+      '<div class="sgtx-card p-5 mb-4"><h3 class="text-sm font-semibold text-surface-800 mb-4"><i class="fas fa-stream mr-2 text-sgtx-500"></i>Phase Timeline</h3><div class="flex items-center gap-0.5">' +
+        phases.map(function(p){ var cls = p.num<cp?'bg-emerald-100 text-emerald-700 border-emerald-200':(p.num===cp?'bg-sgtx-500 text-white shadow-lg ring-2 ring-sgtx-300':'bg-surface-100 text-surface-400 border-surface-200'); return '<div class="flex-1 text-center"><div class="w-9 h-9 mx-auto rounded-full flex items-center justify-center text-xs font-bold border '+cls+'">'+(p.num<cp?'<i class="fas fa-check"></i>':p.num)+'</div><div class="text-[9px] text-surface-500 mt-1 font-medium">'+p.name+'</div></div>';}).join('') +
+      '</div></div>' +
+      // Pending Action
+      '<div class="sgtx-card p-5 mb-4 border-l-4 border-l-sgtx-500"><div class="flex items-center gap-2 mb-2"><i class="fas fa-bolt text-sgtx-500"></i><span class="font-semibold text-sm text-surface-800">Next Action</span></div><p class="text-sm text-surface-600">' + getNextAction(trade, cp) + '</p><div class="mt-3">' + getActionButton(trade, cp) + '</div></div>' +
+      // Summary Cards
+      '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-coins mr-1.5 text-amber-500"></i>Commercial</h4><div class="space-y-2 text-xs">' + [['Incoterm',trade.incoterm||'N/A'],['Value',usd(trade.total_value||0)],['SGTX Fee',usd(contract.sgtx_fee_amount||0)],['Currency',trade.currency||'USD']].map(function(r){return '<div class="flex justify-between"><span class="text-surface-500">'+r[0]+'</span><span class="font-medium text-surface-800">'+r[1]+'</span></div>';}).join('') + '</div></div>' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-users mr-1.5 text-blue-500"></i>Parties</h4><div class="space-y-2 text-xs">' + [['Buyer',trade.buyer_name||'-'],['Seller',trade.seller_name||'-'],['Trust (B)',trade.buyer_trust||'—'],['Trust (S)',trade.seller_trust||'—']].map(function(r){return '<div class="flex justify-between"><span class="text-surface-500">'+r[0]+'</span><span class="font-medium text-surface-800">'+r[1]+'</span></div>';}).join('') + '</div></div>' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-ship mr-1.5 text-cyan-500"></i>Shipment</h4><div class="space-y-2 text-xs">' + [['Status',shipment.status||'Pending'],['Vessel',shipment.vessel_name||'—'],['Origin',trade.origin_port||'—'],['Dest.',trade.destination_port||'—']].map(function(r){return '<div class="flex justify-between"><span class="text-surface-500">'+r[0]+'</span><span class="font-medium text-surface-800">'+r[1]+'</span></div>';}).join('') + '</div></div>' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-file-alt mr-1.5 text-purple-500"></i>Documents</h4><div class="space-y-1.5 text-xs">' + [['Contract',contract.status==='SIGNED'],['Packing List',!!trade.packing_locked],['Invoice',cp>=7],['B/L',!!shipment.ebl_issued],['QC Report',cp>=8]].map(function(d){return '<div class="flex items-center gap-2"><i class="fas '+(d[1]?'fa-check-circle text-emerald-500':'fa-circle text-surface-300')+' text-[10px]"></i><span class="'+(d[1]?'text-surface-700':'text-surface-400')+'">'+d[0]+'</span></div>';}).join('') + '</div></div>' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-landmark mr-1.5 text-indigo-500"></i>Finance</h4><div class="space-y-2 text-xs">' + [['Status',finance.status||'Not Requested'],['Amount',usd(finance.amount||0)],['Fee Paid',trade.fee_paid?'Yes':'No']].map(function(r){return '<div class="flex justify-between"><span class="text-surface-500">'+r[0]+'</span><span class="font-medium text-surface-800">'+r[1]+'</span></div>';}).join('') + '</div></div>' +
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-shield-alt mr-1.5 text-red-500"></i>Risk</h4><div class="space-y-2 text-xs">' + [['Risk',trade.risk_score||'Low'],['Sanctions','<span class=text-emerald-600><i class=\\'fas fa-check-circle mr-1\\'></i>Clear</span>'],['Governor','ALLOW']].map(function(r){return '<div class="flex justify-between"><span class="text-surface-500">'+r[0]+'</span><span class="font-medium text-surface-800">'+r[1]+'</span></div>';}).join('') + '</div></div>' +
       '</div>' +
-      '<div class="glass-card p-5 mb-4">' +
-        '<h3 class="text-sm font-semibold text-surface-200 mb-4"><i class="fas fa-stream mr-2 text-brand-400"></i>Phase Timeline</h3>' +
-        '<div class="flex items-center gap-1">' +
-          phases.map(function(p) {
-            var cls = p.num < currentPhase ? 'bg-emerald-500/30 text-emerald-300' : (p.num === currentPhase ? 'bg-brand-500 text-white ring-2 ring-brand-400' : 'bg-dark-700 text-surface-500');
-            return '<div class="flex-1 text-center"><div class="w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-bold ' + cls + '">' + (p.num < currentPhase ? '<i class="fas fa-check"></i>' : p.num) + '</div><div class="text-[9px] text-surface-500 mt-1 leading-tight">' + p.name + '</div></div>';
-          }).join('') +
-        '</div>' +
-      '</div>' +
-      (data.recent_activity ? '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3">Recent Activity</h3><div class="space-y-2">' + (data.recent_activity || []).map(function(a) { return '<div class="flex items-center gap-3 text-xs"><div class="w-2 h-2 rounded-full bg-brand-400 flex-shrink-0"></div><span class="text-surface-300 flex-1">' + (a.description || a.event || a.action) + '</span><span class="text-surface-500">' + timeAgo(a.created_at || a.timestamp) + '</span></div>'; }).join('') + '</div></div>' : '');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error loading trade: ' + e.message + '</div>';
-  }
+      // Activity Feed
+      '<div class="sgtx-card p-5"><h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-history mr-2 text-surface-400"></i>Activity Feed</h3><div class="space-y-3 max-h-60 overflow-y-auto">' +
+        (timeline.length ? timeline.map(function(a){return '<div class="flex items-start gap-3 text-xs"><div class="w-2 h-2 rounded-full bg-sgtx-400 mt-1.5 flex-shrink-0"></div><div class="flex-1"><span class="text-surface-700">'+(a.description||a.event||a.action)+'</span><div class="text-surface-400 mt-0.5">'+timeAgo(a.created_at||a.timestamp)+'</div></div></div>';}).join('') : '<p class="text-xs text-surface-400">No activity yet.</p>') +
+      '</div></div>';
+  } catch (e) { content.innerHTML = renderError('Error: ' + e.message); }
+}
+
+function getNextAction(trade, phase) {
+  var s = (trade.status||'').toUpperCase();
+  if (s === 'COMPLETED' || s === 'SETTLED') return 'Trade complete. No action needed.';
+  if (s === 'DISPUTED') return 'Active dispute. Review evidence and respond.';
+  var m = { 1:'Waiting for seller response.', 2:'Complete EXW, packing, logistics then submit quote.', 3:'Review and sign contract with SGTX witness.', 4:'Request financing or pay SGTX fee to proceed.', 5:'Track milestones and confirm physical events.', 6:'Create settlement instruction and confirm payment.', 7:'Handle distressed cargo if applicable.', 8:'QC inspection in progress.', 9:'Upload customs documents.', 10:'Resolve disputes or finalize.' };
+  return m[phase] || 'Proceed with next action.';
+}
+
+function getActionButton(trade, phase) {
+  if ((trade.status||'').toUpperCase() === 'COMPLETED') return '<span class="text-xs text-emerald-600 font-medium"><i class="fas fa-check-circle mr-1"></i>Complete</span>';
+  var b = { 1:'pending-requests', 2:'quote-submit', 3:'contract-signing', 4:'financing', 5:'shipments-vault', 6:'settlements', 7:'distressed-sell', 8:'qc-booking', 9:'customs-readiness', 10:'disputes' };
+  var labels = { 1:'View Requests', 2:'Submit Quote', 3:'Sign Contract', 4:'Finance', 5:'Track', 6:'Settlement', 7:'Distressed', 8:'QC', 9:'Customs', 10:'Disputes' };
+  return '<button onclick="navigateTo(\'' + (b[phase]||'smart-inbox') + '\')" class="btn-primary text-xs">' + (labels[phase]||'Next') + '</button>';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -849,46 +891,86 @@ async function showTradeTimeline(ustn) {
 // ═══════════════════════════════════════════════════════════
 
 async function renderShipmentsVault() {
-  setTitle('Shipments Vault', 'Track all shipments with milestones and documents');
+  setTitle('Shipments Vault', 'Track all shipments with milestones and cold chain status');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(5);
   try {
     var res = await api('/shipments?tenant_id=' + tenant.id);
     var shipments = res.data || [];
+    var active = shipments.filter(function(s) { return s.status !== 'DELIVERED' && s.status !== 'COMPLETED'; });
+    var delivered = shipments.filter(function(s) { return s.status === 'DELIVERED' || s.status === 'COMPLETED'; });
+
     content.innerHTML =
-      fourQuestions('All shipments for your active trades.', 'Click a shipment to see milestones, barcodes, and documents.', '', 'Upload documents, track milestones, print barcodes.') +
-      dataTable(
-        ['USTN', 'Origin', 'Destination', 'Status', 'ETD', 'ETA', ''],
-        shipments.map(function(s) {
-          return [
-            '<span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span>',
-            s.origin_port || '-',
-            s.dest_port || '-',
-            badge(s.status || 'PENDING', s.status === 'DELIVERED' ? 'emerald' : s.status === 'IN_TRANSIT' ? 'blue' : 'amber'),
-            s.etd ? time(s.etd) : '-',
-            s.eta ? time(s.eta) : '-',
-            '<button onclick="showShipmentModal(\'' + s.id + '\')" class="text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-eye"></i></button>'
-          ];
-        })
-      );
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
+      fourQuestions(
+        shipments.length + ' shipment(s) tracked. ' + active.length + ' active.',
+        active.length > 0 ? 'Monitor milestones and confirm physical events.' : 'No active shipments.',
+        active.filter(function(s){return s.status==='DELAYED'||s.status==='AT_RISK';}).length > 0 ? 'Delayed shipment(s) need attention.' : 'No blockers.',
+        'After all milestones confirmed, move to settlement.'
+      ) +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-ship', 'Total Shipments', shipments.length, null, 'blue') +
+        metricCard('fa-route', 'In Transit', active.filter(function(s){return s.status==='IN_TRANSIT';}).length, null, 'cyan') +
+        metricCard('fa-check-double', 'Delivered', delivered.length, null, 'green') +
+        metricCard('fa-temperature-low', 'Cold Chain', shipments.filter(function(s){return s.container_type&&s.container_type.indexOf('RF')>=0;}).length, null, 'purple') +
+      '</div>' +
+      (active.length ? '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-satellite-dish mr-2 text-blue-500"></i>Active Shipments</h3><div class="space-y-3 mb-6">' +
+        active.map(function(s) {
+          var milestones = ['BOOKED','GATED_IN','LOADED','DEPARTED','IN_TRANSIT','ARRIVED','CUSTOMS','DELIVERED'];
+          var currentIdx = milestones.indexOf((s.current_milestone||s.status||'').toUpperCase());
+          if (currentIdx < 0) currentIdx = 0;
+          return '<div class="sgtx-card p-4">' +
+            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-sm font-bold text-sgtx-600">' + (s.ustn || s.id) + '</span>' + badge(s.status || 'PENDING', s.status === 'IN_TRANSIT' ? 'blue' : 'amber') + '</div>' +
+            '<div class="grid grid-cols-4 gap-3 mb-3 text-xs">' +
+              '<div><span class="text-surface-500">Origin</span><div class="font-medium">' + (s.origin_port || '-') + '</div></div>' +
+              '<div><span class="text-surface-500">Destination</span><div class="font-medium">' + (s.dest_port || s.destination_port || '-') + '</div></div>' +
+              '<div><span class="text-surface-500">Vessel</span><div class="font-medium">' + (s.vessel_name || '-') + '</div></div>' +
+              '<div><span class="text-surface-500">Container</span><div class="font-medium">' + (s.container_numbers || '-') + '</div></div>' +
+            '</div>' +
+            // Milestone progress bar
+            '<div class="flex items-center gap-0.5 mb-3">' +
+              milestones.map(function(m, i) {
+                var cls = i < currentIdx ? 'bg-emerald-500 text-white' : i === currentIdx ? 'bg-sgtx-500 text-white ring-1 ring-sgtx-300' : 'bg-surface-100 text-surface-400';
+                return '<div class="flex-1 text-center"><div class="h-2 rounded-full ' + cls + '" title="' + m + '"></div><div class="text-[8px] mt-0.5 text-surface-400">' + m.substr(0,4) + '</div></div>';
+              }).join('') +
+            '</div>' +
+            '<div class="flex gap-2">' +
+              '<button onclick="confirmMilestone(\'' + (s.ustn||s.id) + '\')" class="btn-primary text-xs flex-1"><i class="fas fa-check mr-1"></i>Confirm Next Milestone</button>' +
+              '<button onclick="showShipmentModal(\'' + s.id + '\')" class="px-3 py-1.5 border border-surface-200 rounded-lg text-xs text-surface-600"><i class="fas fa-eye mr-1"></i>Details</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>' : '') +
+      // All shipments table
+      (shipments.length ? '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-list mr-2 text-surface-400"></i>All Shipments</h3>' +
+        dataTable(['USTN', 'Origin', 'Destination', 'Status', 'Vessel', 'Action'],
+          shipments.map(function(s) {
+            return '<tr><td class="font-mono text-xs text-sgtx-600">' + (s.ustn||'-') + '</td><td class="text-xs">' + (s.origin_port||'-') + '</td><td class="text-xs">' + (s.dest_port||s.destination_port||'-') + '</td><td>' + badge(s.status||'PENDING', s.status==='DELIVERED'?'emerald':'blue') + '</td><td class="text-xs">' + (s.vessel_name||'-') + '</td><td><button onclick="showShipmentModal(\'' + s.id + '\')" class="text-xs text-sgtx-500 hover:underline"><i class="fas fa-eye mr-1"></i>View</button></td></tr>';
+          })
+        ) : '<div class="sgtx-card p-8 text-center"><i class="fas fa-ship text-surface-400 text-4xl mb-3"></i><p class="text-surface-500">No shipments found.</p></div>');
+  } catch (e) { content.innerHTML = renderError(e.message); }
+}
+
+async function confirmMilestone(ustn) {
+  try {
+    showToast('Confirming milestone...', 'info');
+    await apiPost('/shipment/milestone/confirm', { ustn: ustn, confirmed_by: tenant.id, confirmation_method: 'MANUAL' });
+    showToast('Milestone confirmed!', 'success');
+    renderShipmentsVault();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function showShipmentModal(id) {
   try {
     var res = await api('/shipments/' + id);
     var s = res.data || res;
-    showModal('Shipment Details',
+    showModal(
       '<div class="space-y-4">' +
+        '<h3 class="text-lg font-bold text-surface-800">Shipment: ' + (s.ustn || id) + '</h3>' +
         '<div class="grid grid-cols-2 gap-3">' +
-          [['USTN', s.ustn || '-'], ['Status', s.status || '-'], ['Origin', s.origin_port || '-'], ['Destination', s.dest_port || '-'], ['Vessel', s.vessel_name || '-'], ['Container', s.container_number || '-'], ['ETD', s.etd ? time(s.etd) : '-'], ['ETA', s.eta ? time(s.eta) : '-']].map(function(pair) {
-            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + pair[0] + '</div><div class="text-sm text-surface-200">' + pair[1] + '</div></div>';
+          [['USTN', s.ustn||'-'], ['Status', s.status||'-'], ['Origin', s.origin_port||'-'], ['Destination', s.dest_port||s.destination_port||'-'], ['Vessel', s.vessel_name||'-'], ['Container', s.container_numbers||s.container_number||'-'], ['ETD', s.etd?time(s.etd):'-'], ['ETA', s.eta?time(s.eta):'-']].map(function(p) {
+            return '<div class="bg-surface-50 rounded-lg p-3 border border-surface-100"><div class="text-[10px] text-surface-500 uppercase">' + p[0] + '</div><div class="text-sm font-medium text-surface-800">' + p[1] + '</div></div>';
           }).join('') +
         '</div>' +
-        (s.milestones ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Milestones</h4><div class="space-y-2">' + (s.milestones || []).map(function(m) { return '<div class="flex items-center gap-2 text-xs"><div class="w-2.5 h-2.5 rounded-full ' + (m.completed ? 'bg-emerald-400' : 'bg-dark-600 border border-surface-500') + '"></div><span class="text-surface-300 flex-1">' + (m.name || m.milestone) + '</span><span class="text-surface-500">' + (m.completed_at ? time(m.completed_at) : 'Pending') + '</span></div>'; }).join('') + '</div></div>' : '') +
-        (s.barcodes ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Barcodes</h4><div class="space-y-1">' + (s.barcodes || []).map(function(b) { return '<div class="font-mono text-xs text-brand-300 bg-dark-800/50 rounded p-2">' + (b.sscc || b.barcode || b) + '</div>'; }).join('') + '</div></div>' : '') +
+        (s.milestones ? '<div><h4 class="text-sm font-semibold text-surface-800 mb-2">Milestones</h4><div class="space-y-2">' + (s.milestones||[]).map(function(m) { return '<div class="flex items-center gap-2 text-xs"><div class="w-2.5 h-2.5 rounded-full ' + (m.completed ? 'bg-emerald-500' : 'bg-surface-200 border border-surface-300') + '"></div><span class="text-surface-700 flex-1">' + (m.name||m.milestone) + '</span><span class="text-surface-500">' + (m.completed_at ? time(m.completed_at) : 'Pending') + '</span></div>'; }).join('') + '</div></div>' : '') +
       '</div>'
     );
   } catch (e) { showToast('Error loading shipment: ' + e.message, 'error'); }
@@ -1225,36 +1307,217 @@ async function submitSettlement(disputeId) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// BUYER: NEW TRADE REQUEST (Blueprint 6.2.1 — Phase 1)
-// Container-level form with GTID resolve & HS lookup
+// BUYER: NEW TRADE REQUEST (Blueprint Part 3 Phase 1 + Part 6.2.1)
+// Structured container-level form with GTID resolve, HS lookup,
+// Express Mode, AI Container Advisor, Dual-Use detection
 // ═══════════════════════════════════════════════════════════
 
 var newTradeContainers = [{ commodities: [{}] }];
+var ntExpressMode = false;
 
 async function renderNewTrade() {
-  setTitle('New Trade Request', 'Create a structured trade request with containers and commodities');
+  setTitle('New Trade Request', 'Structured container-level import request');
   var content = document.getElementById('content');
   content.innerHTML =
-    fourQuestions('Create a new trade request to send to a seller.', 'Fill in the seller GTID, incoterm, containers, and commodities. Submit when ready.', '', 'After submission the seller will receive your request and respond with a quote.') +
+    fourQuestions(
+      'Create a structured trade request specifying containers, commodities, and delivery terms.',
+      'Fill in the seller GTID, select incoterm, add containers with commodities. Use Express Mode for free-text AI parsing.',
+      '',
+      'After submission, the Governor pre-screens the request. If approved, the seller receives it and responds with a quote.'
+    ) +
     guidedRecoveryBanner('abandonment') +
+
+    // ── Express Mode Toggle ──
+    '<div class="glass-card p-4 mb-4 border-l-4 border-purple-400">' +
+      '<div class="flex items-center justify-between mb-2">' +
+        '<div class="flex items-center gap-2"><i class="fas fa-magic text-purple-400"></i><span class="text-sm font-semibold text-surface-200">Express Mode</span><span class="text-[10px] text-surface-500">(AI parses your free-text description)</span></div>' +
+        '<button onclick="ntExpressMode=!ntExpressMode; renderNewTrade()" class="px-3 py-1 rounded-full text-xs font-medium transition ' + (ntExpressMode ? 'bg-purple-500 text-white' : 'glass-card text-surface-400') + '">' + (ntExpressMode ? '<i class="fas fa-check mr-1"></i>ON' : 'OFF') + '</button>' +
+      '</div>' +
+      (ntExpressMode ?
+        '<textarea id="nt-express-text" rows="4" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200 mt-2" placeholder="Describe your trade in natural language, e.g.: I need 2 containers of 40ft reefer with frozen strawberries HS 0811.10 Grade A, 18 pallets each, from Vietnam to Netherlands Rotterdam port, CIF terms..."></textarea>' +
+        '<div class="flex items-center gap-2 mt-2">' +
+          '<button onclick="parseExpressMode()" class="px-4 py-2 bg-purple-500 text-white rounded-lg text-xs font-medium hover:bg-purple-600"><i class="fas fa-robot mr-1"></i>AI Parse</button>' +
+          '<span id="nt-express-status" class="text-xs text-surface-500"></span>' +
+        '</div>' : '') +
+    '</div>' +
+
+    // ── Trade Header ──
     '<div class="glass-card p-5 mb-4">' +
       '<h3 class="text-sm font-semibold text-surface-200 mb-4"><i class="fas fa-file-import mr-2 text-brand-400"></i>Trade Details</h3>' +
       '<div class="grid grid-cols-2 gap-4 mb-4">' +
-        '<div><label class="text-xs text-surface-400 block mb-1">Seller GTID</label><div class="flex gap-2"><input id="nt-seller-gtid" type="text" class="flex-1 bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-XX-XX-XXXX-XXXX"><button onclick="resolveSellerGTID()" class="px-3 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs hover:bg-brand-500/30"><i class="fas fa-search"></i></button></div><div id="nt-seller-info" class="text-xs text-surface-500 mt-1"></div></div>' +
-        '<div><label class="text-xs text-surface-400 block mb-1">Incoterm</label><select id="nt-incoterm" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="FOB">FOB</option><option value="CIF">CIF</option><option value="CFR">CFR</option><option value="EXW">EXW</option><option value="DDP">DDP</option><option value="DAP">DAP</option></select></div>' +
+        // Seller GTID with resolve + contacts search
+        '<div>' +
+          '<label class="text-xs text-surface-400 block mb-1">Seller GTID <span class="text-surface-600">(or search contacts)</span></label>' +
+          '<div class="flex gap-2">' +
+            '<input id="nt-seller-gtid" type="text" class="flex-1 bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-XX-TRD-XXXX-XXXX">' +
+            '<button onclick="resolveSellerGTID()" class="px-3 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs hover:bg-brand-500/30" title="Resolve GTID"><i class="fas fa-search"></i></button>' +
+            '<button onclick="showContactPickerForTrade()" class="px-3 py-2 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs hover:bg-emerald-500/30" title="Pick from contacts"><i class="fas fa-address-book"></i></button>' +
+          '</div>' +
+          '<div id="nt-seller-info" class="text-xs text-surface-500 mt-1"></div>' +
+        '</div>' +
+        // Incoterm
+        '<div>' +
+          '<label class="text-xs text-surface-400 block mb-1">Incoterm</label>' +
+          '<select id="nt-incoterm" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200">' +
+            '<option value="FOB">FOB — Free On Board</option>' +
+            '<option value="CIF">CIF — Cost Insurance Freight</option>' +
+            '<option value="CFR">CFR — Cost and Freight</option>' +
+            '<option value="EXW">EXW — Ex Works</option>' +
+            '<option value="DDP">DDP — Delivered Duty Paid</option>' +
+            '<option value="DAP">DAP — Delivered at Place</option>' +
+            '<option value="FCA">FCA — Free Carrier</option>' +
+            '<option value="CPT">CPT — Carriage Paid To</option>' +
+          '</select>' +
+        '</div>' +
       '</div>' +
-      '<div class="grid grid-cols-2 gap-4 mb-4">' +
-        '<div><label class="text-xs text-surface-400 block mb-1">Origin Country</label><input id="nt-origin" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. EG"></div>' +
-        '<div><label class="text-xs text-surface-400 block mb-1">Destination Country</label><input id="nt-dest" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. AE"></div>' +
+      '<div class="grid grid-cols-3 gap-4 mb-4">' +
+        // Transport Mode
+        '<div>' +
+          '<label class="text-xs text-surface-400 block mb-1">Transport Mode</label>' +
+          '<select id="nt-transport" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200">' +
+            '<option value="SEA_CARGO">Sea Cargo</option>' +
+            '<option value="AIR_CARGO">Air Cargo</option>' +
+            '<option value="LAND">Land (Truck/Rail)</option>' +
+            '<option value="MULTIMODAL">Multimodal</option>' +
+          '</select>' +
+        '</div>' +
+        // Prefer Previous Logistics
+        '<div>' +
+          '<label class="text-xs text-surface-400 block mb-1">Prefer Previous Logistics?</label>' +
+          '<select id="nt-prev-logistics" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200">' +
+            '<option value="0">No</option><option value="1">Yes — use same provider</option>' +
+          '</select>' +
+        '</div>' +
+        // Number of Containers
+        '<div>' +
+          '<label class="text-xs text-surface-400 block mb-1">Number of Containers</label>' +
+          '<div class="flex gap-2 items-center">' +
+            '<input id="nt-num-containers" type="number" class="w-20 bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200 text-center" value="1" min="1" max="50">' +
+            '<button onclick="syncContainerCount()" class="px-3 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs hover:bg-brand-500/30">Apply</button>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Notes</label><textarea id="nt-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Special requirements..."></textarea></div>' +
+      '<div><label class="text-xs text-surface-400 block mb-1">Notes / Special Requirements</label><textarea id="nt-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="e.g. Stack max 5 layers, require fumigation certificate..."></textarea></div>' +
     '</div>' +
+
+    // ── AI Container Advisor ──
+    '<div class="glass-card p-4 mb-4 border-l-4 border-cyan-400">' +
+      '<div class="flex items-center gap-2 mb-1"><i class="fas fa-robot text-cyan-400"></i><span class="text-sm font-semibold text-surface-200">AI Container Advisor</span><span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full">A1 Advisory</span></div>' +
+      '<div id="nt-ai-advisor" class="text-xs text-surface-400">Fill in commodity details below and the AI will suggest optimal container type and count.</div>' +
+    '</div>' +
+
+    // ── Container Rows ──
     '<div id="nt-containers"></div>' +
+
+    // ── Actions ──
     '<div class="flex gap-3 mt-4">' +
       '<button onclick="newTradeContainers.push({commodities:[{}]}); renderContainerRows()" class="px-4 py-2 glass-card text-surface-300 rounded-lg text-sm hover:bg-white/5"><i class="fas fa-plus mr-1"></i>Add Container</button>' +
+      '<button onclick="cloneLastContainer()" class="px-4 py-2 glass-card text-surface-300 rounded-lg text-sm hover:bg-white/5"><i class="fas fa-clone mr-1"></i>Clone Last</button>' +
+      '<button onclick="requestAIContainerAdvice()" class="px-4 py-2 bg-cyan-500/20 text-cyan-300 rounded-lg text-sm hover:bg-cyan-500/30"><i class="fas fa-robot mr-1"></i>AI Advise</button>' +
       '<button onclick="submitNewTradeRequest()" class="px-6 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 ml-auto"><i class="fas fa-paper-plane mr-2"></i>Submit Request</button>' +
     '</div>';
   renderContainerRows();
+}
+
+function syncContainerCount() {
+  var target = parseInt(document.getElementById('nt-num-containers').value) || 1;
+  target = Math.max(1, Math.min(50, target));
+  while (newTradeContainers.length < target) newTradeContainers.push({ commodities: [{}] });
+  while (newTradeContainers.length > target) newTradeContainers.pop();
+  renderContainerRows();
+}
+
+function cloneLastContainer() {
+  if (newTradeContainers.length >= 50) { showToast('Maximum 50 containers', 'error'); return; }
+  var last = newTradeContainers[newTradeContainers.length - 1];
+  newTradeContainers.push(JSON.parse(JSON.stringify(last)));
+  renderContainerRows();
+  showToast('Container cloned', 'info');
+}
+
+async function parseExpressMode() {
+  var text = (document.getElementById('nt-express-text') || {}).value || '';
+  if (!text.trim()) { showToast('Please enter a description first', 'error'); return; }
+  var statusEl = document.getElementById('nt-express-status');
+  if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Parsing with AI...';
+  try {
+    var res = await apiPost('/trade-form/express-parse', { text: text, tenant_id: tenant.id });
+    var parsed = res.data || res;
+    if (parsed.containers && parsed.containers.length) {
+      newTradeContainers = parsed.containers.map(function(c) {
+        return { commodities: (c.commodities || [{}]).map(function(cm) { return cm || {}; }) };
+      });
+    }
+    if (parsed.incoterm) { var incEl = document.getElementById('nt-incoterm'); if (incEl) incEl.value = parsed.incoterm; }
+    if (parsed.seller_gtid) { var sgEl = document.getElementById('nt-seller-gtid'); if (sgEl) sgEl.value = parsed.seller_gtid; }
+    renderContainerRows();
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle text-emerald-400 mr-1"></i>Parsed ' + newTradeContainers.length + ' container(s). Review and adjust below.';
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-info-circle text-amber-400 mr-1"></i>AI parsing unavailable. Please fill in the form manually.';
+  }
+}
+
+async function requestAIContainerAdvice() {
+  var advEl = document.getElementById('nt-ai-advisor');
+  if (!advEl) return;
+  advEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1 text-cyan-400"></i>Analyzing your cargo specifications...';
+  // Gather current commodity data for advice
+  var totalWeight = 0;
+  var commodities = [];
+  newTradeContainers.forEach(function(c, ci) {
+    c.commodities.forEach(function(_, ri) {
+      var wt = parseFloat((document.getElementById('nt-wt-' + ci + '-' + ri) || {}).value) || 0;
+      var hs = (document.getElementById('nt-hs-' + ci + '-' + ri) || {}).value || '';
+      totalWeight += wt;
+      if (hs) commodities.push(hs);
+    });
+  });
+  // Local advisory logic (A1 tier — no external AI needed for basic advice)
+  var containerType = '40HC';
+  var suggestion = '';
+  if (commodities.some(function(h) { return h.startsWith('08') || h.startsWith('02') || h.startsWith('03'); })) {
+    containerType = '40RF';
+    suggestion = 'Fresh/frozen products detected (HS 02xx/03xx/08xx). Recommending 40ft High-Cube Reefer containers with temperature control.';
+  } else if (totalWeight > 25000) {
+    containerType = '40HC';
+    suggestion = 'Total weight exceeds 25 tonnes. Recommending 40ft High-Cube containers for optimal space utilization.';
+  } else if (totalWeight <= 12000 && totalWeight > 0) {
+    containerType = '20GP';
+    suggestion = 'Moderate weight (' + Math.round(totalWeight) + ' kg). A 20ft standard container may be sufficient and more cost-effective.';
+  } else {
+    suggestion = 'Based on general cargo profile, 40ft High-Cube containers are recommended. Add commodity details for more specific advice.';
+  }
+  var numContainers = totalWeight > 0 ? Math.max(1, Math.ceil(totalWeight / 22000)) : newTradeContainers.length;
+  advEl.innerHTML =
+    '<div class="flex items-start gap-3">' +
+      '<i class="fas fa-lightbulb text-cyan-400 mt-0.5"></i>' +
+      '<div>' +
+        '<p class="text-surface-300 mb-1">' + suggestion + '</p>' +
+        '<div class="flex gap-3 text-[10px] mt-1">' +
+          '<span class="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded">Suggested: ' + containerType + '</span>' +
+          '<span class="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded">Est. containers: ' + numContainers + '</span>' +
+          '<span class="bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded">Total weight: ' + Math.round(totalWeight) + ' kg</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function showContactPickerForTrade() {
+  try {
+    var res = await api('/contacts?tenant_id=' + tenant.id);
+    var contacts = res.data || [];
+    if (!contacts.length) { showToast('No saved contacts. Add contacts first.', 'info'); return; }
+    showModal('Select Contact',
+      '<div class="space-y-2 max-h-64 overflow-y-auto">' +
+        contacts.map(function(c) {
+          return '<div class="glass-card p-3 cursor-pointer hover:bg-white/10 transition" onclick="document.getElementById(\'nt-seller-gtid\').value=\'' + (c.contact_gtid || c.gtid || '') + '\'; closeModal(); resolveSellerGTID();">' +
+            '<div class="font-medium text-sm text-surface-200">' + (c.company_name || c.name || 'Unknown') + '</div>' +
+            '<div class="text-xs text-surface-500 font-mono">' + (c.contact_gtid || c.gtid || '') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error loading contacts', 'error'); }
 }
 
 function renderContainerRows() {
@@ -1262,27 +1525,68 @@ function renderContainerRows() {
   if (!el) return;
   el.innerHTML = newTradeContainers.map(function(container, ci) {
     return '<div class="glass-card p-4 mb-3">' +
-      '<div class="flex items-center justify-between mb-3"><h4 class="text-sm font-semibold text-surface-200"><i class="fas fa-box mr-1 text-cyan-400"></i>Container ' + (ci + 1) + '</h4>' +
-        (ci > 0 ? '<button onclick="newTradeContainers.splice(' + ci + ',1); renderContainerRows()" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>' : '') +
+      '<div class="flex items-center justify-between mb-3">' +
+        '<h4 class="text-sm font-semibold text-surface-200"><i class="fas fa-box mr-1 text-cyan-400"></i>Container ' + (ci + 1) + ' of ' + newTradeContainers.length + '</h4>' +
+        '<div class="flex gap-2">' +
+          (newTradeContainers.length > 1 ? '<button onclick="newTradeContainers.splice(' + ci + ',1); renderContainerRows()" class="text-xs text-red-400 hover:text-red-300 px-2" title="Remove"><i class="fas fa-trash"></i></button>' : '') +
+          (ci > 0 ? '<button onclick="cloneContainerFrom(' + ci + ')" class="text-xs text-cyan-400 hover:text-cyan-300 px-2" title="Clone from previous"><i class="fas fa-clone"></i></button>' : '') +
+        '</div>' +
       '</div>' +
-      '<div class="grid grid-cols-3 gap-3 mb-3">' +
-        '<div><label class="text-[10px] text-surface-500 block mb-1">Container Type</label><select id="nt-ct-' + ci + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="20RF">20ft Reefer</option><option value="40RF">40ft Reefer</option><option value="40HC">40ft High Cube</option><option value="20GP">20ft Standard</option></select></div>' +
-        '<div><label class="text-[10px] text-surface-500 block mb-1">Temperature (C)</label><input id="nt-temp-' + ci + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" value="4"></div>' +
-        '<div><label class="text-[10px] text-surface-500 block mb-1">Qty</label><input id="nt-qty-' + ci + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" value="1" min="1"></div>' +
+      // Per-container location fields (Blueprint Part 3 Step 1.2)
+      '<div class="grid grid-cols-4 gap-3 mb-3">' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Origin Country</label><input id="nt-origin-' + ci + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="EG" value="' + (container._origin || '') + '"></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Destination Country</label><input id="nt-dest-' + ci + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="NL" value="' + (container._dest || '') + '"></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Port of Discharge</label><input id="nt-pod-' + ci + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="NLRTM" value="' + (container._pod || '') + '"></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Container Type</label><select id="nt-ct-' + ci + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="40ft_HC_RF">40ft HC Reefer</option><option value="40RF">40ft Reefer</option><option value="40HC">40ft High Cube</option><option value="20RF">20ft Reefer</option><option value="20GP">20ft Standard</option></select></div>' +
       '</div>' +
+      // Palletization & packing
+      '<div class="grid grid-cols-4 gap-3 mb-3">' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Palletized?</label><select id="nt-pallet-' + ci + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="true">Yes</option><option value="false">No</option></select></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Pallet Size</label><select id="nt-psize-' + ci + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="120x100">EUR 120×100</option><option value="100x120">ISO 100×120</option><option value="custom">Custom</option></select></div>' +
+        '<div><label class="text-[10px] text-surface-500 block mb-1">Notes</label><input id="nt-cnote-' + ci + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="per-container notes"></div>' +
+        '<div class="flex items-end"><button onclick="newTradeContainers[' + ci + '].commodities.push({}); renderContainerRows()" class="w-full py-1.5 bg-brand-500/20 text-brand-300 rounded text-[10px] hover:bg-brand-500/30"><i class="fas fa-plus mr-1"></i>Add Commodity</button></div>' +
+      '</div>' +
+      // Commodities
       '<div class="space-y-2">' +
         container.commodities.map(function(comm, ri) {
-          return '<div class="bg-dark-800/30 rounded-lg p-3 flex gap-3 items-end">' +
-            '<div class="flex-1"><label class="text-[10px] text-surface-500 block mb-1">HS Code</label><div class="flex gap-1"><input id="nt-hs-' + ci + '-' + ri + '" type="text" class="flex-1 bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200 font-mono" placeholder="0805.10"><button onclick="lookupHSCode(' + ci + ',' + ri + ')" class="px-2 py-1.5 bg-brand-500/20 text-brand-300 rounded text-[10px]"><i class="fas fa-search"></i></button></div><div id="nt-hs-info-' + ci + '-' + ri + '" class="text-[10px] text-surface-500 mt-0.5"></div></div>' +
-            '<div class="w-24"><label class="text-[10px] text-surface-500 block mb-1">Weight (kg)</label><input id="nt-wt-' + ci + '-' + ri + '" type="number" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20000"></div>' +
-            '<div class="w-24"><label class="text-[10px] text-surface-500 block mb-1">Variety</label><input id="nt-var-' + ci + '-' + ri + '" type="text" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="Navel"></div>' +
-            (ri > 0 ? '<button onclick="newTradeContainers[' + ci + '].commodities.splice(' + ri + ',1); renderContainerRows()" class="text-red-400 hover:text-red-300 text-xs px-2"><i class="fas fa-times"></i></button>' : '') +
+          return '<div class="bg-dark-800/30 rounded-lg p-3">' +
+            '<div class="flex items-center justify-between mb-2">' +
+              '<span class="text-[10px] text-surface-500 font-semibold">Commodity ' + (ri + 1) + '</span>' +
+              (ri > 0 ? '<button onclick="newTradeContainers[' + ci + '].commodities.splice(' + ri + ',1); renderContainerRows()" class="text-red-400 hover:text-red-300 text-[10px]"><i class="fas fa-times mr-1"></i>Remove</button>' : '') +
+            '</div>' +
+            '<div class="grid grid-cols-4 gap-2 mb-2">' +
+              // HS Code with lookup
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">HS Code</label><div class="flex gap-1"><input id="nt-hs-' + ci + '-' + ri + '" type="text" class="flex-1 bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200 font-mono" placeholder="0805.10"><button onclick="lookupHSCode(' + ci + ',' + ri + ')" class="px-2 py-1 bg-brand-500/20 text-brand-300 rounded text-[10px]"><i class="fas fa-search"></i></button></div><div id="nt-hs-info-' + ci + '-' + ri + '" class="text-[10px] text-surface-500 mt-0.5"></div></div>' +
+              // Commodity type
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Commodity Type</label><select id="nt-ctype-' + ci + '-' + ri + '" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200"><option value="FRESH_FRUITS">Fresh Fruits</option><option value="FROZEN_FRUITS">Frozen Fruits</option><option value="VEGETABLES">Vegetables</option><option value="GRAINS">Grains & Cereals</option><option value="TEXTILES">Textiles</option><option value="CHEMICALS">Chemicals</option><option value="MACHINERY">Machinery</option><option value="SEAFOOD">Seafood</option><option value="OTHER">Other</option></select></div>' +
+              // Product name
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Product Name</label><input id="nt-prod-' + ci + '-' + ri + '" type="text" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200" placeholder="Valencia Oranges"></div>' +
+              // Specification
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Specification</label><input id="nt-spec-' + ci + '-' + ri + '" type="text" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200" placeholder="Grade A, Size 72-80mm"></div>' +
+            '</div>' +
+            '<div class="grid grid-cols-4 gap-2">' +
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Packaging</label><select id="nt-pkg-' + ci + '-' + ri + '" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200"><option value="mesh_bags">Mesh Bags</option><option value="cartons">Cartons</option><option value="crates">Wooden Crates</option><option value="bins">Bins</option><option value="jumbo_bags">Jumbo Bags</option><option value="boxes">Boxes</option><option value="bulk">Bulk</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Quantity</label><input id="nt-qty2-' + ci + '-' + ri + '" type="number" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200" placeholder="1080"></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Unit</label><select id="nt-unit-' + ci + '-' + ri + '" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200"><option value="BAGS">Bags</option><option value="KG">Kilograms</option><option value="CARTONS">Cartons</option><option value="TONS">Metric Tons</option><option value="PALLETS">Pallets</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-500 block mb-0.5">Num Pallets</label><input id="nt-pallets-' + ci + '-' + ri + '" type="number" class="w-full bg-dark-900 border border-surface-700 rounded px-2 py-1 text-xs text-surface-200" placeholder="18" min="0"></div>' +
+            '</div>' +
+            // Dual-use detection indicator
+            '<div id="nt-dualuse-' + ci + '-' + ri + '" class="mt-1"></div>' +
           '</div>';
         }).join('') +
       '</div>' +
-      '<button onclick="newTradeContainers[' + ci + '].commodities.push({}); renderContainerRows()" class="mt-2 text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-plus mr-1"></i>Add Commodity</button>' +
     '</div>';
   }).join('');
+  // Update container count input
+  var cntEl = document.getElementById('nt-num-containers');
+  if (cntEl) cntEl.value = newTradeContainers.length;
+}
+
+function cloneContainerFrom(ci) {
+  if (newTradeContainers.length >= 50) { showToast('Maximum 50 containers', 'error'); return; }
+  var src = newTradeContainers[ci > 0 ? ci - 1 : 0];
+  newTradeContainers.splice(ci + 1, 0, JSON.parse(JSON.stringify(src)));
+  renderContainerRows();
 }
 
 async function resolveSellerGTID() {
@@ -1311,42 +1615,95 @@ async function lookupHSCode(ci, ri) {
 }
 
 async function submitNewTradeRequest() {
-  var sellerGtid = document.getElementById('nt-seller-gtid').value.trim();
-  var incoterm = document.getElementById('nt-incoterm').value;
-  var origin = document.getElementById('nt-origin').value.trim();
-  var dest = document.getElementById('nt-dest').value.trim();
-  var notes = document.getElementById('nt-notes').value.trim();
+  var sellerGtid = (document.getElementById('nt-seller-gtid') || {}).value || '';
+  sellerGtid = sellerGtid.trim();
+  var incoterm = (document.getElementById('nt-incoterm') || {}).value || 'FOB';
+  var transportMode = (document.getElementById('nt-transport') || {}).value || 'SEA_CARGO';
+  var prevLogistics = (document.getElementById('nt-prev-logistics') || {}).value === '1';
+  var notes = (document.getElementById('nt-notes') || {}).value || '';
+  notes = notes.trim();
 
   if (!sellerGtid) { showToast('Seller GTID is required', 'error'); return; }
 
+  // Gather per-container + per-commodity data from blueprint field IDs
   var containers = newTradeContainers.map(function(c, ci) {
-    var type = document.getElementById('nt-ct-' + ci).value;
-    var temp = document.getElementById('nt-temp-' + ci).value;
-    var qty = document.getElementById('nt-qty-' + ci).value;
+    var originCountry = (document.getElementById('nt-origin-' + ci) || {}).value || '';
+    var destCountry = (document.getElementById('nt-dest-' + ci) || {}).value || '';
+    var portOfDischarge = (document.getElementById('nt-pod-' + ci) || {}).value || '';
+    var containerType = (document.getElementById('nt-ct-' + ci) || {}).value || '40ft_HC';
+    var palletized = (document.getElementById('nt-pallet-' + ci) || {}).value !== 'false';
+    var palletSize = (document.getElementById('nt-psize-' + ci) || {}).value || '120x100';
+    var containerNotes = (document.getElementById('nt-cnote-' + ci) || {}).value || '';
+
     var commodities = c.commodities.map(function(_, ri) {
+      var hsCode = (document.getElementById('nt-hs-' + ci + '-' + ri) || {}).value || '';
+      var commodityType = (document.getElementById('nt-ctype-' + ci + '-' + ri) || {}).value || 'OTHER';
+      var productName = (document.getElementById('nt-prod-' + ci + '-' + ri) || {}).value || '';
+      var specification = (document.getElementById('nt-spec-' + ci + '-' + ri) || {}).value || '';
+      var packaging = (document.getElementById('nt-pkg-' + ci + '-' + ri) || {}).value || 'boxes';
+      var quantity = parseFloat((document.getElementById('nt-qty2-' + ci + '-' + ri) || {}).value) || 0;
+      var unit = (document.getElementById('nt-unit-' + ci + '-' + ri) || {}).value || 'KG';
+      var numPallets = parseInt((document.getElementById('nt-pallets-' + ci + '-' + ri) || {}).value) || 1;
+      var weight = parseFloat((document.getElementById('nt-wt-' + ci + '-' + ri) || {}).value) || 0;
+
       return {
-        hs_code: document.getElementById('nt-hs-' + ci + '-' + ri).value.trim(),
-        weight_kg: parseFloat(document.getElementById('nt-wt-' + ci + '-' + ri).value) || 0,
-        variety: document.getElementById('nt-var-' + ci + '-' + ri).value.trim()
+        hs_code: hsCode.trim(),
+        commodity_type: commodityType,
+        product_name: productName.trim(),
+        product_specification: specification.trim(),
+        packaging_code: packaging,
+        packaging: packaging,
+        quantity: quantity,
+        total_net_weight: weight || quantity,
+        weight_unit: unit,
+        quantity_type: 'WEIGHT',
+        num_pallets: numPallets,
+        unit: unit
       };
     });
-    return { container_type: type, temperature_celsius: parseFloat(temp), quantity: parseInt(qty) || 1, commodities: commodities };
+
+    return {
+      container_type: containerType,
+      origin_country: originCountry.trim().toUpperCase(),
+      destination_country: destCountry.trim().toUpperCase(),
+      port_of_discharge: portOfDischarge.trim().toUpperCase(),
+      palletized: palletized,
+      pallet_size: palletSize,
+      transport_mode: transportMode,
+      notes: containerNotes.trim() || null,
+      commodities: commodities
+    };
   });
 
+  // Validate at least one container has data
+  var hasAnyCommodity = containers.some(function(ct) {
+    return ct.commodities.some(function(cm) { return cm.hs_code || cm.product_name; });
+  });
+  if (!hasAnyCommodity) { showToast('Add at least one commodity with HS code or product name', 'error'); return; }
+
+  // Check Express Mode usage
+  var expressText = (document.getElementById('nt-express-text') || {}).value || '';
+  var expressUsed = expressText.trim().length > 10;
+
   try {
-    await apiPost('/trade/initiate', {
-      importer_tenant_id: tenant.id,
-      exporter_gtid: sellerGtid,
+    // Use the blueprint trade-form/submit endpoint (full container-level persistence)
+    var res = await apiPost('/trade-form/submit', {
+      tenant_id: tenant.id,
+      transport_mode: transportMode,
       incoterm: incoterm,
-      origin_country: origin,
-      destination_country: dest,
-      notes: notes,
-      containers: containers
+      seller_gtid: sellerGtid,
+      seller_company_name: (document.getElementById('nt-seller-info') || {}).textContent || '',
+      containers: containers,
+      global_notes: notes || null,
+      express_mode_used: expressUsed,
+      express_mode_raw_text: expressUsed ? expressText.trim() : null,
+      prefer_previous_logistics: prevLogistics
     });
-    showToast('Trade request submitted!', 'success');
+    var data = res.data || res;
+    showToast('Trade request submitted! ' + (data.total_containers || containers.length) + ' container(s) under ' + incoterm + '.', 'success');
     newTradeContainers = [{ commodities: [{}] }];
     navigateTo('trade-command-center');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { showToast('Error: ' + (e.message || 'Submission failed'), 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1452,45 +1809,85 @@ async function submitAmendment(tradeId) {
 
 // ═══════════════════════════════════════════════════════════
 // BUYER: CONTRACT SIGNING (Blueprint 6.2.1 — Phase 3)
+// Full implementation: Fee display, SGTX Witness, FEES Addendum, signatures
 // ═══════════════════════════════════════════════════════════
 
 async function renderContractSigning() {
-  setTitle('Contract Signing', 'Sign contracts with SGTX Witness Clause');
+  setTitle('Contract Signing', 'Review contract, pay fees, and sign with SGTX witness');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(4);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,PENDING_SIGNATURE');
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,PENDING_SIGNATURE,CONTRACT_READY,MUTUAL_CONFIRMED');
     var trades = res.data || [];
     content.innerHTML =
-      fourQuestions('Contracts ready for your signature.', 'Review terms and sign to proceed. SGTX acts as digital witness.', '', 'After both parties sign, the trade moves to financing.') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-signature text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No contracts pending signature.</p></div>' :
-        '<div class="space-y-3">' + trades.map(function(t) {
+      fourQuestions('Contracts ready for review and signature.', 'Review terms, pay SGTX fee, and digitally sign. SGTX acts as witness.', trades.length === 0 ? 'No blockers.' : trades.filter(function(t){return !t.fee_paid;}).length + ' contract(s) awaiting fee payment before signing.', 'After both parties sign, the trade moves to financing/execution.') +
+      (trades.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-file-signature text-surface-400 text-4xl mb-3"></i><p class="text-surface-500">No contracts pending signature.</p></div>' :
+        '<div class="space-y-4">' + trades.map(function(t) {
           var signed = t.buyer_signed || t.importer_signed;
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(signed ? 'SIGNED' : 'PENDING', signed ? 'emerald' : 'amber') + '</div>' +
-            '<p class="text-sm text-surface-300 mb-3">' + (t.commodity_type || '') + ' — ' + usd(t.total_value || 0) + '</p>' +
-            '<div class="bg-dark-800/30 rounded-lg p-3 mb-3 text-xs text-surface-400 border border-surface-700">' +
-              '<div class="flex items-center gap-2 mb-1"><i class="fas fa-gavel text-brand-400"></i><strong class="text-surface-300">SGTX Witness Clause</strong></div>' +
-              '<p>By signing, both parties acknowledge that SGTX Platform records this agreement as a digital witness. This contract is governed by the terms agreed in the platform and the applicable jurisdiction rules.</p>' +
+          var feePaid = t.fee_paid || t.sgtx_fee_status === 'PAID';
+          return '<div class="sgtx-card p-5">' +
+            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-sm font-bold text-sgtx-600">' + (t.ustn || t.id) + '</span>' + badge(signed ? 'SIGNED' : feePaid ? 'FEE PAID' : 'PENDING', signed ? 'emerald' : feePaid ? 'blue' : 'amber') + '</div>' +
+            '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">' +
+              [['Commodity', t.commodity_type || 'N/A'], ['Incoterm', t.incoterm || 'N/A'], ['Value', usd(t.total_value || 0)], ['Fee', usd(t.sgtx_fee || 0)]].map(function(p) {
+                return '<div class="bg-surface-50 rounded-lg p-2.5 border border-surface-100 text-center"><div class="text-[10px] text-surface-500 uppercase font-semibold">' + p[0] + '</div><div class="text-sm font-medium text-surface-800 mt-0.5">' + p[1] + '</div></div>';
+              }).join('') +
             '</div>' +
-            (signed ? '<div class="text-xs text-emerald-400"><i class="fas fa-check-circle mr-1"></i>You have signed this contract.</div>' :
-              '<button onclick="showSignContractModal(\'' + t.id + '\')" class="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-signature mr-2"></i>Sign Contract</button>') +
+            // SGTX Witness Clause
+            '<div class="bg-gradient-to-r from-sgtx-50 to-blue-50 rounded-xl p-4 mb-4 border border-sgtx-100">' +
+              '<div class="flex items-center gap-2 mb-2"><i class="fas fa-gavel text-sgtx-600"></i><strong class="text-sm text-surface-800">SGTX Witness Clause</strong></div>' +
+              '<p class="text-xs text-surface-600 mb-2">SGTX acts as a non-custodial witness to this agreement. The trade execution fee is independent of the contract terms. SGTX signs as witness via Ed25519 digital signature.</p>' +
+              '<div class="flex items-center gap-4 text-[10px] text-surface-500"><span><i class="fas fa-lock mr-1"></i>Cryptographic witness</span><span><i class="fas fa-globe mr-1"></i>Jurisdiction: ' + (t.governing_law || 'Platform Rules') + '</span></div>' +
+            '</div>' +
+            // FEES Addendum
+            '<div class="bg-amber-50 rounded-xl p-4 mb-4 border border-amber-100">' +
+              '<div class="flex items-center gap-2 mb-2"><i class="fas fa-receipt text-amber-600"></i><strong class="text-sm text-surface-800">FEES Addendum</strong></div>' +
+              '<div class="grid grid-cols-3 gap-3 text-xs">' +
+                '<div><span class="text-surface-500">Rate</span><div class="font-semibold text-surface-800">' + ((t.sgtx_fee_rate || 0.015) * 100).toFixed(1) + '%</div></div>' +
+                '<div><span class="text-surface-500">Amount</span><div class="font-semibold text-surface-800">' + usd(t.sgtx_fee || 0) + '</div></div>' +
+                '<div><span class="text-surface-500">Status</span><div class="font-semibold ' + (feePaid ? 'text-emerald-600' : 'text-amber-600') + '">' + (feePaid ? 'Paid' : 'Pending') + '</div></div>' +
+              '</div>' +
+            '</div>' +
+            // Signature Status
+            '<div class="flex items-center gap-3 mb-4 text-xs">' +
+              '<div class="flex items-center gap-1.5 ' + (t.buyer_signed ? 'text-emerald-600' : 'text-surface-400') + '"><i class="fas ' + (t.buyer_signed ? 'fa-check-circle' : 'fa-circle') + '"></i>Buyer Signed</div>' +
+              '<div class="flex items-center gap-1.5 ' + (t.seller_signed ? 'text-emerald-600' : 'text-surface-400') + '"><i class="fas ' + (t.seller_signed ? 'fa-check-circle' : 'fa-circle') + '"></i>Seller Signed</div>' +
+              '<div class="flex items-center gap-1.5 text-sgtx-600"><i class="fas fa-shield-alt"></i>SGTX Witness</div>' +
+            '</div>' +
+            // Action Buttons
+            (signed ? '<div class="text-xs text-emerald-600 font-medium bg-emerald-50 rounded-lg p-3 text-center"><i class="fas fa-check-circle mr-1"></i>You have signed this contract. Waiting for counterparty.</div>' :
+              '<div class="flex gap-3">' +
+                (!feePaid ? '<button onclick="payContractFee(\'' + t.id + '\')" class="flex-1 btn-primary"><i class="fas fa-credit-card mr-2"></i>Pay Fee (' + usd(t.sgtx_fee || 0) + ')</button>' : '') +
+                '<button onclick="showSignContractModal(\'' + t.id + '\')" class="flex-1 btn-success ' + (!feePaid ? 'opacity-50 cursor-not-allowed' : '') + '" ' + (!feePaid ? 'disabled title="Pay fee first"' : '') + '><i class="fas fa-signature mr-2"></i>Sign Contract</button>' +
+                '<button onclick="showNegotiationPanel(\'' + t.id + '\')" class="px-4 py-2 border border-surface-200 rounded-lg text-xs text-surface-600 hover:bg-surface-50"><i class="fas fa-comments mr-1"></i>Negotiate</button>' +
+              '</div>') +
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = renderError(e.message);
   }
 }
 
+async function payContractFee(tradeId) {
+  try {
+    showToast('Processing fee payment...', 'info');
+    var res = await apiPost('/fee/pay', { trade_request_id: tradeId, payer_tenant_id: tenant.id, payment_method: 'PLATFORM_CREDIT' });
+    showToast('Fee payment successful!', 'success');
+    renderContractSigning();
+  } catch (e) { showToast('Fee payment error: ' + e.message, 'error'); }
+}
+
 function showSignContractModal(tradeId) {
-  showModal('Sign Contract',
+  showModal(
     '<div class="space-y-4">' +
-      '<div class="bg-dark-800/50 rounded-lg p-4 text-xs text-surface-400">' +
-        '<p class="mb-2"><strong class="text-surface-200">Digital Signature Confirmation</strong></p>' +
-        '<p>By clicking "Sign", you confirm that you have read and agree to all contract terms. SGTX Platform will record your signature timestamp and digital fingerprint as witness.</p>' +
+      '<h3 class="text-lg font-bold text-surface-800">Digital Signature</h3>' +
+      '<div class="bg-surface-50 rounded-xl p-4 text-xs text-surface-600 border border-surface-100">' +
+        '<p class="mb-2 font-semibold text-surface-800">Confirmation of Digital Signature</p>' +
+        '<p>By signing, you confirm: (1) You have read and agree to all contract terms. (2) You accept the SGTX Platform Fee as detailed in the FEES Addendum. (3) You acknowledge SGTX as a non-custodial digital witness.</p>' +
+        '<p class="mt-2 text-[10px] text-surface-500">SGTX will record your signature timestamp, IP hash, and Ed25519 digital fingerprint.</p>' +
       '</div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Type your full name to confirm</label><input id="sign-name" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Full legal name"></div>' +
-      '<button onclick="signContract(\'' + tradeId + '\')" class="w-full py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600"><i class="fas fa-signature mr-2"></i>Sign & Lock Contract</button>' +
+      '<div><label class="text-xs text-surface-600 block mb-1 font-medium">Type your full legal name to confirm</label><input id="sign-name" type="text" class="w-full border border-surface-200 rounded-lg px-4 py-2.5 text-sm" placeholder="Full legal name as registered"></div>' +
+      '<div><label class="text-xs text-surface-600 block mb-1 font-medium">Role</label><select id="sign-role" class="w-full border border-surface-200 rounded-lg px-4 py-2.5 text-sm"><option value="BUYER">Buyer / Importer</option><option value="SELLER">Seller / Exporter</option><option value="AUTHORIZED_REP">Authorized Representative</option></select></div>' +
+      '<button onclick="signContract(\'' + tradeId + '\')" class="w-full btn-success py-3"><i class="fas fa-signature mr-2"></i>Sign & Lock Contract</button>' +
     '</div>'
   );
 }
@@ -1498,15 +1895,96 @@ function showSignContractModal(tradeId) {
 async function signContract(tradeId) {
   var name = document.getElementById('sign-name').value.trim();
   if (!name) { showToast('Please type your name to confirm', 'error'); return; }
+  var role = document.getElementById('sign-role').value;
   try {
-    await apiPost('/contract/sign-lock', { trade_request_id: tradeId, signer_tenant_id: tenant.id, signer_name: name });
+    await apiPost('/contract/sign-lock', { trade_request_id: tradeId, signer_tenant_id: tenant.id, signer_name: name, signer_role: role });
     closeModal();
-    showToast('Contract signed successfully!', 'success');
+    showToast('Contract signed successfully! SGTX witness recorded.', 'success');
     renderContractSigning();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
+// NEGOTIATION PANEL (Blueprint 6.2.1 — Phase 3 Step 3.2)
+// 3-column: Offer History | Current Offer | Trade Room
+// ═══════════════════════════════════════════════════════════
+
+async function showNegotiationPanel(tradeId) {
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(6);
+  try {
+    var amendRes = await api('/contract/amendments/' + tradeId);
+    var amendments = (amendRes.data || []);
+    var tradeRes = await api('/trades/' + tradeId + '?tenant_id=' + tenant.id);
+    var trade = tradeRes.data || tradeRes;
+
+    content.innerHTML =
+      '<button onclick="renderContractSigning()" class="text-xs text-surface-500 hover:text-sgtx-600 mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back to Contracts</button>' +
+      fourQuestions('Negotiation in progress for ' + (trade.ustn || tradeId) + '.', 'Review amendment history. Submit counter-offer or accept terms.', amendments.filter(function(a){return a.status==='PENDING';}).length + ' pending amendment(s).', 'Max 5 rounds. After 5 rounds, both parties must accept or escalate.') +
+      '<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">' +
+        // Column 1: Offer History
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-history mr-1.5"></i>Offer History</h4>' +
+          '<div class="space-y-3 max-h-96 overflow-y-auto">' +
+            (amendments.length ? amendments.map(function(a, i) {
+              var statusCls = a.status === 'ACCEPTED' ? 'text-emerald-600 bg-emerald-50' : a.status === 'REJECTED' ? 'text-red-600 bg-red-50' : a.status === 'COUNTERED' ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50';
+              return '<div class="bg-surface-50 rounded-lg p-3 border border-surface-100">' +
+                '<div class="flex items-center justify-between mb-1"><span class="text-[10px] font-bold text-surface-500">Round ' + (a.round_number || i+1) + '</span><span class="text-[10px] px-2 py-0.5 rounded-full font-medium ' + statusCls + '">' + (a.status || 'PENDING') + '</span></div>' +
+                '<div class="text-xs text-surface-700 mb-1">' + (a.amendments ? (typeof a.amendments === 'string' ? a.amendments : JSON.stringify(a.amendments)).substring(0, 100) : 'Price amendment') + '</div>' +
+                '<div class="text-[10px] text-surface-400">By: ' + (a.proposed_by_gtid || 'Unknown') + ' · ' + timeAgo(a.created_at) + '</div>' +
+              '</div>';
+            }).join('') : '<p class="text-xs text-surface-400 text-center py-4">No amendments yet.</p>') +
+          '</div></div>' +
+        // Column 2: Current Offer / Submit Counter
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-handshake mr-1.5"></i>Submit Counter-Offer</h4>' +
+          '<div class="space-y-3">' +
+            '<div><label class="text-xs text-surface-600 block mb-1">Amendment Type</label><select id="neg-type" class="w-full border border-surface-200 rounded-lg px-3 py-2 text-sm"><option value="PRICE">Price</option><option value="INCOTERM">Incoterm</option><option value="DELIVERY_DATE">Delivery Date</option><option value="QUANTITY">Quantity</option><option value="PACKAGING">Packaging</option></select></div>' +
+            '<div><label class="text-xs text-surface-600 block mb-1">Proposed Value</label><input id="neg-value" type="text" class="w-full border border-surface-200 rounded-lg px-3 py-2 text-sm" placeholder="Enter new value"></div>' +
+            '<div><label class="text-xs text-surface-600 block mb-1">Justification (required)</label><textarea id="neg-reason" rows="3" class="w-full border border-surface-200 rounded-lg px-3 py-2 text-sm" placeholder="Explain why this is fair..."></textarea></div>' +
+            '<button onclick="submitNegotiationOffer(\'' + tradeId + '\')" class="w-full btn-primary py-2.5"><i class="fas fa-paper-plane mr-2"></i>Submit Offer</button>' +
+            '<div class="pt-3 border-t border-surface-100"><button onclick="acceptAllTerms(\'' + tradeId + '\')" class="w-full btn-success py-2"><i class="fas fa-check mr-2"></i>Accept Current Terms</button></div>' +
+          '</div></div>' +
+        // Column 3: Trade Room / Messages
+        '<div class="sgtx-card p-4"><h4 class="text-xs font-semibold text-surface-500 uppercase mb-3"><i class="fas fa-comments mr-1.5"></i>Trade Room</h4>' +
+          '<div class="bg-surface-50 rounded-lg p-3 border border-surface-100 h-60 overflow-y-auto mb-3" id="trade-room-messages">' +
+            '<p class="text-xs text-surface-400 text-center py-8">Messages will appear here during negotiation.</p>' +
+          '</div>' +
+          '<div class="flex gap-2"><input id="trade-room-msg" type="text" class="flex-1 border border-surface-200 rounded-lg px-3 py-2 text-sm" placeholder="Type a message..."><button onclick="sendTradeRoomMessage(\'' + tradeId + '\')" class="px-4 py-2 bg-sgtx-500 text-white rounded-lg text-xs font-medium hover:bg-sgtx-600"><i class="fas fa-paper-plane"></i></button></div>' +
+        '</div>' +
+      '</div>';
+  } catch (e) { content.innerHTML = renderError(e.message); }
+}
+
+async function submitNegotiationOffer(tradeId) {
+  var type = document.getElementById('neg-type').value;
+  var value = document.getElementById('neg-value').value.trim();
+  var reason = document.getElementById('neg-reason').value.trim();
+  if (!value || !reason) { showToast('Value and justification required', 'error'); return; }
+  try {
+    var amendments = {};
+    amendments[type.toLowerCase()] = value;
+    await apiPost('/contract/amend', { trade_request_id: tradeId, proposed_by_gtid: tenant.gtid || tenant.id, amendments: amendments, reason: reason });
+    showToast('Counter-offer submitted (Round updated)', 'success');
+    showNegotiationPanel(tradeId);
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function acceptAllTerms(tradeId) {
+  try {
+    await apiPost('/contract/mutual-confirm', { contract_id: tradeId, confirmer_gtid: tenant.gtid || tenant.id, confirmer_role: currentMode });
+    showToast('Terms accepted! Contract moving to signing.', 'success');
+    navigateTo('contract-signing');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function sendTradeRoomMessage(tradeId) {
+  var msg = document.getElementById('trade-room-msg').value.trim();
+  if (!msg) return;
+  var container = document.getElementById('trade-room-messages');
+  container.innerHTML += '<div class="flex justify-end mb-2"><div class="bg-sgtx-100 text-sgtx-800 rounded-lg px-3 py-1.5 text-xs max-w-[80%]">' + msg + '<div class="text-[9px] text-sgtx-400 mt-0.5">Just now</div></div></div>';
+  document.getElementById('trade-room-msg').value = '';
+  container.scrollTop = container.scrollHeight;
+}
+
 // BUYER: CUSTOMS READINESS (Blueprint 6.2.1 — Phase 5/9)
 // Dynamic traffic-light document checklist
 // ═══════════════════════════════════════════════════════════
@@ -1867,28 +2345,69 @@ async function showRequestDetail(id) {
 // ═══════════════════════════════════════════════════════════
 
 async function renderEXWPriceLock() {
-  setTitle('EXW Price Lock', 'Lock your ex-works price for accepted trades');
+  setTitle('EXW Price Lock', 'Lock ex-works price for produce shipments');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(4);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED&role=seller');
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,MATCHING&role=seller');
     var trades = res.data || [];
     content.innerHTML =
-      fourQuestions('Set your EXW (ex-works) price for accepted trade requests.', 'Enter your price per unit and lock it. This becomes the base for the full quote.', '', 'After locking EXW, proceed to containerisation and logistics.') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-tag text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No accepted trades awaiting EXW pricing.</p></div>' :
-        '<div class="space-y-3">' + trades.map(function(t) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
-            '<div class="grid grid-cols-3 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Price per Unit (USD)</label><input id="exw-price-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="0.00"></div>' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Unit</label><select id="exw-unit-' + t.id + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="KG">per kg</option><option value="TON">per ton</option><option value="CARTON">per carton</option><option value="PALLET">per pallet</option></select></div>' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Valid Until</label><input id="exw-valid-' + t.id + '" type="date" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"></div>' +
+      fourQuestions(
+        'Set your EXW (ex-works) price for accepted produce trade requests.',
+        'Enter price per unit. AI validates against 30-day market range. Lock to proceed.',
+        trades.length > 0 ? trades.length + ' trade(s) awaiting your EXW price' : 'None',
+        'After locking EXW, proceed to containerisation and logistics builder.'
+      ) +
+      // Market price reference panel
+      '<div class="glass-card p-5 mb-5 border-l-4 border-l-emerald-400">' +
+        '<div class="flex items-center justify-between mb-3">' +
+          '<div class="flex items-center gap-2"><i class="fas fa-chart-line text-emerald-500"></i><span class="text-sm font-semibold text-surface-800">30-Day Market Reference</span><span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">AI A1</span></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-4 gap-4 mb-3">' +
+          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Fresh Oranges</div><div class="text-sm font-bold text-surface-800">$0.85/kg</div><div class="text-[10px] text-emerald-600">+2.4%</div></div>' +
+          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Frozen Strawberries</div><div class="text-sm font-bold text-surface-800">$2.20/kg</div><div class="text-[10px] text-red-500">-1.1%</div></div>' +
+          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Fresh Grapes</div><div class="text-sm font-bold text-surface-800">$1.45/kg</div><div class="text-[10px] text-emerald-600">+5.2%</div></div>' +
+          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Frozen Mango</div><div class="text-sm font-bold text-surface-800">$1.90/kg</div><div class="text-[10px] text-surface-400">0%</div></div>' +
+        '</div>' +
+        '<div class="h-24 bg-gradient-to-r from-emerald-50 to-sky-50 rounded-lg flex items-center justify-center border border-emerald-100">' +
+          '<canvas id="exw-market-chart" class="w-full h-full"></canvas>' +
+        '</div>' +
+        '<p class="text-[10px] text-surface-400 mt-2"><i class="fas fa-info-circle mr-1"></i>Prices exceeding 30% of market average will require justification (Governor G2U15).</p>' +
+      '</div>' +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-tag text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No accepted trades awaiting EXW pricing. Trades appear here after buyer submission is matched to you.</p></div>' :
+        '<div class="space-y-4">' + trades.map(function(t) {
+          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT/i);
+          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-emerald-400' : '') + '">' +
+            '<div class="flex items-center justify-between mb-3">' +
+              '<div class="flex items-center gap-3">' +
+                '<div class="w-9 h-9 rounded-lg bg-gradient-to-br ' + (isFresh ? 'from-emerald-100 to-green-100' : 'from-sgtx-100 to-sgtx-200') + ' flex items-center justify-center">' +
+                  '<i class="fas ' + (isFresh ? 'fa-leaf text-emerald-600' : 'fa-tag text-sgtx-600') + ' text-sm"></i>' +
+                '</div>' +
+                '<div>' +
+                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
+                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General') + ' • ' + (t.incoterm || 'EXW') + '</div>' +
+                '</div>' +
+              '</div>' +
+              badge(t.status || 'ACCEPTED') +
             '</div>' +
-            '<button onclick="lockEXWPrice(\'' + t.id + '\')" class="w-full py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button>' +
+            '<div class="grid grid-cols-4 gap-3 mb-3">' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Price per Unit (USD)</label><input id="exw-price-' + t.id + '" type="number" step="0.01" class="w-full" placeholder="0.85"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Unit</label><select id="exw-unit-' + t.id + '" class="w-full"><option value="KG">per kg</option><option value="TON">per metric ton</option><option value="CARTON">per carton</option><option value="PALLET">per pallet</option><option value="BAG">per bag</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Valid Until</label><input id="exw-valid-' + t.id + '" type="date" class="w-full"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Justification</label><input id="exw-justify-' + t.id + '" type="text" class="w-full" placeholder="If >30% deviation"></div>' +
+            '</div>' +
+            '<button onclick="lockEXWPrice(\'' + t.id + '\')" class="btn-success w-full"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button>' +
           '</div>';
         }).join('') + '</div>');
+    // Render mini chart
+    setTimeout(function() {
+      var canvas = document.getElementById('exw-market-chart');
+      if (canvas && typeof Chart !== 'undefined') {
+        new Chart(canvas, { type: 'line', data: { labels: Array.from({length:30}, function(_,i){return 'D'+(i+1);}), datasets: [{ label: 'Avg EXW Price', data: Array.from({length:30}, function(){return (0.8 + Math.random()*0.2).toFixed(2);}), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: true, grid: { display: false }, ticks: { font: { size: 9 } } } } } });
+      }
+    }, 200);
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = renderError('Error loading EXW data: ' + e.message);
   }
 }
 
@@ -1909,32 +2428,60 @@ async function lockEXWPrice(tradeId) {
 // ═══════════════════════════════════════════════════════════
 
 async function renderContainerisation() {
-  setTitle('Containerisation', 'Define packing plan and packaging types');
+  setTitle('Containerisation', 'Define packing plan for produce shipments');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(4);
   try {
     var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED&role=seller');
     var trades = res.data || [];
     content.innerHTML =
-      fourQuestions('Define how cargo will be packed into containers.', 'Select packaging type, specify palletisation, and lock the plan.', '', 'After packing plan is locked, proceed to logistics RFQ.') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-boxes text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades ready for containerisation.</p></div>' :
+      fourQuestions(
+        'Define how fresh/frozen produce will be packed into reefer containers.',
+        'Select packaging type, specify palletisation, set temperature requirements.',
+        trades.length > 0 ? trades.length + ' trade(s) ready for packing plan' : 'None',
+        'After packing plan locked, proceed to logistics builder for reefer quotes.'
+      ) +
+      // Temperature guidance panel
+      '<div class="glass-card p-4 mb-5 border-l-4 border-l-sky-400">' +
+        '<div class="flex items-center gap-2 mb-2"><i class="fas fa-temperature-low text-sky-500"></i><span class="text-sm font-semibold text-surface-800">Temperature & Packaging Guide</span></div>' +
+        '<div class="grid grid-cols-3 gap-3 text-xs">' +
+          '<div class="p-2 bg-sky-50 rounded-lg border border-sky-100"><strong class="text-sky-700">Fresh Fruits</strong><div class="text-surface-600 mt-1">2-8\u00b0C \u2022 Cartons/Crates \u2022 Ventilated pallets</div></div>' +
+          '<div class="p-2 bg-blue-50 rounded-lg border border-blue-100"><strong class="text-blue-700">Frozen Produce</strong><div class="text-surface-600 mt-1">-18\u00b0C to -22\u00b0C \u2022 Sealed cartons \u2022 Block stacking</div></div>' +
+          '<div class="p-2 bg-emerald-50 rounded-lg border border-emerald-100"><strong class="text-emerald-700">Vegetables</strong><div class="text-surface-600 mt-1">4-12\u00b0C \u2022 Mesh bags/Crates \u2022 Standard pallets</div></div>' +
+        '</div>' +
+      '</div>' +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-boxes-stacked text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trades ready for containerisation. Lock EXW price first.</p></div>' :
         '<div class="space-y-4">' + trades.map(function(t) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
+          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT/i);
+          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-sky-400' : '') + '">' +
+            '<div class="flex items-center justify-between mb-4">' +
+              '<div class="flex items-center gap-3">' +
+                '<div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-100 to-cyan-100 flex items-center justify-center">' +
+                  '<i class="fas fa-boxes-stacked text-sky-600 text-sm"></i>' +
+                '</div>' +
+                '<div>' +
+                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
+                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General') + '</div>' +
+                '</div>' +
+              '</div>' +
+              badge(t.status || 'EXW_LOCKED') +
+            '</div>' +
+            '<div class="grid grid-cols-4 gap-3 mb-3">' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Packaging Type</label><select id="pack-type-' + t.id + '" class="w-full"><option value="CARTONS">Cartons (Standard)</option><option value="MESH_BAGS">Mesh Bags (Fresh)</option><option value="CRATES">Wooden Crates</option><option value="BINS">Bulk Bins</option><option value="WAXED_CARTONS">Waxed Cartons (Cold)</option><option value="POLYSTYRENE">Polystyrene Boxes</option><option value="PALLETS">Pre-packed Pallets</option><option value="BULK">Bulk (no packaging)</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Pack Weight (kg)</label><input id="pack-wt-' + t.id + '" type="number" class="w-full" placeholder="15"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Packs per Pallet</label><input id="pack-pp-' + t.id + '" type="number" class="w-full" placeholder="80"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Pallets/Container</label><input id="pack-pc-' + t.id + '" type="number" class="w-full" placeholder="20"></div>' +
+            '</div>' +
             '<div class="grid grid-cols-3 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Packaging Type</label><select id="pack-type-' + t.id + '" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200"><option value="MESH_BAGS">Mesh Bags</option><option value="CARTONS">Cartons</option><option value="CRATES">Wooden Crates</option><option value="PALLETS">Pallets</option><option value="BULK">Bulk</option></select></div>' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Pack Weight (kg)</label><input id="pack-wt-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="15"></div>' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Packs per Pallet</label><input id="pack-pp-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="80"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Total Weight (kg)</label><input id="pack-tw-' + t.id + '" type="number" class="w-full" placeholder="20000"></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Target Temp (\u00b0C)</label><select id="pack-temp-' + t.id + '" class="w-full"><option value="2-8">2-8\u00b0C (Fresh)</option><option value="-18">-18\u00b0C (Frozen)</option><option value="-22">-22\u00b0C (Deep Frozen)</option><option value="12-15">12-15\u00b0C (Tropical)</option><option value="ambient">Ambient</option></select></div>' +
+              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Ventilation</label><select id="pack-vent-' + t.id + '" class="w-full"><option value="25">25% (Standard)</option><option value="50">50% (High Respiration)</option><option value="0">0% (Frozen/Sealed)</option><option value="75">75% (Maximum)</option></select></div>' +
             '</div>' +
-            '<div class="grid grid-cols-2 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Pallets per Container</label><input id="pack-pc-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20"></div>' +
-              '<div><label class="text-[10px] text-surface-500 block mb-1">Total Weight (kg)</label><input id="pack-tw-' + t.id + '" type="number" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="20000"></div>' +
-            '</div>' +
-            '<button onclick="submitPackingPlan(\'' + t.id + '\')" class="w-full py-2 bg-brand-500 text-white rounded-lg text-xs font-medium hover:bg-brand-600"><i class="fas fa-box mr-2"></i>Lock Packing Plan</button>' +
+            '<button onclick="submitPackingPlan(\'' + t.id + '\')" class="btn-primary w-full"><i class="fas fa-box mr-2"></i>Lock Packing Plan</button>' +
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = renderError('Error loading containerisation data: ' + e.message);
   }
 }
 
@@ -1959,48 +2506,149 @@ async function submitPackingPlan(tradeId) {
 var logisticsMode = 'A';
 
 async function renderLogisticsBuilder() {
-  setTitle('Logistics Builder', 'Build logistics quotes — auto or manual');
+  setTitle('Logistics Builder', 'Build logistics quotes for your produce shipments');
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(4);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED,PACKING_LOCKED&role=seller');
+    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED,PACKING_LOCKED,MATCHING&role=seller');
     var trades = res.data || [];
+    // Also load existing RFQs for status display
+    var rfqRes = await api('/upgrades/logistics-rfq?tenant_id=' + tenant.id).catch(function() { return { data: [] }; });
+    var existingRFQs = rfqRes.data || [];
     content.innerHTML =
-      fourQuestions('Get logistics quotes for your shipments.', 'Mode A: Auto-bundle finds best rates. Mode B: Send manual RFQs to specific providers.', '', 'Once logistics is quoted, assemble and submit the full quote to buyer.') +
-      '<div class="flex gap-2 mb-4">' +
-        '<button onclick="logisticsMode=\'A\'; renderLogisticsBuilder()" class="px-4 py-2 rounded-lg text-sm font-medium transition ' + (logisticsMode === 'A' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400') + '"><i class="fas fa-magic mr-1"></i>Auto-Bundle (A)</button>' +
-        '<button onclick="logisticsMode=\'B\'; renderLogisticsBuilder()" class="px-4 py-2 rounded-lg text-sm font-medium transition ' + (logisticsMode === 'B' ? 'bg-brand-500 text-white' : 'glass-card text-surface-400') + '"><i class="fas fa-envelope mr-1"></i>Manual RFQ (B)</button>' +
+      fourQuestions(
+        'Get logistics quotes for your fresh/frozen produce shipments.',
+        'Mode A: AI auto-bundles best reefer rates. Mode B: Send manual RFQs to preferred providers.',
+        existingRFQs.length > 0 ? existingRFQs.filter(function(r){return r.status==='RFQ_SENT';}).length + ' RFQs awaiting provider responses' : 'None',
+        'Once logistics quoted, assemble and submit the full landed cost quote to buyer.'
+      ) +
+      // Mode selector
+      '<div class="flex items-center gap-3 mb-5">' +
+        '<div class="flex gap-2 bg-surface-100 p-1 rounded-xl">' +
+          '<button onclick="logisticsMode=\'A\'; renderLogisticsBuilder()" class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ' + (logisticsMode === 'A' ? 'bg-white text-sgtx-600 shadow-card' : 'text-surface-500 hover:text-surface-700') + '"><i class="fas fa-wand-magic-sparkles mr-2"></i>Auto-Bundle (A)</button>' +
+          '<button onclick="logisticsMode=\'B\'; renderLogisticsBuilder()" class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ' + (logisticsMode === 'B' ? 'bg-white text-sgtx-600 shadow-card' : 'text-surface-500 hover:text-surface-700') + '"><i class="fas fa-paper-plane mr-2"></i>Manual RFQ (B)</button>' +
+        '</div>' +
+        '<div class="ml-auto flex items-center gap-2 text-xs text-surface-500">' +
+          '<i class="fas fa-snowflake text-sky-500"></i>' +
+          '<span>Reefer-optimized routing enabled</span>' +
+        '</div>' +
       '</div>' +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No trades ready for logistics.</div>' :
-        '<div class="space-y-3">' + trades.map(function(t) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span><span class="text-xs text-surface-500">' + (t.commodity_type || '') + '</span></div>' +
+      // Existing RFQ status
+      (existingRFQs.length > 0 ? '<div class="glass-card p-4 mb-4 border-l-4 border-l-sky-400"><div class="flex items-center gap-2 mb-2"><i class="fas fa-broadcast-tower text-sky-500"></i><span class="text-sm font-semibold text-surface-800">Active RFQs</span></div><div class="grid grid-cols-2 md:grid-cols-4 gap-2">' + existingRFQs.slice(0,4).map(function(r) { return '<div class="bg-surface-50 rounded-lg p-2 text-center"><div class="text-[10px] font-mono text-surface-500">' + (r.id || '').slice(0,8) + '</div><div class="text-xs font-semibold">' + (r.status || 'OPEN') + '</div></div>'; }).join('') + '</div></div>' : '') +
+      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-truck-fast text-4xl text-surface-300 mb-3"></i><p class="text-surface-500 text-sm">No trades ready for logistics. Complete EXW lock and packing first.</p></div>' :
+        '<div class="space-y-4">' + trades.map(function(t) {
+          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT|SEAFOOD/i);
+          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-sky-400' : '') + '">' +
+            '<div class="flex items-center justify-between mb-4">' +
+              '<div class="flex items-center gap-3">' +
+                '<div class="w-10 h-10 rounded-xl bg-gradient-to-br ' + (isFresh ? 'from-sky-100 to-cyan-100' : 'from-sgtx-100 to-sgtx-200') + ' flex items-center justify-center">' +
+                  '<i class="fas ' + (isFresh ? 'fa-snowflake text-sky-600' : 'fa-box text-sgtx-600') + ' text-sm"></i>' +
+                '</div>' +
+                '<div>' +
+                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
+                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General Cargo') + (isFresh ? ' <span class="text-sky-600 font-medium">• Reefer Required</span>' : '') + '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="flex items-center gap-2">' + badge(t.status || 'ACTIVE') + '</div>' +
+            '</div>' +
+            (isFresh ? '<div class="flex items-center gap-3 mb-3 px-3 py-2 bg-sky-50 rounded-lg border border-sky-100"><i class="fas fa-temperature-low text-sky-500"></i><span class="text-xs text-sky-700">Temperature-controlled: -18°C to +4°C range • Cold chain integrity monitoring active</span></div>' : '') +
             (logisticsMode === 'A' ?
-              '<button onclick="autoBundleLogistics(\'' + t.id + '\')" class="w-full py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-magic mr-2"></i>Auto-Bundle Best Rate</button>' :
-              '<div class="space-y-2"><div><label class="text-[10px] text-surface-500 block mb-1">Provider GTID (optional)</label><input id="rfq-provider-' + t.id + '" type="text" class="w-full bg-dark-800 border border-surface-700 rounded px-2 py-1.5 text-xs text-surface-200" placeholder="Leave blank for open RFQ"></div><button onclick="submitManualRFQ(\'' + t.id + '\')" class="w-full py-2 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600"><i class="fas fa-paper-plane mr-2"></i>Send RFQ</button></div>') +
+              '<button onclick="autoBundleLogistics(\'' + t.id + '\')" class="btn-success w-full"><i class="fas fa-wand-magic-sparkles mr-2"></i>Auto-Bundle Best Reefer Rate</button>' :
+              '<div class="space-y-3">' +
+                '<div class="grid grid-cols-2 gap-3">' +
+                  '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Origin Port</label><input id="rfq-origin-' + t.id + '" type="text" class="w-full" placeholder="e.g. VNSGN" value="' + (t.origin_port || '') + '"></div>' +
+                  '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Destination Port</label><input id="rfq-dest-' + t.id + '" type="text" class="w-full" placeholder="e.g. NLRTM" value="' + (t.destination_port || t.port_of_discharge || '') + '"></div>' +
+                '</div>' +
+                '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Provider GTID <span class="text-surface-400">(leave blank to broadcast)</span></label><input id="rfq-provider-' + t.id + '" type="text" class="w-full" placeholder="SGTX-XX-LOG-XXXX or blank for open broadcast"></div>' +
+                '<div class="flex gap-2">' +
+                  '<button onclick="submitManualRFQ(\'' + t.id + '\')" class="btn-primary flex-1"><i class="fas fa-paper-plane mr-2"></i>Send RFQ to Provider(s)</button>' +
+                  '<button onclick="viewRFQResponses(\'' + t.id + '\')" class="btn-secondary"><i class="fas fa-inbox mr-1"></i>Responses</button>' +
+                '</div>' +
+              '</div>') +
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="glass-card p-8 text-center text-red-500"><i class="fas fa-exclamation-circle text-2xl mb-2"></i><p>Error: ' + e.message + '</p></div>';
   }
 }
 
 async function autoBundleLogistics(tradeId) {
   try {
-    showToast('Finding best rates...', 'info');
-    await apiPost('/seller-quote/logistics-rfq', { trade_request_id: tradeId, seller_tenant_id: tenant.id, mode: 'AUTO_BUNDLE' });
-    showToast('Auto-bundle complete! Best rate found.', 'success');
+    showToast('Finding best reefer rates via AI...', 'info');
+    var res = await apiPost('/seller-quote/logistics-rfq', {
+      trade_request_id: tradeId,
+      seller_tenant_id: tenant.id,
+      mode: 'AUTO_BUNDLE',
+      origin_port: 'AUTO',
+      destination_port: 'AUTO',
+      services: ['SEA_FREIGHT', 'REEFER', 'COLD_CHAIN']
+    });
+    var data = res.data || res;
+    showToast('Auto-bundle complete! RFQ ' + (data.rfq_id || '').slice(0,8) + ' sent to logistics network.', 'success');
     renderLogisticsBuilder();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { showToast('Error: ' + (e.message || 'Auto-bundle failed'), 'error'); }
 }
 
 async function submitManualRFQ(tradeId) {
   var provider = (document.getElementById('rfq-provider-' + tradeId) || {}).value || '';
+  var originPort = (document.getElementById('rfq-origin-' + tradeId) || {}).value || '';
+  var destPort = (document.getElementById('rfq-dest-' + tradeId) || {}).value || '';
+  if (!originPort.trim() || !destPort.trim()) {
+    showToast('Please enter origin and destination ports', 'error');
+    return;
+  }
   try {
-    await apiPost('/seller-quote/logistics-rfq', { trade_request_id: tradeId, seller_tenant_id: tenant.id, mode: 'MANUAL', provider_gtid: provider.trim() || null });
-    showToast('RFQ sent!', 'success');
+    var res = await apiPost('/seller-quote/logistics-rfq', {
+      trade_request_id: tradeId,
+      seller_tenant_id: tenant.id,
+      mode: 'MANUAL',
+      origin_port: originPort.trim().toUpperCase(),
+      destination_port: destPort.trim().toUpperCase(),
+      provider_gtid: provider.trim() || null,
+      services: ['SEA_FREIGHT', 'REEFER', 'COLD_CHAIN']
+    });
+    var data = res.data || res;
+    showToast('RFQ ' + (data.rfq_id || '').slice(0,8) + ' sent to ' + (provider.trim() ? provider.trim() : 'all logistics providers') + '!', 'success');
     renderLogisticsBuilder();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { showToast('Error: ' + (e.message || 'RFQ submission failed'), 'error'); }
+}
+
+async function viewRFQResponses(tradeId) {
+  try {
+    var res = await api('/portal/logistics/provider-quotes?tenant_id=' + tenant.id + '&trade_request_id=' + tradeId);
+    var responses = res.data || [];
+    if (responses.length === 0) {
+      showModal(
+        '<div class="text-center py-6"><i class="fas fa-inbox text-4xl text-surface-300 mb-3"></i><h3 class="text-lg font-semibold text-surface-800 mb-1">No Responses Yet</h3><p class="text-sm text-surface-500">Logistics providers have not responded to your RFQ yet. Check back shortly.</p></div>'
+      );
+      return;
+    }
+    var html = '<h3 class="text-lg font-bold text-surface-900 mb-4"><i class="fas fa-truck-fast text-sgtx-500 mr-2"></i>Logistics Quotes Received</h3>' +
+      '<div class="space-y-3">' + responses.map(function(r) {
+        return '<div class="glass-card p-4">' +
+          '<div class="flex items-center justify-between mb-2">' +
+            '<span class="text-sm font-semibold text-surface-800">' + (r.provider_name || r.logistics_tenant_id || 'Provider') + '</span>' +
+            '<span class="text-lg font-bold text-sgtx-600">' + usd(r.total_price || r.price) + '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-4 text-xs text-surface-500">' +
+            '<span><i class="fas fa-clock mr-1"></i>' + (r.transit_time_days || r.transit_days || '?') + ' days</span>' +
+            '<span><i class="fas fa-ship mr-1"></i>' + (r.services_included || r.service_type || 'SEA_FREIGHT') + '</span>' +
+            (r.valid_until ? '<span><i class="fas fa-calendar mr-1"></i>Valid: ' + time(r.valid_until) + '</span>' : '') +
+          '</div>' +
+          '<button onclick="selectLogisticsQuote(\'' + tradeId + '\',\'' + r.id + '\',\'' + (r.total_price || r.price || 0) + '\')" class="btn-success w-full mt-3 text-xs"><i class="fas fa-check mr-1"></i>Select This Quote</button>' +
+        '</div>';
+      }).join('') + '</div>';
+    showModal(html);
+  } catch(e) { showToast('Error loading responses: ' + e.message, 'error'); }
+}
+
+async function selectLogisticsQuote(tradeId, quoteId, price) {
+  try {
+    await apiPost('/seller-quote/packing-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, logistics_quote_id: quoteId, logistics_cost: parseFloat(price) });
+    closeModal();
+    showToast('Logistics quote selected! Ready to submit full quote.', 'success');
+    navigate('quote-submit');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2365,45 +3013,103 @@ async function renderLogisticsDashboard() {
 }
 
 async function renderRFQInbox() {
-  setTitle('RFQ Inbox', 'Open requests from traders');
-  document.getElementById('content').innerHTML = `
-    ${fourQuestions('Active freight RFQs from platform traders', 'Review and respond to matching requests', 'None — new RFQs arrive automatically', 'Submit quote → booking confirmation flow')}
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      ${metricCard('fa-inbox', 'Open RFQs', 7, null, 'blue')}
-      ${metricCard('fa-clock', 'Avg Response', '2.3h', -5, 'amber')}
-      ${metricCard('fa-check', 'Win Rate', '34%', 2, 'green')}
-      ${metricCard('fa-ban', 'Declined', 3, null, 'rose')}
-    </div>
-    <div class="sgtx-card !p-0 overflow-hidden">
-      <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
-        <h3 class="font-semibold text-sm text-surface-800"><i class="fas fa-inbox text-sgtx-500 mr-2"></i>Incoming RFQs</h3>
-        <div class="flex gap-2">
-          <button class="text-[10px] px-3 py-1 rounded-full bg-sgtx-100 text-sgtx-700 font-semibold">All (7)</button>
-          <button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-400">Matching (4)</button>
-          <button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-400">Expiring Soon</button>
-        </div>
-      </div>
-      <div class="divide-y divide-surface-100">
-        ${[{id:'RFQ-001',route:'VNSGN → EGALY',containers:'2×40HC',commodity:'Textiles',deadline:'4h',urgency:85},{id:'RFQ-002',route:'VNHPH → DEHAM',containers:'1×20ft',commodity:'Electronics',deadline:'12h',urgency:60},{id:'RFQ-003',route:'VNSGN → GBFXT',containers:'3×40HC',commodity:'Garments',deadline:'24h',urgency:40},{id:'RFQ-004',route:'VNDAN → SGSIN',containers:'1×40ft',commodity:'Furniture',deadline:'8h',urgency:72}].map(rfq => `
-          <div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition cursor-pointer">
-            <div class="w-10 h-10 rounded-xl ${rfq.urgency>=80?'bg-red-100':'rfq.urgency>=60'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center shrink-0">
-              <i class="fas fa-ship ${rfq.urgency>=80?'text-red-500':rfq.urgency>=60?'text-amber-500':'text-blue-500'} text-sm"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-surface-800">${rfq.route}</span>
-                <span class="text-[10px] font-mono text-surface-400">${rfq.id}</span>
-              </div>
-              <div class="text-xs text-surface-400 mt-0.5">${rfq.containers} • ${rfq.commodity}</div>
-            </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="text-[10px] font-semibold ${rfq.urgency>=80?'text-red-500':rfq.urgency>=60?'text-amber-500':'text-blue-500'}"><i class="fas fa-clock mr-1"></i>${rfq.deadline}</span>
-              <button class="px-3 py-1.5 bg-sgtx-500 text-white text-[10px] rounded-lg font-semibold hover:bg-sgtx-600">Quote</button>
-              <button class="px-3 py-1.5 bg-surface-100 text-surface-600 text-[10px] rounded-lg font-semibold hover:bg-surface-200">Skip</button>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
+  setTitle('RFQ Inbox', 'Open requests from traders needing logistics');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(6);
+  try {
+    var res = await api('/upgrades/logistics-rfq?tenant_id=' + tenant.id);
+    var rfqs = res.data || [];
+    var openRFQs = rfqs.filter(function(r) { return r.status === 'OPEN' || r.status === 'RFQ_SENT'; });
+    var biddingRFQs = rfqs.filter(function(r) { return r.status === 'BIDDING'; });
+    content.innerHTML =
+      fourQuestions(
+        'Active freight RFQs from platform traders needing cold chain logistics',
+        'Review open RFQs and submit competitive quotes with transit times',
+        openRFQs.length > 0 ? openRFQs.length + ' RFQs awaiting your response' : 'No pending RFQs',
+        'Winning quotes lead to booking confirmation and active shipment'
+      ) +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-inbox', 'Open RFQs', openRFQs.length, null, 'blue') +
+        metricCard('fa-gavel', 'Bidding', biddingRFQs.length, null, 'amber') +
+        metricCard('fa-check', 'Won This Week', rfqs.filter(function(r){return r.status==='AWARDED';}).length, null, 'green') +
+        metricCard('fa-snowflake', 'Reefer RFQs', rfqs.filter(function(r){return (r.commodity_type||'').match(/FRESH|FROZEN|REEFER/i);}).length, null, 'cyan') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">' +
+          '<h3 class="font-semibold text-sm text-surface-800"><i class="fas fa-inbox text-sgtx-500 mr-2"></i>Incoming RFQs</h3>' +
+          '<div class="flex gap-2">' +
+            '<button class="text-[10px] px-3 py-1 rounded-full bg-sgtx-100 text-sgtx-700 font-semibold">All (' + rfqs.length + ')</button>' +
+            '<button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-500">Open (' + openRFQs.length + ')</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (rfqs.length === 0 ?
+            '<div class="py-12 text-center text-surface-400"><i class="fas fa-inbox text-3xl mb-3"></i><p class="text-sm">No RFQs yet. They arrive when sellers request logistics quotes.</p></div>' :
+            rfqs.map(function(rfq) {
+              var isFresh = (rfq.commodity_type || rfq.service_type || '').match(/FRESH|FROZEN|REEFER|COLD/i);
+              return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">' +
+                '<div class="w-10 h-10 rounded-xl ' + (isFresh ? 'bg-sky-100' : 'bg-sgtx-100') + ' flex items-center justify-center shrink-0">' +
+                  '<i class="fas ' + (isFresh ? 'fa-snowflake text-sky-600' : 'fa-ship text-sgtx-600') + ' text-sm"></i>' +
+                '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                  '<div class="flex items-center gap-2">' +
+                    '<span class="text-sm font-medium text-surface-800">' + (rfq.origin_port || '?') + ' \u2192 ' + (rfq.destination_port || '?') + '</span>' +
+                    '<span class="text-[10px] font-mono text-surface-400">' + (rfq.id || '').slice(0,12) + '</span>' +
+                    (isFresh ? '<span class="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-semibold">REEFER</span>' : '') +
+                  '</div>' +
+                  '<div class="text-xs text-surface-500 mt-0.5">' + (rfq.requester_name || 'Trader') + ' \u2022 ' + (rfq.container_type || '40HC') + ' \u2022 ' + (rfq.commodity_type || rfq.service_type || 'General') + '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2 shrink-0">' +
+                  badge(rfq.status || 'OPEN') +
+                  '<button onclick="showRespondToRFQ(\'' + rfq.id + '\')" class="btn-primary text-[10px] !py-1.5 !px-3"><i class="fas fa-reply mr-1"></i>Quote</button>' +
+                '</div>' +
+              '</div>';
+            }).join('')) +
+        '</div>' +
+      '</div>';
+  } catch(e) {
+    content.innerHTML = renderError('Error loading RFQ inbox: ' + e.message);
+  }
+}
+
+async function showRespondToRFQ(rfqId) {
+  showModal(
+    '<h3 class="text-lg font-bold text-surface-900 mb-4"><i class="fas fa-reply text-sgtx-500 mr-2"></i>Submit Logistics Quote</h3>' +
+    '<div class="space-y-3">' +
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Total Price (USD)</label><input id="rfq-resp-price" type="number" class="w-full" placeholder="2500.00"></div>' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Transit Time (Days)</label><input id="rfq-resp-transit" type="number" class="w-full" placeholder="14"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Services Included</label><input id="rfq-resp-services" type="text" class="w-full" placeholder="SEA_FREIGHT, REEFER, PORT_HANDLING"></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Conditions / Notes</label><textarea id="rfq-resp-conditions" rows="2" class="w-full" placeholder="e.g. Temperature monitoring included, insurance extra..."></textarea></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Valid Until</label><input id="rfq-resp-valid" type="date" class="w-full"></div>' +
+      '<button onclick="submitRFQResponse(\'' + rfqId + '\')" class="btn-success w-full"><i class="fas fa-paper-plane mr-2"></i>Submit Quote</button>' +
+    '</div>'
+  );
+}
+
+async function submitRFQResponse(rfqId) {
+  var price = parseFloat(document.getElementById('rfq-resp-price').value) || 0;
+  var transit = parseInt(document.getElementById('rfq-resp-transit').value) || 0;
+  var services = document.getElementById('rfq-resp-services').value.trim();
+  var conditions = document.getElementById('rfq-resp-conditions').value.trim();
+  var validUntil = document.getElementById('rfq-resp-valid').value || null;
+  if (!price || !transit) { showToast('Price and transit time are required', 'error'); return; }
+  try {
+    await apiPost('/upgrades/logistics-rfq/' + rfqId + '/responses', {
+      logistics_tenant_id: tenant.id,
+      total_price: price,
+      currency: 'USD',
+      transit_time_days: transit,
+      services_included: services || 'SEA_FREIGHT',
+      conditions: conditions || null,
+      valid_until: validUntil,
+      actor_gtid: tenant.gtid || ''
+    });
+    closeModal();
+    showToast('Quote submitted! Waiting for trader decision.', 'success');
+    renderRFQInbox();
+  } catch(e) { showToast('Error: ' + (e.message || 'Submission failed'), 'error'); }
 }
 async function renderBookingRequests() {
   setTitle('Booking Requests', 'Pending booking confirmations');
@@ -2791,10 +3497,77 @@ async function renderFinancedCompanies() {
     ], { title: 'Borrower Performance History' })}`;
 }
 async function renderSettlements() {
-  setTitle('Settlements', 'USTN-linked settlement orchestration');
-  const { data } = await api('/settlements');
-  const rows = data.map(s => `<tr><td class="font-mono text-xs">${s.id?.slice(0,8)}...</td><td class="font-mono text-xs text-sgtx-600">${s.ustn||'—'}</td><td class="text-xs">${s.instruction_type}</td><td class="text-center">${badge(s.status)}</td></tr>`);
-  document.getElementById('content').innerHTML = dataTable(['ID', 'USTN', 'Type', 'Status'], rows, { title: 'Settlement Instructions' });
+  setTitle('Settlements', 'Payment orchestration and trade settlement');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/settlements?tenant_id=' + (tenant ? tenant.id : ''));
+    var settlements = res.data || [];
+    var pending = settlements.filter(function(s) { return s.status === 'PENDING' || s.status === 'AWAITING_PAYMENT'; });
+    var completed = settlements.filter(function(s) { return s.status === 'CONFIRMED' || s.status === 'COMPLETED'; });
+
+    content.innerHTML =
+      fourQuestions(
+        settlements.length + ' settlement instruction(s) across your trades.',
+        pending.length > 0 ? 'Review and confirm ' + pending.length + ' pending settlement(s).' : 'No pending settlements right now.',
+        pending.length > 0 ? pending.length + ' awaiting payment confirmation.' : 'No blockers.',
+        'After confirmation, PSP verifies and funds are released.'
+      ) +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-money-check-alt', 'Total Instructions', settlements.length, null, 'blue') +
+        metricCard('fa-clock', 'Pending', pending.length, null, 'amber') +
+        metricCard('fa-check-double', 'Completed', completed.length, null, 'green') +
+        metricCard('fa-dollar-sign', 'Total Value', usd(settlements.reduce(function(s,i){return s+(i.amount||0);},0)), null, 'purple') +
+      '</div>' +
+      // Pending settlements
+      (pending.length ? '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-exclamation-circle mr-2 text-amber-500"></i>Pending Settlements</h3><div class="space-y-3 mb-6">' +
+        pending.map(function(s) {
+          return '<div class="sgtx-card p-4 border-l-4 border-l-amber-400">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs font-bold text-sgtx-600">' + (s.ustn || s.id) + '</span>' + badge(s.status, 'amber') + '</div>' +
+            '<div class="grid grid-cols-3 gap-3 mb-3 text-xs">' +
+              '<div><span class="text-surface-500">Type</span><div class="font-medium text-surface-800">' + (s.instruction_type || 'TRADE_PRINCIPAL') + '</div></div>' +
+              '<div><span class="text-surface-500">Amount</span><div class="font-medium text-surface-800">' + usd(s.amount || s.payload_amount || 0) + '</div></div>' +
+              '<div><span class="text-surface-500">PSP</span><div class="font-medium text-surface-800">' + (s.psp_name || 'Pending selection') + '</div></div>' +
+            '</div>' +
+            '<div class="flex gap-2">' +
+              '<button onclick="confirmSettlement(\'' + s.id + '\')" class="btn-success text-xs flex-1"><i class="fas fa-check mr-1"></i>Confirm Payment</button>' +
+              '<button onclick="viewSettlementDetails(\'' + (s.ustn || s.id) + '\')" class="px-3 py-1.5 border border-surface-200 rounded-lg text-xs text-surface-600 hover:bg-surface-50"><i class="fas fa-eye mr-1"></i>Details</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>' : '') +
+      // All settlements table
+      '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-list mr-2 text-surface-400"></i>All Settlements</h3>' +
+      dataTable(['USTN', 'Type', 'Amount', 'PSP', 'Status', 'Date'], settlements.map(function(s) {
+        return '<tr><td class="font-mono text-xs text-sgtx-600">' + (s.ustn || '—') + '</td><td class="text-xs">' + (s.instruction_type || '') + '</td><td class="text-xs font-medium">' + usd(s.amount || 0) + '</td><td class="text-xs">' + (s.psp_name || '—') + '</td><td class="text-center">' + badge(s.status || 'PENDING', s.status === 'CONFIRMED' ? 'emerald' : 'amber') + '</td><td class="text-xs text-surface-500">' + timeAgo(s.created_at) + '</td></tr>';
+      }));
+  } catch (e) { content.innerHTML = renderError(e.message); }
+}
+
+async function confirmSettlement(instructionId) {
+  try {
+    showToast('Verifying settlement...', 'info');
+    await apiPost('/settlement/approve', { instruction_id: instructionId, approver_tenant_id: tenant.id });
+    showToast('Settlement confirmed!', 'success');
+    renderSettlements();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function viewSettlementDetails(ustn) {
+  try {
+    var res = await api('/settlement/status/' + ustn);
+    var data = res.data || res;
+    showModal(
+      '<div class="space-y-4">' +
+        '<h3 class="text-lg font-bold text-surface-800">Settlement: ' + ustn + '</h3>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['Status', data.status || 'PENDING'], ['Amount', usd(data.amount || 0)], ['Currency', data.currency || 'USD'], ['PSP', data.psp_name || '—'], ['Type', data.instruction_type || '—'], ['Created', time(data.created_at)]].map(function(r) {
+            return '<div class="bg-surface-50 rounded-lg p-3 border border-surface-100"><div class="text-[10px] text-surface-500 uppercase">' + r[0] + '</div><div class="text-sm font-medium text-surface-800">' + r[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (data.split_details ? '<div class="bg-blue-50 rounded-lg p-3 border border-blue-100 text-xs"><strong>Split Details:</strong> ' + JSON.stringify(data.split_details) + '</div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════

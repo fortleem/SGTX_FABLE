@@ -65,7 +65,7 @@ tradeForm.get('/trade-form/gtid-resolve', async (c) => {
 
   const tenant = await c.env.DB.prepare(`
     SELECT id, gtid, legal_name, jurisdiction, type, kyb_status, risk_score,
-           lifecycle_state, sanctions_status
+           lifecycle_state, sanctions_cleared
     FROM tenants WHERE gtid = ?
   `).bind(gtid).first();
 
@@ -73,13 +73,13 @@ tradeForm.get('/trade-form/gtid-resolve', async (c) => {
 
   // Check if blocked or sanctioned
   const sanctions = await c.env.DB.prepare(
-    `SELECT * FROM sanctions_screenings WHERE entity_gtid = ? ORDER BY screened_at DESC LIMIT 1`
+    `SELECT * FROM sanctions_screenings WHERE entity_gtid = ? ORDER BY created_at DESC LIMIT 1`
   ).bind(gtid).first();
 
   // Get trust score
   const trust = await c.env.DB.prepare(
-    `SELECT * FROM trust_scores WHERE tenant_id = ?`
-  ).bind((tenant as any).id).first();
+    `SELECT * FROM trust_scores WHERE gtid = ?`
+  ).bind(gtid).first();
 
   return c.json({
     data: {
@@ -525,6 +525,8 @@ tradeForm.post('/trade-form/submit', async (c) => {
     actor_gtid: (buyer as any).gtid || tenant_id,
     actor_employee_id: empId,
     action_context: {
+      actor_gtid: (buyer as any).gtid || tenant_id,
+      importer_gtid: (buyer as any).gtid || tenant_id,
       transport_mode,
       incoterm,
       seller_gtid: sellerGtid,

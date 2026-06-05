@@ -364,17 +364,32 @@ sellerQuote.post('/seller-quote/logistics-manual', async (c) => {
 sellerQuote.post('/seller-quote/logistics-rfq', async (c) => {
   const { DB } = c.env;
   const body = await c.req.json();
-  const { exporter_quote_id, trade_request_id, seller_tenant_id, origin_port, destination_port, services, sourcing_mode } = body;
+  let { exporter_quote_id, trade_request_id, seller_tenant_id, origin_port, destination_port, services, sourcing_mode, mode, provider_gtid } = body;
 
-  if (!trade_request_id || !origin_port || !destination_port) {
-    return c.json({ error: 'trade_request_id, origin_port, and destination_port required' }, 400);
+  if (!trade_request_id) {
+    return c.json({ error: 'trade_request_id is required' }, 400);
+  }
+
+  // Auto-resolve ports from trade_containers if not provided or set to AUTO
+  if (!origin_port || origin_port === 'AUTO' || !destination_port || destination_port === 'AUTO') {
+    const container: any = await DB.prepare(`SELECT origin_country, destination_country, port_of_discharge, port_of_loading FROM trade_containers WHERE trade_request_id = ? ORDER BY container_index ASC LIMIT 1`).bind(trade_request_id).first();
+    if (container) {
+      if (!origin_port || origin_port === 'AUTO') origin_port = container.port_of_loading || container.origin_country || 'ORIGIN';
+      if (!destination_port || destination_port === 'AUTO') destination_port = container.port_of_discharge || container.destination_country || 'DEST';
+    } else {
+      if (!origin_port || origin_port === 'AUTO') origin_port = 'UNKNOWN';
+      if (!destination_port || destination_port === 'AUTO') destination_port = 'UNKNOWN';
+    }
   }
 
   const rfqId = uuid();
+  
+  // Insert into logistics_rfqs — the canonical table for RFQ flow
+  // Logistics portal reads from this table via GET /upgrades/logistics-rfq
   await DB.prepare(`
-    INSERT INTO provider_quotes (id, trade_request_id, provider_tenant_id, service_type, origin_port, destination_port, price, currency, transit_days, status, created_at)
-    VALUES (?, ?, 'BROADCAST', ?, ?, ?, 0, 'USD', 0, 'RFQ_SENT', ?)
-  `).bind(rfqId, trade_request_id, JSON.stringify(services || ['SEA_FREIGHT']), origin_port, destination_port, isoNow()).run();
+    INSERT INTO logistics_rfqs (id, trade_request_id, requester_tenant_id, origin_port, destination_port, commodity_type, container_type, container_count, required_services, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, '40HC_RF', 1, ?, 'OPEN', ?)
+  `).bind(rfqId, trade_request_id, seller_tenant_id || 'SYSTEM', origin_port, destination_port, JSON.stringify(services || ['SEA_FREIGHT', 'REEFER']), JSON.stringify(services || ['SEA_FREIGHT', 'REEFER']), isoNow()).run();
 
   // Update quote logistics mode
   if (exporter_quote_id) {
@@ -383,7 +398,7 @@ sellerQuote.post('/seller-quote/logistics-rfq', async (c) => {
   }
 
   return c.json({
-    data: { rfq_id: rfqId, sourcing_mode: sourcing_mode || 'BROADCAST', services: services || ['SEA_FREIGHT'], status: 'RFQ_SENT' },
+    data: { rfq_id: rfqId, sourcing_mode: sourcing_mode || mode || 'BROADCAST', services: services || ['SEA_FREIGHT', 'REEFER'], status: 'RFQ_SENT', origin_port, destination_port },
     message: 'RFQ sent to logistics providers'
   }, 201);
 });
