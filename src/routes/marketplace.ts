@@ -285,6 +285,44 @@ marketplace.get('/partner/attributions', async (c) => {
   return c.json({ data: results });
 });
 
+// ═══════════════════════════════════════════════════════════
+// BUYER-SIDE ATTRIBUTION CHECK — Step 1.5 Trade Initiation
+// Checks if a buyer-seller pair has marketplace attribution
+// ═══════════════════════════════════════════════════════════
+marketplace.get('/marketplace/attribution-check', async (c) => {
+  const buyerTenantId = c.req.query('buyer_tenant_id');
+  const sellerGtid = c.req.query('seller_gtid');
+  if (!buyerTenantId || !sellerGtid) return c.json({ data: { attributed: false } });
+
+  // Resolve seller tenant
+  const seller = await c.env.DB.prepare(
+    'SELECT id FROM tenants WHERE gtid = ?'
+  ).bind(sellerGtid).first();
+  if (!seller) return c.json({ data: { attributed: false } });
+
+  // Check if any marketplace partner introduced this pair
+  const attr = await c.env.DB.prepare(`
+    SELECT pla.*, mp.partner_name as marketplace_name
+    FROM partner_lead_attributions pla
+    LEFT JOIN marketplace_partners mp ON pla.marketplace_partner_id = mp.id
+    WHERE pla.importer_tenant_id = ? AND pla.exporter_tenant_id = ?
+    AND pla.status IN ('ACTIVE', 'PENDING')
+    ORDER BY pla.created_at DESC LIMIT 1
+  `).bind(buyerTenantId, (seller as any).id).first();
+
+  if (!attr) return c.json({ data: { attributed: false } });
+
+  return c.json({
+    data: {
+      attributed: true,
+      marketplace_name: (attr as any).marketplace_name || 'Marketplace Partner',
+      revenue_share_pct: (attr as any).revenue_share_pct || 2.5,
+      introduced_at: (attr as any).created_at,
+      attribution_id: (attr as any).id,
+    }
+  });
+});
+
 // Dispute an attribution
 marketplace.post('/partner/attributions/:id/dispute', async (c) => {
   const body = await c.req.json();

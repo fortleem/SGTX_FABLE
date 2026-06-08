@@ -373,9 +373,9 @@ tradeForm.post('/trade-form/draft-save', async (c) => {
   const govId = uuid();
   try {
     await c.env.DB.prepare(`
-      INSERT INTO governor_decisions (decision_id, decision_type, actor_gtid, verdict, policy_snapshot, created_at)
-      VALUES (?, 'trade.draft.save', 'SYSTEM', 'ALLOW', '{}', ?)
-    `).bind(govId, now).run();
+      INSERT INTO governor_decisions (decision_id, decision_type, actor_gtid, verdict, policy_version, loom_hash, cryptographic_signature, created_at)
+      VALUES (?, 'trade.draft.save', 'SYSTEM', 'ALLOW', 'v6.3-draft', ?, 'draft-auto-approved', ?)
+    `).bind(govId, 'loom-draft-' + govId, now).run();
   } catch (e) { /* ignore */ }
 
   // Create new draft
