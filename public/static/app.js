@@ -564,7 +564,14 @@ function fourQuestions(what, todo, blocking, next) {
   </div>`;
 }
 
-function showModal(html) { document.getElementById('modal-body').innerHTML = html; document.getElementById('modal').classList.add('show'); }
+function showModal(titleOrHtml, bodyHtml) {
+  if (bodyHtml !== undefined) {
+    document.getElementById('modal-body').innerHTML = '<h3 class="text-lg font-bold text-surface-800 mb-4">' + titleOrHtml + '</h3>' + bodyHtml;
+  } else {
+    document.getElementById('modal-body').innerHTML = titleOrHtml;
+  }
+  document.getElementById('modal').classList.add('show');
+}
 function closeModal() { document.getElementById('modal').classList.remove('show'); }
 
 // ═══════════════════════════════════════════════════════════
@@ -719,7 +726,7 @@ function plainLanguageDecisionPanel(decision) {
     'PENDING': { icon: 'fa-clock', color: 'blue', label: 'Pending Review', plain: 'Your request is being reviewed. You will be notified when a decision is made.' }
   };
   const v = verdictMap[decision.verdict] || verdictMap['PENDING'];
-  return '<div class="glass-card p-4 border-l-4 border-' + v.color + '-400 mb-4">' +
+  return '<div class="sgtx-card p-4 border-l-4 border-' + v.color + '-400 mb-4">' +
     '<div class="flex items-center gap-2 mb-2">' +
     '<i class="fas ' + v.icon + ' text-' + v.color + '-400 text-lg"></i>' +
     '<span class="font-semibold text-' + v.color + '-300">' + v.label + '</span>' +
@@ -740,7 +747,7 @@ function guidedRecoveryBanner(type) {
   };
   const b = banners[type];
   if (!b) return '';
-  return '<div class="glass-card p-4 border-l-4 border-' + b.color + '-400 mb-4 flex items-center gap-4">' +
+  return '<div class="sgtx-card p-4 border-l-4 border-' + b.color + '-400 mb-4 flex items-center gap-4">' +
     '<i class="fas ' + b.icon + ' text-' + b.color + '-400 text-2xl"></i>' +
     '<div class="flex-1">' +
     '<div class="font-semibold text-' + b.color + '-300 text-sm">' + b.title + '</div>' +
@@ -752,7 +759,7 @@ function guidedRecoveryBanner(type) {
 
 function slaTransparencyPanel(actions) {
   if (!actions || !actions.length) return '';
-  return '<div class="glass-card p-4 mb-4">' +
+  return '<div class="sgtx-card p-4 mb-4">' +
     '<div class="flex items-center gap-2 mb-3"><i class="fas fa-stopwatch text-blue-400"></i><span class="text-sm font-semibold text-surface-200">SLA Transparency</span></div>' +
     '<div class="space-y-2">' +
     actions.map(function(a) {
@@ -1116,8 +1123,8 @@ async function renderPlatformDashboard() {
         metricCard('fa-dollar-sign', 'Total Value', usd(stats.total_value || 0), null, 'emerald') +
       '</div>' +
       '<div class="grid grid-cols-2 gap-4">' +
-        '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-clock mr-2 text-brand-400"></i>Recent Trades</h3><div id="dash-trades" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
-        '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-bell mr-2 text-amber-400"></i>Inbox Preview</h3><div id="dash-inbox" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
+        '<div class="sgtx-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-clock mr-2 text-brand-400"></i>Recent Trades</h3><div id="dash-trades" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
+        '<div class="sgtx-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-bell mr-2 text-amber-400"></i>Inbox Preview</h3><div id="dash-inbox" class="space-y-2 text-xs text-surface-400">Loading...</div></div>' +
       '</div>';
     // Load sub-data
     api('/trades?tenant_id=' + tenant.id + '&limit=5').then(function(r) {
@@ -1133,7 +1140,7 @@ async function renderPlatformDashboard() {
       el.innerHTML = items.length ? items.slice(0, 5).map(function(i) { return '<div class="flex justify-between"><span>' + (i.title || 'Item') + '</span><span class="text-surface-500">' + timeAgo(i.created_at) + '</span></div>'; }).join('') : '<p class="text-surface-500">No items</p>';
     });
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1159,7 +1166,7 @@ async function renderTenants() {
         })
       );
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1189,9 +1196,9 @@ async function renderGovernor() {
     var decisions = res.data || [];
     content.innerHTML =
       fourQuestions('All governance decisions affecting your account.', 'Review each decision. Click for plain-language explanation.', decisions.filter(function(d) { return d.verdict === 'DENIED'; }).length > 0 ? 'Some requests were denied — review details.' : '', 'Address any conditions or resubmit with guidance.') +
-      (decisions.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No decisions yet.</div>' :
+      (decisions.length === 0 ? '<div class="sgtx-card p-8 text-center text-surface-400">No decisions yet.</div>' :
         '<div class="space-y-3">' + decisions.map(function(d) {
-          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDecisionModal(\'' + d.id + '\')">' +
+          return '<div class="sgtx-card p-4 cursor-pointer hover:bg-white/5" onclick="showDecisionModal(\'' + d.id + '\')">' +
             '<div class="flex items-center justify-between mb-1">' +
               '<span class="font-medium text-sm text-surface-200">' + (d.gate_name || d.type || 'Decision') + '</span>' +
               verdictBadge(d.verdict) +
@@ -1201,7 +1208,7 @@ async function renderGovernor() {
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1228,9 +1235,9 @@ async function renderJurisdictions() {
     var jurisdictions = res.data || [];
     content.innerHTML =
       '<div class="grid grid-cols-2 gap-3">' +
-        (jurisdictions.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400 col-span-2">No jurisdiction data available.</div>' :
+        (jurisdictions.length === 0 ? '<div class="sgtx-card p-8 text-center text-surface-400 col-span-2">No jurisdiction data available.</div>' :
           jurisdictions.map(function(j) {
-            return '<div class="glass-card p-4"><div class="flex items-center gap-2 mb-2"><i class="fas fa-globe text-brand-400"></i><span class="font-medium text-surface-200">' + (j.name || j.country || '-') + '</span></div>' +
+            return '<div class="sgtx-card p-4"><div class="flex items-center gap-2 mb-2"><i class="fas fa-globe text-brand-400"></i><span class="font-medium text-surface-200">' + (j.name || j.country || '-') + '</span></div>' +
               '<div class="text-xs text-surface-400 space-y-1">' +
                 '<div><strong>Code:</strong> ' + (j.code || j.country_code || '-') + '</div>' +
                 '<div><strong>Currency:</strong> ' + (j.currency || '-') + '</div>' +
@@ -1239,7 +1246,7 @@ async function renderJurisdictions() {
           }).join('')) +
       '</div>';
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1257,12 +1264,12 @@ async function renderContacts() {
     content.innerHTML =
       fourQuestions('Your trusted trading partners and their trust profiles.', 'Click a contact to view full details. Add new contacts by GTID.', '', 'Build your network to unlock faster trade matching.') +
       '<div class="flex justify-end mb-4"><button onclick="showAddContactForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600 transition"><i class="fas fa-plus mr-2"></i>Add Contact</button></div>' +
-      (contacts.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-address-book text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No contacts yet. Add your first trading partner.</p></div>' :
+      (contacts.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-address-book text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No contacts yet. Add your first trading partner.</p></div>' :
         '<div class="grid grid-cols-2 gap-4">' +
           contacts.map(function(c) {
             var trust = c.trust_score || Math.max(0, 100 - (c.risk_score || 25));
             var trustColor = trust >= 70 ? 'emerald' : trust >= 40 ? 'amber' : 'red';
-            return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5 transition" onclick="showContactDetail(\'' + (c.gtid || c.contact_tenant_id || c.id) + '\')">' +
+            return '<div class="sgtx-card p-4 cursor-pointer hover:bg-white/5 transition" onclick="showContactDetail(\'' + (c.gtid || c.contact_tenant_id || c.id) + '\')">' +
               '<div class="flex items-start gap-3">' +
                 '<div class="w-12 h-12 rounded-xl bg-brand-500/20 flex items-center justify-center"><i class="fas fa-building text-brand-400 text-lg"></i></div>' +
                 '<div class="flex-1">' +
@@ -1278,7 +1285,7 @@ async function renderContacts() {
           }).join('') +
         '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -1336,9 +1343,9 @@ async function renderDisputes() {
         { label: 'Evidence Compilation', responsible: 'Auto-Compile AI', estimated_time: '< 5 minutes' }
       ]) +
       '<div class="flex justify-end mb-4"><button onclick="showFileDisputeForm()" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition"><i class="fas fa-gavel mr-2"></i>File Dispute</button></div>' +
-      (disputes.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-peace text-emerald-400 text-4xl mb-3"></i><p class="text-surface-400">No disputes. Everything is running smoothly.</p></div>' :
+      (disputes.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-peace text-emerald-400 text-4xl mb-3"></i><p class="text-surface-400">No disputes. Everything is running smoothly.</p></div>' :
         '<div class="space-y-3">' + disputes.map(function(d) {
-          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDisputeModal(\'' + d.id + '\')">' +
+          return '<div class="sgtx-card p-4 cursor-pointer hover:bg-white/5" onclick="showDisputeModal(\'' + d.id + '\')">' +
             '<div class="flex items-center justify-between mb-1"><span class="font-medium text-sm text-surface-200">' + (d.type || d.dispute_type || 'Dispute') + '</span>' + badge(d.status || 'OPEN', d.status === 'RESOLVED' ? 'emerald' : d.status === 'OPEN' ? 'red' : 'amber') + '</div>' +
             '<p class="text-xs text-surface-400">' + (d.description || d.reason || '') + '</p>' +
             '<div class="flex items-center gap-3 mt-2 text-[10px] text-surface-500">' +
@@ -1348,7 +1355,7 @@ async function renderDisputes() {
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -2806,16 +2813,16 @@ async function renderQuoteReview() {
     var trades = res.data || [];
     content.innerHTML =
       fourQuestions('Quotes submitted by sellers for your trade requests.', 'Review each quote, accept, negotiate price, or amend non-price terms.', trades.length === 0 ? '' : trades.length + ' quote(s) awaiting your review.', 'Accept to move to contract signing, or negotiate for better terms.') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-invoice-dollar text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No pending quotes.</p></div>' :
+      (trades.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-file-invoice-dollar text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No pending quotes.</p></div>' :
         '<div class="space-y-3">' + trades.map(function(t) {
-          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showQuoteDetail(\'' + t.id + '\')">' +
+          return '<div class="sgtx-card p-4 cursor-pointer hover:bg-white/5" onclick="showQuoteDetail(\'' + t.id + '\')">' +
             '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge('QUOTED', 'purple') + '</div>' +
             '<p class="text-sm text-surface-300">' + (t.commodity_type || 'Trade') + ' — ' + (t.incoterm || '') + '</p>' +
             '<div class="flex items-center gap-4 mt-2 text-xs text-surface-500"><span>' + usd(t.total_value || t.quoted_price || 0) + '</span><span>' + timeAgo(t.updated_at || t.created_at) + '</span></div>' +
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -2827,7 +2834,7 @@ async function showQuoteDetail(tradeId) {
     var q = res.data || res;
     content.innerHTML =
       '<button onclick="renderQuoteReview()" class="text-xs text-surface-400 hover:text-white mb-4 inline-flex items-center gap-1"><i class="fas fa-arrow-left"></i> Back to quotes</button>' +
-      '<div class="glass-card p-5 mb-4">' +
+      '<div class="sgtx-card p-5 mb-4">' +
         '<h3 class="text-sm font-semibold text-surface-200 mb-3"><i class="fas fa-file-invoice-dollar mr-2 text-purple-400"></i>Quote Summary</h3>' +
         '<div class="grid grid-cols-3 gap-3 mb-4">' +
           [['EXW Price', usd(q.exw_price || 0)], ['Logistics', usd(q.logistics_cost || 0)], ['Insurance', usd(q.insurance_cost || 0)], ['SGTX Fee', usd(q.sgtx_fee || 0)], ['Total Landed', usd(q.total_landed_cost || q.total_value || 0)], ['Per Unit', usd(q.per_unit_cost || 0)]].map(function(p) {
@@ -2842,7 +2849,7 @@ async function showQuoteDetail(tradeId) {
         '<button onclick="amendQuote(\'' + tradeId + '\')" class="flex-1 py-3 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-medium hover:bg-blue-500/30"><i class="fas fa-edit mr-2"></i>Amend Terms</button>' +
       '</div>';
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3084,13 +3091,13 @@ async function renderCustomsReadiness() {
     var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACTIVE,SIGNED,IN_TRANSIT');
     var trades = res.data || [];
     if (!trades.length) {
-      content.innerHTML = '<div class="glass-card p-8 text-center"><i class="fas fa-clipboard-check text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No active trades requiring customs preparation.</p></div>';
+      content.innerHTML = '<div class="sgtx-card p-8 text-center"><i class="fas fa-clipboard-check text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No active trades requiring customs preparation.</p></div>';
       return;
     }
     content.innerHTML =
       fourQuestions('Document readiness for customs clearance on your active trades.', 'Green = ready, Amber = in progress, Red = missing. Click to upload or request from seller.', '', 'Ensure all documents are green before cargo arrives at port.') +
       '<div id="customs-list" class="space-y-4">' + trades.map(function(t) {
-        return '<div class="glass-card p-4"><div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || '', 'blue') + '</div><div id="customs-docs-' + (t.ustn || t.id) + '" class="text-xs text-surface-500">Loading requirements...</div></div>';
+        return '<div class="sgtx-card p-4"><div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || '', 'blue') + '</div><div id="customs-docs-' + (t.ustn || t.id) + '" class="text-xs text-surface-500">Loading requirements...</div></div>';
       }).join('') + '</div>';
 
     // Load doc requirements for each trade
@@ -3117,7 +3124,7 @@ async function renderCustomsReadiness() {
       });
     });
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3164,15 +3171,15 @@ async function renderFinancing() {
     content.innerHTML =
       fourQuestions('Your trade finance requests and available offers.', 'Submit a financing request or review existing bids.', '', 'Once financing is awarded, proceed with physical operations.') +
       '<div class="flex justify-end mb-4"><button onclick="showFinancingRequestForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-university mr-2"></i>Request Financing</button></div>' +
-      (items.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-university text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No financing requests yet.</p></div>' :
+      (items.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-university text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No financing requests yet.</p></div>' :
         '<div class="space-y-3">' + items.map(function(f) {
-          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showFinancingDetail(\'' + f.id + '\')">' +
+          return '<div class="sgtx-card p-4 cursor-pointer hover:bg-white/5" onclick="showFinancingDetail(\'' + f.id + '\')">' +
             '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (f.ustn || f.trade_id || '-') + '</span>' + badge(f.status || 'PENDING', f.status === 'FUNDED' ? 'emerald' : f.status === 'APPROVED' ? 'blue' : 'amber') + '</div>' +
             '<div class="flex items-center gap-4 text-xs text-surface-400"><span>Amount: ' + usd(f.amount || 0) + '</span><span>LTV: ' + (f.ltv || '-') + '%</span><span>' + timeAgo(f.created_at) + '</span></div>' +
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3232,9 +3239,9 @@ async function renderDistressedBuy() {
     var listings = res.data || [];
     content.innerHTML =
       fourQuestions('Available distressed cargo listings from sellers seeking quick resolution.', 'Browse listings and submit offers for cargo below market price.', '', 'Accepted offers create a micro-contract for immediate fulfillment.') +
-      (listings.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-box-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No distressed listings available at this time.</p></div>' :
+      (listings.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-box-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No distressed listings available at this time.</p></div>' :
         '<div class="grid grid-cols-2 gap-4">' + listings.map(function(l) {
-          return '<div class="glass-card p-4">' +
+          return '<div class="sgtx-card p-4">' +
             '<div class="flex items-center justify-between mb-2"><span class="font-medium text-sm text-surface-200">' + (l.commodity_type || l.title || 'Cargo') + '</span>' + badge(l.condition_grade || 'B', l.condition_grade === 'A' ? 'emerald' : 'amber') + '</div>' +
             '<div class="text-xs text-surface-400 space-y-1 mb-3">' +
               '<div>Quantity: ' + (l.quantity || '-') + ' ' + (l.unit || 'kg') + '</div>' +
@@ -3246,7 +3253,7 @@ async function renderDistressedBuy() {
           '</div>';
         }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3302,7 +3309,7 @@ async function renderCompanyAdmin() {
         })
       );
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = '<div class="sgtx-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
   }
 }
 
@@ -3339,8 +3346,10 @@ async function deactivateEmployee(id) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+
 // ═══════════════════════════════════════════════════════════
-// SELLER: PENDING REQUESTS (Blueprint 6.2.2 — Phase 1)
+// SELLER: PENDING REQUESTS (Phase 2 — Step 2.1 Unified View)
+// Blueprint v6.3: Seller receives buyer's structured request
 // ═══════════════════════════════════════════════════════════
 
 async function renderPendingRequests() {
@@ -3351,718 +3360,779 @@ async function renderPendingRequests() {
     var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
     var requests = res.data || [];
     content.innerHTML =
-      fourQuestions('Trade requests sent to you by buyers.', 'Accept to begin quoting, decline, or counter with different terms.', requests.length > 0 ? requests.length + ' request(s) awaiting your response.' : '', 'Accepted requests move to the EXW pricing stage.') +
-      (requests.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-inbox text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No pending requests from buyers.</p></div>' :
-        '<div class="space-y-3">' + requests.map(function(r) {
-          var specs = '';
-          try { specs = r.specifications ? (typeof r.specifications === 'string' ? r.specifications : JSON.stringify(r.specifications)) : ''; } catch(e) {}
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (r.ustn || r.id) + '</span>' + badge('PENDING', 'amber') + '</div>' +
-            '<p class="text-sm text-surface-300 mb-1">' + (r.commodity_type || 'Trade Request') + ' — ' + (r.incoterm || '') + '</p>' +
-            (specs ? '<p class="text-xs text-surface-500 mb-2 truncate">' + specs + '</p>' : '') +
-            '<div class="flex items-center gap-4 text-xs text-surface-500 mb-3"><span>From: ' + (r.buyer_name || r.importer_tenant_id || '-') + '</span><span>' + timeAgo(r.created_at) + '</span></div>' +
-            '<div class="flex gap-2">' +
-              '<button onclick="acceptTradeRequest(\'' + r.id + '\')" class="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-xs font-medium hover:bg-emerald-600"><i class="fas fa-check mr-1"></i>Accept</button>' +
-              '<button onclick="declineTradeRequest(\'' + r.id + '\')" class="flex-1 py-2 bg-red-500/20 text-red-300 rounded-lg text-xs font-medium hover:bg-red-500/30"><i class="fas fa-times mr-1"></i>Decline</button>' +
-              '<button onclick="showCounterForm(\'' + r.id + '\')" class="flex-1 py-2 bg-amber-500/20 text-amber-300 rounded-lg text-xs font-medium hover:bg-amber-500/30"><i class="fas fa-exchange-alt mr-1"></i>Counter</button>' +
-              '<button onclick="showRequestDetail(\'' + r.id + '\')" class="px-3 py-2 glass-card text-surface-400 rounded-lg text-xs hover:text-white"><i class="fas fa-eye"></i></button>' +
-            '</div>' +
-          '</div>';
-        }).join('') + '</div>');
+      fourQuestions(
+        'Buyer trade requests directed to you.',
+        'Review request details and begin your quote response.',
+        requests.length > 0 ? requests.length + ' request(s) pending' : 'No pending requests',
+        'Accepted requests open the unified Quote Builder.'
+      ) +
+      (requests.length === 0
+        ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-inbox text-surface-300 text-4xl mb-3"></i><p class="text-sm text-surface-500">No pending requests from buyers.</p><p class="text-xs text-surface-400 mt-1">Requests appear here when a buyer sends you a trade request.</p></div>'
+        : '<div class="space-y-3">' + requests.map(function(r) {
+            var specs = {};
+            try { specs = typeof r.parsed_specs === 'string' ? JSON.parse(r.parsed_specs) : (r.parsed_specs || {}); } catch(e) {}
+            var containers = specs.containers || [];
+            var commodities = containers.map(function(c){ return c.commodity_type; }).filter(Boolean);
+            var uniqueComm = commodities.filter(function(v,i,a){ return a.indexOf(v) === i; });
+            return '<div class="sgtx-card p-5 hover:shadow-card-hover transition">' +
+              '<div class="flex items-center justify-between mb-3">' +
+                '<div class="flex items-center gap-3">' +
+                  '<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sgtx-100 to-sgtx-200 flex items-center justify-center"><i class="fas fa-file-import text-sgtx-600"></i></div>' +
+                  '<div>' +
+                    '<div class="font-mono text-xs text-sgtx-600 font-semibold">' + (r.ustn || r.id) + '</div>' +
+                    '<div class="text-sm font-medium text-surface-800">' + (r.buyer_name || 'Buyer') + ' <span class="text-xs text-surface-400 font-normal">(' + (r.buyer_gtid || '') + ')</span></div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="badge badge-info">' + (r.incoterm || 'N/A') + '</span>' +
+                  badge(r.status || 'PENDING', 'amber') +
+                '</div>' +
+              '</div>' +
+              '<div class="grid grid-cols-4 gap-3 mb-3 text-xs">' +
+                '<div class="bg-surface-50 rounded-lg p-2.5"><div class="text-surface-500 mb-0.5">Commodities</div><div class="font-semibold text-surface-800">' + (uniqueComm.join(', ') || r.commodity_summary || 'N/A') + '</div></div>' +
+                '<div class="bg-surface-50 rounded-lg p-2.5"><div class="text-surface-500 mb-0.5">Containers</div><div class="font-semibold text-surface-800">' + (r.container_count || containers.length || '—') + '</div></div>' +
+                '<div class="bg-surface-50 rounded-lg p-2.5"><div class="text-surface-500 mb-0.5">Buyer Country</div><div class="font-semibold text-surface-800">' + (r.buyer_country || '—') + '</div></div>' +
+                '<div class="bg-surface-50 rounded-lg p-2.5"><div class="text-surface-500 mb-0.5">Buyer Trust</div><div class="font-semibold text-' + ((r.buyer_trust_score || 0) >= 70 ? 'emerald' : 'amber') + '-600">' + (r.buyer_trust_score || '—') + '/100</div></div>' +
+              '</div>' +
+              (r.multi_shipment ? '<div class="flex items-center gap-1 mb-3"><span class="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold"><i class="fas fa-calendar-alt mr-1"></i>Multi-Shipment</span></div>' : '') +
+              '<div class="flex gap-2">' +
+                '<button onclick="openSellerQuoteBuilder(\'' + r.id + '\')" class="flex-1 btn-primary py-2.5"><i class="fas fa-pen-ruler mr-2"></i>Start Quote</button>' +
+                '<button onclick="showFullRequestDetail(\'' + r.id + '\')" class="px-4 py-2.5 sgtx-card text-surface-600 rounded-lg text-xs font-medium hover:bg-surface-50"><i class="fas fa-eye mr-1"></i>View</button>' +
+                '<button onclick="sqDeclineRequest(\'' + r.id + '\')" class="px-4 py-2.5 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50"><i class="fas fa-times mr-1"></i>Decline</button>' +
+              '</div>' +
+            '</div>';
+          }).join('') + '</div>');
   } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
+    content.innerHTML = renderError('Error loading pending requests: ' + e.message);
   }
 }
 
-async function acceptTradeRequest(id) {
-  try {
-    await apiPatch('/trades/' + id, { status: 'ACCEPTED' });
-    showToast('Request accepted! Proceed to EXW pricing.', 'success');
-    renderPendingRequests();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function declineTradeRequest(id) {
-  if (!confirm('Decline this trade request?')) return;
+async function sqDeclineRequest(id) {
+  if (!confirm('Decline this trade request? This cannot be undone.')) return;
   try {
     await apiPatch('/trades/' + id, { status: 'REJECTED' });
-    showToast('Request declined', 'info');
+    showToast('Request declined.', 'info');
     renderPendingRequests();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-function showCounterForm(id) {
-  showModal('Counter-Offer',
-    '<div class="space-y-4">' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Counter Terms</label><textarea id="counter-terms" rows="3" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Propose alternative terms..."></textarea></div>' +
-      '<button onclick="submitCounter(\'' + id + '\')" class="w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">Submit Counter</button>' +
-    '</div>'
-  );
-}
-
-async function submitCounter(id) {
-  var terms = document.getElementById('counter-terms').value.trim();
-  if (!terms) { showToast('Please specify counter terms', 'error'); return; }
+async function showFullRequestDetail(tradeId) {
   try {
-    await apiPost('/contract/amend', { trade_request_id: id, amendment_type: 'COUNTER', proposed_value: terms, proposer_tenant_id: tenant.id });
-    closeModal();
-    showToast('Counter submitted', 'success');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function showRequestDetail(id) {
-  try {
-    var res = await api('/seller-quote/request-detail?trade_request_id=' + id + '&seller_tenant_id=' + tenant.id);
-    var r = res.data || res;
-    showModal('Request Detail',
-      '<div class="space-y-3">' +
-        '<div class="grid grid-cols-2 gap-3">' +
-          [['USTN', r.ustn || '-'], ['Buyer', r.buyer_name || r.importer_tenant_id || '-'], ['Commodity', r.commodity_type || '-'], ['Incoterm', r.incoterm || '-'], ['Origin', r.origin_country || '-'], ['Destination', r.destination_country || '-']].map(function(p) {
-            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+    var res = await api('/seller-quote/request-detail?trade_request_id=' + tradeId);
+    var d = res.data || {};
+    var tr = d.trade_request || {};
+    var specs = d.parsed_specs || {};
+    var buyer = d.buyer || {};
+    var containers = specs.containers || [];
+    showModal(
+      '<div class="max-h-[70vh] overflow-y-auto space-y-4">' +
+        '<h3 class="text-lg font-bold text-surface-800"><i class="fas fa-file-import mr-2 text-sgtx-500"></i>Trade Request Detail</h3>' +
+        '<div class="grid grid-cols-3 gap-3">' +
+          [['USTN', tr.ustn || tr.id || '-'], ['Buyer', buyer.name || '-'], ['Buyer GTID', buyer.gtid || '-'],
+           ['Country', buyer.country || '-'], ['Trust Score', (buyer.trust_score || '—') + '/100'], ['Created', timeAgo(tr.created_at)],
+           ['Incoterm', specs.incoterm || tr.incoterm || '-'], ['Status', tr.status || '-'], ['Containers', containers.length || '0']
+          ].map(function(p) {
+            return '<div class="bg-surface-50 rounded-lg p-3"><div class="text-[10px] text-surface-500 uppercase font-semibold">' + p[0] + '</div><div class="text-sm font-medium text-surface-800 mt-0.5">' + p[1] + '</div></div>';
           }).join('') +
         '</div>' +
-        (r.containers ? '<div class="text-xs text-surface-400 bg-dark-800/30 rounded-lg p-3"><strong>Containers:</strong> ' + (typeof r.containers === 'string' ? r.containers : JSON.stringify(r.containers)) + '</div>' : '') +
+        (containers.length > 0 ? '<h4 class="text-sm font-semibold text-surface-700 mt-4"><i class="fas fa-boxes-stacked mr-1.5 text-sky-500"></i>Container Specifications</h4>' +
+          containers.map(function(ct, i) {
+            return '<div class="sgtx-card p-3 text-xs mt-2">' +
+              '<div class="font-semibold text-surface-700 mb-2">Container ' + (i+1) + ' — ' + (ct.container_type || '40HC') + '</div>' +
+              '<div class="grid grid-cols-4 gap-2">' +
+                [['Destination', (ct.destination_country || '') + ' / ' + (ct.destination_port || '')],
+                 ['Commodity', ct.commodity_type || '-'], ['Product', ct.product_name || '-'],
+                 ['Packaging', ct.packaging || '-']
+                ].map(function(f){ return '<div><span class="text-surface-500">' + f[0] + ':</span> <span class="text-surface-800 font-medium">' + f[1] + '</span></div>'; }).join('') +
+              '</div>' +
+            '</div>';
+          }).join('') : '') +
+        (specs.global_notes ? '<div class="sgtx-card p-3 text-xs border-l-4 border-l-amber-400"><i class="fas fa-sticky-note text-amber-500 mr-1"></i><strong>Notes:</strong> ' + specs.global_notes + '</div>' : '') +
+        '<div class="flex gap-2 mt-4">' +
+          '<button onclick="closeModal(); openSellerQuoteBuilder(\'' + tradeId + '\')" class="flex-1 btn-primary py-2.5"><i class="fas fa-pen-ruler mr-2"></i>Start Quote</button>' +
+          '<button onclick="closeModal()" class="px-6 py-2.5 sgtx-card text-surface-600 rounded-lg text-sm font-medium">Close</button>' +
+        '</div>' +
       '</div>'
     );
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: EXW PRICE LOCK (Blueprint 6.2.2 — Phase 2)
+// SELLER: UNIFIED QUOTE BUILDER (Phase 2 — Steps 2.1-2.8)
+// Single scrollable screen: Loading Origin -> EXW Lock ->
+// Logistics -> Alt Ports -> Fee -> Submit
+// ═══════════════════════════════════════════════════════════
+
+var sqState = { tradeId: null, quoteId: null, specs: {}, buyer: {}, trade: {}, incoterm: 'FOB', logisticsMap: {}, exwLocked: false, logisticsSaved: false, feeCalled: false };
+var sqAltPortCount = 0;
+
+async function openSellerQuoteBuilder(tradeId) {
+  navigateTo('quote-submit');
+  sqState.tradeId = tradeId;
+  sqState.quoteId = null; sqState.exwLocked = false; sqState.logisticsSaved = false; sqState.feeCalled = false;
+  sqAltPortCount = 0;
+  var content = document.getElementById('content');
+  content.innerHTML = '<div class="flex items-center justify-center py-12"><i class="fas fa-spinner fa-spin text-sgtx-500 text-2xl mr-3"></i><span class="text-surface-500">Loading trade request...</span></div>';
+  try {
+    var res = await api('/seller-quote/request-detail?trade_request_id=' + tradeId);
+    var d = res.data || {};
+    sqState.trade = d.trade_request || {};
+    sqState.specs = d.parsed_specs || {};
+    sqState.buyer = d.buyer || {};
+    sqState.incoterm = sqState.specs.incoterm || sqState.trade.incoterm || 'FOB';
+    var lmRes = await api('/seller-quote/logistics-map?incoterm=' + sqState.incoterm);
+    sqState.logisticsMap = lmRes.data || {};
+    var existing = (d.existing_quotes || []).find(function(q){ return q.status !== 'REJECTED'; });
+    if (existing) { sqState.quoteId = existing.id; sqState.exwLocked = true; }
+    sqRenderBuilder();
+  } catch (e) {
+    content.innerHTML = renderError('Failed to load trade request: ' + e.message);
+  }
+}
+
+function sqProgressDot(num, label, done) {
+  var cls = done ? 'bg-emerald-500 text-white' : 'bg-surface-200 text-surface-500';
+  return '<div class="flex flex-col items-center"><div class="w-7 h-7 rounded-full ' + cls + ' flex items-center justify-center text-[10px] font-bold">' + (done ? '<i class="fas fa-check"></i>' : num) + '</div><span class="text-[9px] text-surface-500 mt-1">' + label + '</span></div>';
+}
+
+function sqRenderBuilder() {
+  var content = document.getElementById('content');
+  var tr = sqState.trade;
+  var specs = sqState.specs;
+  var buyer = sqState.buyer;
+  var containers = specs.containers || [];
+  var incoterm = sqState.incoterm;
+  var costLines = (sqState.logisticsMap.cost_lines || []).filter(function(cl){ return !cl.is_disabled; });
+
+  content.innerHTML =
+    // Header
+    '<div class="flex items-center justify-between mb-5">' +
+      '<div>' +
+        '<h2 class="text-xl font-bold text-surface-800"><i class="fas fa-paper-plane mr-2 text-sgtx-500"></i>Quote Builder — Phase 2</h2>' +
+        '<p class="text-xs text-surface-500 mt-1">Unified seller response for <span class="font-mono text-sgtx-600 font-semibold">' + (tr.ustn || tr.id || '') + '</span></p>' +
+      '</div>' +
+      '<div class="flex items-center gap-3">' +
+        '<span class="badge badge-info"><i class="fas fa-file-contract mr-1"></i>' + incoterm + '</span>' +
+        '<button onclick="navigateTo(\'pending-requests\')" class="px-3 py-1.5 sgtx-card text-surface-600 rounded-lg text-xs font-medium hover:bg-surface-50"><i class="fas fa-arrow-left mr-1"></i>Back</button>' +
+      '</div>' +
+    '</div>' +
+
+    // Progress
+    '<div class="sgtx-card p-3 mb-5"><div class="flex items-center gap-2">' +
+      sqProgressDot(1, 'Origin', sqState.exwLocked) + '<div class="flex-1 h-px bg-surface-200"></div>' +
+      sqProgressDot(2, 'EXW Price', sqState.exwLocked) + '<div class="flex-1 h-px bg-surface-200"></div>' +
+      sqProgressDot(3, 'Logistics', sqState.logisticsSaved) + '<div class="flex-1 h-px bg-surface-200"></div>' +
+      sqProgressDot(4, 'Alt Ports', false) + '<div class="flex-1 h-px bg-surface-200"></div>' +
+      sqProgressDot(5, 'Fee', sqState.feeCalled) + '<div class="flex-1 h-px bg-surface-200"></div>' +
+      sqProgressDot(6, 'Submit', false) +
+    '</div></div>' +
+
+    // Buyer Request Summary (read-only)
+    '<div class="sgtx-card p-5 mb-4 bg-gradient-to-r from-sky-50 to-indigo-50 border-l-4 border-l-sky-500">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-user mr-1.5 text-sky-500"></i>Buyer Request Summary <span class="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full ml-2">READ ONLY</span></h3>' +
+      '<div class="grid grid-cols-5 gap-3 text-xs">' +
+        '<div><span class="text-surface-500 block mb-0.5">Buyer</span><span class="font-semibold text-surface-800">' + (buyer.name || '-') + '</span></div>' +
+        '<div><span class="text-surface-500 block mb-0.5">Country</span><span class="font-semibold text-surface-800">' + (buyer.country || '-') + '</span></div>' +
+        '<div><span class="text-surface-500 block mb-0.5">Trust</span><span class="font-semibold text-' + ((buyer.trust_score || 0) >= 70 ? 'emerald' : 'amber') + '-600">' + (buyer.trust_score || '—') + '/100</span></div>' +
+        '<div><span class="text-surface-500 block mb-0.5">Containers</span><span class="font-semibold text-surface-800">' + containers.length + '</span></div>' +
+        '<div><span class="text-surface-500 block mb-0.5">Incoterm</span><span class="font-semibold text-surface-800">' + incoterm + '</span></div>' +
+      '</div>' +
+      (containers.length > 0 ? '<div class="mt-3 space-y-2">' + containers.map(function(ct, i) {
+        return '<div class="bg-white/60 rounded-lg p-2.5 flex items-center gap-4 text-xs">' +
+          '<span class="w-6 h-6 rounded bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-[10px]">' + (i+1) + '</span>' +
+          '<span class="text-surface-800 font-medium">' + (ct.container_type || '40HC') + '</span>' +
+          '<span class="text-surface-600">' + (ct.commodity_type || '-') + ' / ' + (ct.product_name || '-') + '</span>' +
+          '<span class="text-surface-500">' + (ct.destination_country || '') + ' / ' + (ct.destination_port || '') + '</span>' +
+        '</div>';
+      }).join('') + '</div>' : '') +
+    '</div>' +
+
+    // STEP 2.1: Loading Origin
+    '<div class="sgtx-card p-5 mb-4" id="sq-origin">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-sgtx-500 text-white text-[10px] font-bold mr-2">1</span>Loading Origin <span class="text-[10px] text-red-500 ml-1">*</span> <span class="text-[10px] text-surface-400 ml-2">Governor G2U17</span></h3>' +
+      '<div class="grid grid-cols-2 gap-4">' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Country of Loading</label><select id="sq-load-country" class="w-full" onchange="sqLoadPorts(this.value)"><option value="">Select country...</option></select></div>' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Port of Loading</label><select id="sq-load-port" class="w-full"><option value="">Select port...</option></select></div>' +
+      '</div>' +
+    '</div>' +
+
+    // STEP 2.2: EXW Price Lock
+    '<div class="sgtx-card p-5 mb-4" id="sq-exw">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-sgtx-500 text-white text-[10px] font-bold mr-2">2</span>EXW Price Lock <span class="text-[10px] text-red-500 ml-1">*</span> <span class="text-[10px] text-surface-400 ml-2">Governor G2UA1</span></h3>' +
+      '<div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3 mb-3">' +
+        '<div class="flex items-center gap-2 mb-2"><i class="fas fa-chart-line text-emerald-600"></i><span class="text-xs font-semibold text-emerald-800">AI Market Band (30-day)</span><span class="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">A1 Advisory</span></div>' +
+        '<div class="h-20 bg-white rounded flex items-center justify-center"><canvas id="sq-market-chart" class="w-full h-full"></canvas></div>' +
+        '<p class="text-[10px] text-emerald-700 mt-2"><i class="fas fa-info-circle mr-1"></i>If price deviates &gt;30% from AI band, a written justification is required (G2UA1).</p>' +
+      '</div>' +
+      '<div class="grid grid-cols-4 gap-3">' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">EXW Price (total USD)</label><input id="sq-exw-price" type="number" step="0.01" class="w-full" placeholder="e.g. 15000"></div>' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Currency</label><select id="sq-exw-currency" class="w-full"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option></select></div>' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Validity (days)</label><input id="sq-exw-validity" type="number" class="w-full" value="15" min="1" max="90"></div>' +
+        '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Justification <span class="text-surface-400">(if &gt;30%)</span></label><input id="sq-exw-justify" type="text" class="w-full" placeholder="Required if &gt;30% deviation"></div>' +
+      '</div>' +
+      '<div class="mt-3"><button onclick="sqLockEXW()" class="btn-success" id="sq-exw-btn"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button></div>' +
+    '</div>' +
+
+    // STEP 2.3: Logistics Costs
+    '<div class="sgtx-card p-5 mb-4" id="sq-logistics">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-sgtx-500 text-white text-[10px] font-bold mr-2">3</span>Logistics Costs <span class="text-[10px] text-surface-400 ml-2">Governor G2U18 — Mode A (Manual)</span></h3>' +
+      '<p class="text-xs text-surface-500 mb-3">Costs applicable to <strong>' + incoterm + '</strong>. Mandatory = <span class="text-red-500">*</span>.</p>' +
+      '<div class="space-y-2" id="sq-logistics-lines">' +
+        costLines.map(function(cl) {
+          return '<div class="flex items-center gap-3 text-xs">' +
+            '<div class="w-1/3 flex items-center gap-2">' +
+              '<span class="' + (cl.is_mandatory ? 'text-surface-800 font-semibold' : 'text-surface-600') + '">' + cl.label + '</span>' +
+              (cl.is_mandatory ? '<span class="text-red-500 text-[10px]">*</span>' : '<span class="text-[10px] text-surface-400">opt</span>') +
+            '</div>' +
+            '<input id="sq-log-' + cl.cost_type + '" type="number" step="0.01" class="flex-1" placeholder="0.00">' +
+            '<span class="w-12 text-surface-400">USD</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div class="flex items-center gap-3 mt-3">' +
+        '<button onclick="sqSaveLogistics()" class="btn-primary" id="sq-log-btn"><i class="fas fa-save mr-2"></i>Save Logistics</button>' +
+        '<button onclick="sqSendRFQ()" class="px-4 py-2 sgtx-card text-surface-600 rounded-lg text-xs font-medium hover:bg-surface-50"><i class="fas fa-paper-plane mr-1"></i>Send RFQ to Providers (Mode B)</button>' +
+      '</div>' +
+    '</div>' +
+
+    // STEP 2.4: Alternative Delivery Ports
+    '<div class="sgtx-card p-5 mb-4" id="sq-alt-ports">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-300 text-white text-[10px] font-bold mr-2">4</span>Alternative Delivery Ports <span class="text-[10px] text-surface-400 ml-2">Optional — G2U19</span></h3>' +
+      '<p class="text-xs text-surface-500 mb-3">Offer the buyer alternative ports within the same destination country.</p>' +
+      '<div id="sq-alt-list" class="space-y-2"></div>' +
+      '<button onclick="sqAddAltPort()" class="text-xs text-sgtx-600 hover:text-sgtx-800 font-medium mt-2"><i class="fas fa-plus mr-1"></i>Add Alternative Port</button>' +
+    '</div>' +
+
+    // Multi-Shipment Response (conditional)
+    (specs.multi_shipment_enabled ?
+      '<div class="sgtx-card p-5 mb-4" id="sq-multi">' +
+        '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-[10px] font-bold mr-2"><i class="fas fa-calendar-alt text-[8px]"></i></span>Multi-Shipment Response <span class="text-[10px] text-surface-400 ml-2">G2U20</span></h3>' +
+        '<div class="space-y-2">' +
+          (specs.shipments || []).map(function(s, i) {
+            return '<div class="bg-surface-50 rounded-lg p-3 flex items-center gap-4 text-xs">' +
+              '<span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold">' + (i+1) + '</span>' +
+              '<div class="flex-1 grid grid-cols-4 gap-2">' +
+                '<div><span class="text-surface-500 block">Requested</span><span class="font-medium">' + (s.delivery_date || '-') + '</span></div>' +
+                '<div><span class="text-surface-500 block">Containers</span><span class="font-medium">' + (s.container_count || '-') + '</span></div>' +
+                '<div><label class="text-surface-500 block">Your Date</label><input type="date" id="sq-ms-date-' + i + '" class="w-full text-xs" value="' + (s.delivery_date || '') + '"></div>' +
+                '<div><label class="text-surface-500 block">Response</label><select id="sq-ms-resp-' + i + '" class="w-full text-xs"><option value="ACCEPT">Accept</option><option value="MODIFY">Modify</option></select></div>' +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>' : '') +
+
+    // STEP 2.7: Fee Calculation
+    '<div class="sgtx-card p-5 mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-l-amber-500" id="sq-fee">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-[10px] font-bold mr-2">5</span>SGTX Platform Fee <span class="text-[10px] text-surface-400 ml-2">G2U22 — clamp(0.1%, 2.5%)</span></h3>' +
+      '<p class="text-xs text-surface-500 mb-3">Fee computed by XGBoost model. Paid by seller, added to quoted price.</p>' +
+      '<div id="sq-fee-result" class="text-xs text-surface-400">Click "Calculate Fee" after entering EXW and logistics.</div>' +
+      '<button onclick="sqCalculateFee()" class="btn-primary mt-3" id="sq-fee-btn"><i class="fas fa-calculator mr-2"></i>Calculate Fee</button>' +
+    '</div>' +
+
+    // STEP 2.8: Submit
+    '<div class="sgtx-card p-5 border-2 border-sgtx-200 bg-gradient-to-r from-sgtx-50 to-indigo-50">' +
+      '<h3 class="text-sm font-bold text-surface-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-sgtx-500 text-white text-[10px] font-bold mr-2">6</span>Submit Quote <span class="text-[10px] text-surface-400 ml-2">Final Governor: G2U17, G2U18, G2U22</span></h3>' +
+      '<div id="sq-submit-summary" class="text-xs text-surface-500 mb-3">Complete all required steps above to enable submission.</div>' +
+      '<button onclick="sqSubmitQuote()" class="btn-primary w-full py-3 text-sm" id="sq-submit-btn" disabled><i class="fas fa-paper-plane mr-2"></i>Submit Quote to Buyer</button>' +
+    '</div>';
+
+  sqPopulateCountries();
+  setTimeout(function() { sqDrawMarketChart(); }, 300);
+}
+
+async function sqPopulateCountries() {
+  try {
+    var res = await api('/ref/countries');
+    var countries = res.data || [];
+    var sel = document.getElementById('sq-load-country');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Select country...</option>' + countries.map(function(c) {
+      return '<option value="' + c.code + '">' + (c.flag || '') + ' ' + c.name + '</option>';
+    }).join('');
+    if (tenant && tenant.jurisdiction) { sel.value = tenant.jurisdiction; sqLoadPorts(tenant.jurisdiction); }
+  } catch (e) {}
+}
+
+async function sqLoadPorts(cc) {
+  var sel = document.getElementById('sq-load-port');
+  if (!sel || !cc) { if (sel) sel.innerHTML = '<option value="">Select port...</option>'; return; }
+  try {
+    var res = await api('/ref/ports?country=' + cc);
+    var ports = res.data || [];
+    sel.innerHTML = '<option value="">Select port...</option>' + ports.map(function(p) {
+      return '<option value="' + (p.code || p.name) + '">' + (p.code ? p.code + ' — ' : '') + p.name + '</option>';
+    }).join('');
+  } catch (e) { sel.innerHTML = '<option value="">Error</option>'; }
+}
+
+function sqDrawMarketChart() {
+  var canvas = document.getElementById('sq-market-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  var N = 30;
+  var labels = []; for (var i = 0; i < N; i++) labels.push('D' + (i+1));
+  var base = 800 + Math.random() * 400;
+  var data = []; for (var j = 0; j < N; j++) data.push((base + (Math.random()-0.5)*200).toFixed(0));
+  var mean = 0; for (var k = 0; k < data.length; k++) mean += parseFloat(data[k]); mean /= N;
+  var lo = []; var hi = []; for (var m = 0; m < N; m++) { lo.push((mean*0.85).toFixed(0)); hi.push((mean*1.15).toFixed(0)); }
+  new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: 'Market', data: data, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0 },
+      { label: 'Low', data: lo, borderColor: '#86efac', borderDash: [5,5], pointRadius: 0, fill: false },
+      { label: 'High', data: hi, borderColor: '#86efac', borderDash: [5,5], pointRadius: 0, fill: false }
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: true, grid: { display: false }, ticks: { font: { size: 9 } } } } }
+  });
+}
+
+async function sqLockEXW() {
+  var price = parseFloat((document.getElementById('sq-exw-price') || {}).value) || 0;
+  var currency = (document.getElementById('sq-exw-currency') || {}).value || 'USD';
+  var validity = parseInt((document.getElementById('sq-exw-validity') || {}).value) || 15;
+  var justification = ((document.getElementById('sq-exw-justify') || {}).value || '').trim();
+  var loadCountry = (document.getElementById('sq-load-country') || {}).value || '';
+  var loadPort = (document.getElementById('sq-load-port') || {}).value || '';
+
+  if (!price || price <= 0) { showToast('Enter a positive EXW price', 'error'); return; }
+  if (!loadCountry || !loadPort) { showToast('Loading origin (country + port) required (G2U17)', 'error'); return; }
+
+  var btn = document.getElementById('sq-exw-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Locking...'; btn.disabled = true;
+  try {
+    var commodity = ((sqState.specs.containers || [])[0] || {}).commodity_type || 'General';
+    var res = await apiPost('/seller-quote/exw-lock', {
+      trade_request_id: sqState.tradeId, seller_tenant_id: tenant.id,
+      exw_price: price, currency: currency, incoterm: sqState.incoterm,
+      commodity_type: commodity, justification: justification || null,
+      loading_country: loadCountry, loading_port: loadPort, validity_days: validity
+    });
+    sqState.quoteId = res.data.quote_id;
+    sqState.exwLocked = true;
+    showToast('EXW locked at ' + currency + ' ' + price.toLocaleString(), 'success');
+    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Locked'; btn.className = 'px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium';
+    sqUpdateSubmitState();
+  } catch (e) {
+    showToast('Error: ' + (e.message || 'Lock failed'), 'error');
+    btn.innerHTML = '<i class="fas fa-lock mr-2"></i>Lock EXW Price'; btn.disabled = false;
+    if (e.message && e.message.indexOf('G2UA1') >= 0) {
+      var jf = document.getElementById('sq-exw-justify');
+      if (jf) { jf.classList.add('ring-2', 'ring-red-400'); jf.focus(); }
+    }
+  }
+}
+
+async function sqSaveLogistics() {
+  if (!sqState.quoteId) { showToast('Lock EXW price first', 'error'); return; }
+  var costLines = (sqState.logisticsMap.cost_lines || []).filter(function(cl){ return !cl.is_disabled; });
+  var lines = []; var missing = [];
+  costLines.forEach(function(cl) {
+    var el = document.getElementById('sq-log-' + cl.cost_type);
+    var amount = el ? parseFloat(el.value) || 0 : 0;
+    lines.push({ cost_type: cl.cost_type, amount: amount, currency: 'USD' });
+    if (cl.is_mandatory && amount <= 0) missing.push(cl.label);
+  });
+  if (missing.length > 0) { showToast('Missing mandatory costs (G2U18): ' + missing.join(', '), 'error'); return; }
+
+  var btn = document.getElementById('sq-log-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...'; btn.disabled = true;
+  try {
+    await apiPost('/seller-quote/logistics-manual', {
+      exporter_quote_id: sqState.quoteId, trade_request_id: sqState.tradeId,
+      seller_tenant_id: tenant.id, incoterm: sqState.incoterm, cost_lines: lines
+    });
+    sqState.logisticsSaved = true;
+    showToast('Logistics costs saved', 'success');
+    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Saved'; btn.className = 'px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium';
+    sqUpdateSubmitState();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Logistics'; btn.disabled = false;
+  }
+}
+
+async function sqSendRFQ() {
+  if (!sqState.quoteId) { showToast('Lock EXW price first', 'error'); return; }
+  try {
+    await apiPost('/seller-quote/logistics-rfq', {
+      exporter_quote_id: sqState.quoteId, trade_request_id: sqState.tradeId,
+      seller_tenant_id: tenant.id, origin_port: 'AUTO', destination_port: 'AUTO',
+      services: ['SEA_FREIGHT', 'REEFER'], mode: 'BROADCAST'
+    });
+    showToast('RFQ sent to logistics providers! Quotes will appear in your inbox.', 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function sqAddAltPort() {
+  sqAltPortCount++;
+  var n = sqAltPortCount;
+  var list = document.getElementById('sq-alt-list');
+  if (!list) return;
+  list.insertAdjacentHTML('beforeend',
+    '<div class="bg-surface-50 rounded-lg p-3 grid grid-cols-5 gap-2 text-xs items-end" id="sq-alt-' + n + '">' +
+      '<div><label class="text-surface-600 block mb-1">Country</label><input id="sq-alt-country-' + n + '" type="text" class="w-full" placeholder="EG"></div>' +
+      '<div><label class="text-surface-600 block mb-1">Port</label><input id="sq-alt-port-' + n + '" type="text" class="w-full" placeholder="EGALY"></div>' +
+      '<div><label class="text-surface-600 block mb-1">Transit Days</label><input id="sq-alt-transit-' + n + '" type="number" class="w-full" placeholder="14"></div>' +
+      '<div><label class="text-surface-600 block mb-1">Extra Cost (USD)</label><input id="sq-alt-cost-' + n + '" type="number" step="0.01" class="w-full" placeholder="500"></div>' +
+      '<div><button onclick="document.getElementById(\'sq-alt-' + n + '\').remove()" class="text-red-500 text-xs hover:text-red-700"><i class="fas fa-trash"></i></button></div>' +
+    '</div>'
+  );
+}
+
+async function sqCalculateFee() {
+  if (!sqState.quoteId) { showToast('Lock EXW price first', 'error'); return; }
+  var exwPrice = parseFloat((document.getElementById('sq-exw-price') || {}).value) || 0;
+  var logTotal = 0;
+  (sqState.logisticsMap.cost_lines || []).forEach(function(cl) {
+    if (cl.is_disabled) return;
+    var el = document.getElementById('sq-log-' + cl.cost_type);
+    logTotal += el ? (parseFloat(el.value) || 0) : 0;
+  });
+  var btn = document.getElementById('sq-fee-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Calculating...'; btn.disabled = true;
+  try {
+    var c0 = (sqState.specs.containers || [])[0] || {};
+    var res = await apiPost('/seller-quote/fee-calculate', {
+      exporter_quote_id: sqState.quoteId, trade_request_id: sqState.tradeId,
+      seller_tenant_id: tenant.id, exw_total: exwPrice, logistics_total: logTotal,
+      commodity_hs6: c0.hs_code || '', seller_country: tenant.jurisdiction || '',
+      buyer_country: sqState.buyer.country || ''
+    });
+    var f = res.data || {};
+    sqState.feeCalled = true;
+    document.getElementById('sq-fee-result').innerHTML =
+      '<div class="grid grid-cols-4 gap-3 mt-2">' +
+        '<div class="bg-white/80 rounded-lg p-3 text-center"><div class="text-surface-500 text-[10px]">Trade Value</div><div class="text-sm font-bold text-surface-800">' + usd(f.trade_value || 0) + '</div></div>' +
+        '<div class="bg-white/80 rounded-lg p-3 text-center"><div class="text-surface-500 text-[10px]">Fee Rate</div><div class="text-sm font-bold text-amber-600">' + (f.final_rate_pct || '—') + '</div></div>' +
+        '<div class="bg-white/80 rounded-lg p-3 text-center"><div class="text-surface-500 text-[10px]">SGTX Fee</div><div class="text-sm font-bold text-amber-600">' + usd(f.fee_amount || 0) + '</div></div>' +
+        '<div class="bg-white/80 rounded-lg p-3 text-center border-2 border-sgtx-300"><div class="text-surface-500 text-[10px]">Final Price to Buyer</div><div class="text-sm font-bold text-sgtx-700">' + usd(f.final_quoted_price || 0) + '</div></div>' +
+      '</div>' +
+      '<div class="mt-2 text-[10px] text-surface-400"><i class="fas fa-info-circle mr-1"></i>Fee paid by seller. Model: ' + (f.model || 'xgboost-v1.0') + '</div>';
+    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Calculated'; btn.className = 'px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium';
+    sqUpdateSubmitState();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.innerHTML = '<i class="fas fa-calculator mr-2"></i>Calculate Fee'; btn.disabled = false;
+  }
+}
+
+function sqUpdateSubmitState() {
+  var btn = document.getElementById('sq-submit-btn');
+  var summary = document.getElementById('sq-submit-summary');
+  if (!btn || !summary) return;
+  var checks = [];
+  if (!sqState.exwLocked) checks.push('Lock EXW price');
+  if (!sqState.logisticsSaved) checks.push('Save logistics costs');
+  if (!sqState.feeCalled) checks.push('Calculate SGTX fee');
+  if (checks.length === 0) {
+    btn.disabled = false; btn.className = 'btn-primary w-full py-3 text-sm';
+    summary.innerHTML = '<span class="text-emerald-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>All required steps completed. Ready to submit.</span>';
+  } else {
+    btn.disabled = true;
+    summary.innerHTML = '<span class="text-amber-600"><i class="fas fa-exclamation-triangle mr-1"></i>Remaining: ' + checks.join(', ') + '</span>';
+  }
+}
+
+async function sqSubmitQuote() {
+  if (!sqState.quoteId) { showToast('No quote to submit', 'error'); return; }
+  // Save alt ports first
+  var altPorts = [];
+  for (var i = 1; i <= sqAltPortCount; i++) {
+    var cEl = document.getElementById('sq-alt-country-' + i);
+    if (!cEl) continue;
+    var c = cEl.value.trim();
+    var p = (document.getElementById('sq-alt-port-' + i) || {}).value || '';
+    var t = parseInt((document.getElementById('sq-alt-transit-' + i) || {}).value) || 0;
+    var cost = parseFloat((document.getElementById('sq-alt-cost-' + i) || {}).value) || 0;
+    if (c && p) altPorts.push({ destination_country: c, port_of_discharge: p, transit_days: t, additional_logistics_cost: cost });
+  }
+  if (altPorts.length > 0) {
+    try { await apiPost('/seller-quote/alternative-ports', { exporter_quote_id: sqState.quoteId, trade_request_id: sqState.tradeId, alternatives: altPorts }); } catch (e) { console.warn('Alt ports:', e); }
+  }
+
+  var btn = document.getElementById('sq-submit-btn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting via Governor...'; btn.disabled = true;
+  try {
+    var res = await apiPost('/seller-quote/submit', { exporter_quote_id: sqState.quoteId, seller_tenant_id: tenant.id });
+    var d = res.data || {};
+    if (d.governor_decision && d.governor_decision.verdict !== 'ALLOW') {
+      showGovernorPanel(d.governor_decision.verdict, sqState.quoteId, {
+        title: 'Quote Submission', explanation: d.governor_decision.explanation || 'Governor requires review',
+        conditions: d.governor_decision.conditions || [], entity_type: 'Quote',
+      });
+    } else {
+      showToast('Quote submitted! Buyer has been notified.', 'success');
+      setTimeout(function() { navigateTo('pending-requests'); }, 1500);
+    }
+  } catch (e) {
+    showToast('Submission blocked: ' + (e.message || 'Failed'), 'error');
+    btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Submit Quote to Buyer'; btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELLER: EXW PRICE LOCK (standalone — redirects to builder)
 // ═══════════════════════════════════════════════════════════
 
 async function renderEXWPriceLock() {
-  setTitle('EXW Price Lock', 'Lock ex-works price for produce shipments');
+  setTitle('EXW Price Lock', 'Lock ex-works pricing — use Quote Builder for full flow');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,MATCHING&role=seller');
-    var trades = res.data || [];
+    var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
+    var requests = res.data || [];
     content.innerHTML =
-      fourQuestions(
-        'Set your EXW (ex-works) price for accepted produce trade requests.',
-        'Enter price per unit. AI validates against 30-day market range. Lock to proceed.',
-        trades.length > 0 ? trades.length + ' trade(s) awaiting your EXW price' : 'None',
-        'After locking EXW, proceed to containerisation and logistics builder.'
-      ) +
-      // Market price reference panel
-      '<div class="glass-card p-5 mb-5 border-l-4 border-l-emerald-400">' +
-        '<div class="flex items-center justify-between mb-3">' +
-          '<div class="flex items-center gap-2"><i class="fas fa-chart-line text-emerald-500"></i><span class="text-sm font-semibold text-surface-800">30-Day Market Reference</span><span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">AI A1</span></div>' +
-        '</div>' +
-        '<div class="grid grid-cols-4 gap-4 mb-3">' +
-          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Fresh Oranges</div><div class="text-sm font-bold text-surface-800">$0.85/kg</div><div class="text-[10px] text-emerald-600">+2.4%</div></div>' +
-          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Frozen Strawberries</div><div class="text-sm font-bold text-surface-800">$2.20/kg</div><div class="text-[10px] text-red-500">-1.1%</div></div>' +
-          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Fresh Grapes</div><div class="text-sm font-bold text-surface-800">$1.45/kg</div><div class="text-[10px] text-emerald-600">+5.2%</div></div>' +
-          '<div class="text-center p-2 bg-surface-50 rounded-lg"><div class="text-[10px] text-surface-500">Frozen Mango</div><div class="text-sm font-bold text-surface-800">$1.90/kg</div><div class="text-[10px] text-surface-400">0%</div></div>' +
-        '</div>' +
-        '<div class="h-24 bg-gradient-to-r from-emerald-50 to-sky-50 rounded-lg flex items-center justify-center border border-emerald-100">' +
-          '<canvas id="exw-market-chart" class="w-full h-full"></canvas>' +
-        '</div>' +
-        '<p class="text-[10px] text-surface-400 mt-2"><i class="fas fa-info-circle mr-1"></i>Prices exceeding 30% of market average will require justification (Governor G2U15).</p>' +
-      '</div>' +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-tag text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No accepted trades awaiting EXW pricing. Trades appear here after buyer submission is matched to you.</p></div>' :
-        '<div class="space-y-4">' + trades.map(function(t) {
-          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT/i);
-          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-emerald-400' : '') + '">' +
-            '<div class="flex items-center justify-between mb-3">' +
-              '<div class="flex items-center gap-3">' +
-                '<div class="w-9 h-9 rounded-lg bg-gradient-to-br ' + (isFresh ? 'from-emerald-100 to-green-100' : 'from-sgtx-100 to-sgtx-200') + ' flex items-center justify-center">' +
-                  '<i class="fas ' + (isFresh ? 'fa-leaf text-emerald-600' : 'fa-tag text-sgtx-600') + ' text-sm"></i>' +
-                '</div>' +
-                '<div>' +
-                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
-                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General') + ' • ' + (t.incoterm || 'EXW') + '</div>' +
-                '</div>' +
-              '</div>' +
-              badge(t.status || 'ACCEPTED') +
-            '</div>' +
-            '<div class="grid grid-cols-4 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Price per Unit (USD)</label><input id="exw-price-' + t.id + '" type="number" step="0.01" class="w-full" placeholder="0.85"></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Unit</label><select id="exw-unit-' + t.id + '" class="w-full"><option value="KG">per kg</option><option value="TON">per metric ton</option><option value="CARTON">per carton</option><option value="PALLET">per pallet</option><option value="BAG">per bag</option></select></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Valid Until</label><input id="exw-valid-' + t.id + '" type="date" class="w-full"></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Justification</label><input id="exw-justify-' + t.id + '" type="text" class="w-full" placeholder="If >30% deviation"></div>' +
-            '</div>' +
-            '<button onclick="lockEXWPrice(\'' + t.id + '\')" class="btn-success w-full"><i class="fas fa-lock mr-2"></i>Lock EXW Price</button>' +
+      fourQuestions('Lock your EXW pricing against AI market band.', 'Select a trade to open the Quote Builder.', requests.length > 0 ? requests.length + ' trade(s) awaiting EXW' : 'None', 'After locking, proceed to logistics and submission.') +
+      (requests.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-tag text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trades awaiting EXW pricing.</p></div>' :
+        '<div class="space-y-3">' + requests.map(function(r) {
+          return '<div class="sgtx-card p-4 hover:shadow-card-hover transition cursor-pointer" onclick="openSellerQuoteBuilder(\'' + r.id + '\')">' +
+            '<div class="flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-lock text-amber-500"></i><div><div class="text-sm font-medium text-surface-800">' + (r.buyer_name || 'Buyer') + '</div><div class="text-xs text-surface-500">' + (r.commodity_summary || 'Trade') + ' \u2022 ' + (r.incoterm || '') + '</div></div></div><i class="fas fa-arrow-right text-surface-400"></i></div>' +
           '</div>';
         }).join('') + '</div>');
-    // Render mini chart
-    setTimeout(function() {
-      var canvas = document.getElementById('exw-market-chart');
-      if (canvas && typeof Chart !== 'undefined') {
-        new Chart(canvas, { type: 'line', data: { labels: Array.from({length:30}, function(_,i){return 'D'+(i+1);}), datasets: [{ label: 'Avg EXW Price', data: Array.from({length:30}, function(){return (0.8 + Math.random()*0.2).toFixed(2);}), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: true, grid: { display: false }, ticks: { font: { size: 9 } } } } } });
-      }
-    }, 200);
-  } catch (e) {
-    content.innerHTML = renderError('Error loading EXW data: ' + e.message);
-  }
-}
-
-async function lockEXWPrice(tradeId) {
-  var price = parseFloat(document.getElementById('exw-price-' + tradeId).value) || 0;
-  var unit = document.getElementById('exw-unit-' + tradeId).value;
-  var validUntil = document.getElementById('exw-valid-' + tradeId).value;
-  if (!price) { showToast('Price is required', 'error'); return; }
-  try {
-    await apiPost('/seller-quote/exw-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, exw_price: price, price_unit: unit, valid_until: validUntil || null });
-    showToast('EXW price locked!', 'success');
-    renderEXWPriceLock();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: CONTAINERISATION (Blueprint 6.2.2 — Phase 5)
+// SELLER: CONTAINERISATION (Phase 2.5)
 // ═══════════════════════════════════════════════════════════
 
 async function renderContainerisation() {
-  setTitle('Containerisation', 'Define packing plan for produce shipments');
+  setTitle('Containerisation', 'Packing plans for trade shipments');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED&role=seller');
-    var trades = res.data || [];
+    var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
+    var requests = res.data || [];
     content.innerHTML =
-      fourQuestions(
-        'Define how fresh/frozen produce will be packed into reefer containers.',
-        'Select packaging type, specify palletisation, set temperature requirements.',
-        trades.length > 0 ? trades.length + ' trade(s) ready for packing plan' : 'None',
-        'After packing plan locked, proceed to logistics builder for reefer quotes.'
-      ) +
-      // Temperature guidance panel
-      '<div class="glass-card p-4 mb-5 border-l-4 border-l-sky-400">' +
-        '<div class="flex items-center gap-2 mb-2"><i class="fas fa-temperature-low text-sky-500"></i><span class="text-sm font-semibold text-surface-800">Temperature & Packaging Guide</span></div>' +
-        '<div class="grid grid-cols-3 gap-3 text-xs">' +
-          '<div class="p-2 bg-sky-50 rounded-lg border border-sky-100"><strong class="text-sky-700">Fresh Fruits</strong><div class="text-surface-600 mt-1">2-8\u00b0C \u2022 Cartons/Crates \u2022 Ventilated pallets</div></div>' +
-          '<div class="p-2 bg-blue-50 rounded-lg border border-blue-100"><strong class="text-blue-700">Frozen Produce</strong><div class="text-surface-600 mt-1">-18\u00b0C to -22\u00b0C \u2022 Sealed cartons \u2022 Block stacking</div></div>' +
-          '<div class="p-2 bg-emerald-50 rounded-lg border border-emerald-100"><strong class="text-emerald-700">Vegetables</strong><div class="text-surface-600 mt-1">4-12\u00b0C \u2022 Mesh bags/Crates \u2022 Standard pallets</div></div>' +
-        '</div>' +
-      '</div>' +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-boxes-stacked text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trades ready for containerisation. Lock EXW price first.</p></div>' :
-        '<div class="space-y-4">' + trades.map(function(t) {
-          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT/i);
-          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-sky-400' : '') + '">' +
-            '<div class="flex items-center justify-between mb-4">' +
-              '<div class="flex items-center gap-3">' +
-                '<div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-100 to-cyan-100 flex items-center justify-center">' +
-                  '<i class="fas fa-boxes-stacked text-sky-600 text-sm"></i>' +
-                '</div>' +
-                '<div>' +
-                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
-                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General') + '</div>' +
-                '</div>' +
-              '</div>' +
-              badge(t.status || 'EXW_LOCKED') +
-            '</div>' +
-            '<div class="grid grid-cols-4 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Packaging Type</label><select id="pack-type-' + t.id + '" class="w-full"><option value="CARTONS">Cartons (Standard)</option><option value="MESH_BAGS">Mesh Bags (Fresh)</option><option value="CRATES">Wooden Crates</option><option value="BINS">Bulk Bins</option><option value="WAXED_CARTONS">Waxed Cartons (Cold)</option><option value="POLYSTYRENE">Polystyrene Boxes</option><option value="PALLETS">Pre-packed Pallets</option><option value="BULK">Bulk (no packaging)</option></select></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Pack Weight (kg)</label><input id="pack-wt-' + t.id + '" type="number" class="w-full" placeholder="15"></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Packs per Pallet</label><input id="pack-pp-' + t.id + '" type="number" class="w-full" placeholder="80"></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Pallets/Container</label><input id="pack-pc-' + t.id + '" type="number" class="w-full" placeholder="20"></div>' +
-            '</div>' +
-            '<div class="grid grid-cols-3 gap-3 mb-3">' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Total Weight (kg)</label><input id="pack-tw-' + t.id + '" type="number" class="w-full" placeholder="20000"></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Target Temp (\u00b0C)</label><select id="pack-temp-' + t.id + '" class="w-full"><option value="2-8">2-8\u00b0C (Fresh)</option><option value="-18">-18\u00b0C (Frozen)</option><option value="-22">-22\u00b0C (Deep Frozen)</option><option value="12-15">12-15\u00b0C (Tropical)</option><option value="ambient">Ambient</option></select></div>' +
-              '<div><label class="text-[10px] text-surface-600 font-semibold block mb-1">Ventilation</label><select id="pack-vent-' + t.id + '" class="w-full"><option value="25">25% (Standard)</option><option value="50">50% (High Respiration)</option><option value="0">0% (Frozen/Sealed)</option><option value="75">75% (Maximum)</option></select></div>' +
-            '</div>' +
-            '<button onclick="submitPackingPlan(\'' + t.id + '\')" class="btn-primary w-full"><i class="fas fa-box mr-2"></i>Lock Packing Plan</button>' +
+      fourQuestions('Define how goods are packed into containers.', 'Set packaging, palletisation, temperature per container.', '', 'After packing lock (Loom hash), proceed to logistics.') +
+      '<div class="sgtx-card p-4 mb-4 border-l-4 border-l-sky-400"><div class="flex items-center gap-2 mb-2"><i class="fas fa-temperature-low text-sky-500"></i><span class="text-sm font-semibold text-surface-800">Temperature Guide</span></div><div class="grid grid-cols-3 gap-3 text-xs"><div class="p-2 bg-sky-50 rounded-lg border border-sky-100"><strong class="text-sky-700">Fresh Fruits</strong><div class="text-surface-600 mt-1">2-8\u00b0C \u2022 Cartons \u2022 Ventilated pallets</div></div><div class="p-2 bg-blue-50 rounded-lg border border-blue-100"><strong class="text-blue-700">Frozen</strong><div class="text-surface-600 mt-1">-18\u00b0C to -22\u00b0C \u2022 Sealed \u2022 Block stacking</div></div><div class="p-2 bg-emerald-50 rounded-lg border border-emerald-100"><strong class="text-emerald-700">Vegetables</strong><div class="text-surface-600 mt-1">4-12\u00b0C \u2022 Mesh bags \u2022 Standard pallets</div></div></div></div>' +
+      (requests.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-boxes-stacked text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trades ready for containerisation.</p></div>' :
+        '<div class="space-y-3">' + requests.map(function(r) {
+          return '<div class="sgtx-card p-4 hover:shadow-card-hover transition cursor-pointer" onclick="openSellerQuoteBuilder(\'' + r.id + '\')">' +
+            '<div class="flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-boxes-stacked text-sky-500"></i><div><div class="text-sm font-medium text-surface-800">' + (r.buyer_name || 'Buyer') + '</div><div class="text-xs text-surface-500">' + (r.container_count || '?') + ' containers \u2022 ' + (r.commodity_summary || '') + '</div></div></div><i class="fas fa-arrow-right text-surface-400"></i></div>' +
           '</div>';
         }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = renderError('Error loading containerisation data: ' + e.message);
-  }
-}
-
-async function submitPackingPlan(tradeId) {
-  var type = document.getElementById('pack-type-' + tradeId).value;
-  var wt = parseFloat(document.getElementById('pack-wt-' + tradeId).value) || 0;
-  var pp = parseInt(document.getElementById('pack-pp-' + tradeId).value) || 0;
-  var pc = parseInt(document.getElementById('pack-pc-' + tradeId).value) || 0;
-  var tw = parseFloat(document.getElementById('pack-tw-' + tradeId).value) || 0;
-  try {
-    await apiPost('/seller-quote/packing-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, packaging_type: type, pack_weight_kg: wt, packs_per_pallet: pp, pallets_per_container: pc, total_weight_kg: tw });
-    showToast('Packing plan locked!', 'success');
-    renderContainerisation();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: LOGISTICS BUILDER (Blueprint 6.2.2 — Phase 8)
-// Mode A = Auto-Bundle, Mode B = Manual RFQ
+// SELLER: LOGISTICS BUILDER (Phase 2.3)
 // ═══════════════════════════════════════════════════════════
-
-var logisticsMode = 'A';
 
 async function renderLogisticsBuilder() {
-  setTitle('Logistics Builder', 'Build logistics quotes for your produce shipments');
+  setTitle('Logistics Builder', 'Configure shipping logistics and request quotes');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=ACCEPTED,EXW_LOCKED,PACKING_LOCKED,MATCHING&role=seller');
-    var trades = res.data || [];
-    // Also load existing RFQs for status display
-    var rfqRes = await api('/upgrades/logistics-rfq?tenant_id=' + tenant.id).catch(function() { return { data: [] }; });
-    var existingRFQs = rfqRes.data || [];
+    var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
+    var requests = res.data || [];
     content.innerHTML =
-      fourQuestions(
-        'Get logistics quotes for your fresh/frozen produce shipments.',
-        'Mode A: AI auto-bundles best reefer rates. Mode B: Send manual RFQs to preferred providers.',
-        existingRFQs.length > 0 ? existingRFQs.filter(function(r){return r.status==='RFQ_SENT';}).length + ' RFQs awaiting provider responses' : 'None',
-        'Once logistics quoted, assemble and submit the full landed cost quote to buyer.'
-      ) +
-      // Mode selector
-      '<div class="flex items-center gap-3 mb-5">' +
-        '<div class="flex gap-2 bg-surface-100 p-1 rounded-xl">' +
-          '<button onclick="logisticsMode=\'A\'; renderLogisticsBuilder()" class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ' + (logisticsMode === 'A' ? 'bg-white text-sgtx-600 shadow-card' : 'text-surface-500 hover:text-surface-700') + '"><i class="fas fa-wand-magic-sparkles mr-2"></i>Auto-Bundle (A)</button>' +
-          '<button onclick="logisticsMode=\'B\'; renderLogisticsBuilder()" class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ' + (logisticsMode === 'B' ? 'bg-white text-sgtx-600 shadow-card' : 'text-surface-500 hover:text-surface-700') + '"><i class="fas fa-paper-plane mr-2"></i>Manual RFQ (B)</button>' +
-        '</div>' +
-        '<div class="ml-auto flex items-center gap-2 text-xs text-surface-500">' +
-          '<i class="fas fa-snowflake text-sky-500"></i>' +
-          '<span>Reefer-optimized routing enabled</span>' +
-        '</div>' +
-      '</div>' +
-      // Existing RFQ status
-      (existingRFQs.length > 0 ? '<div class="glass-card p-4 mb-4 border-l-4 border-l-sky-400"><div class="flex items-center gap-2 mb-2"><i class="fas fa-broadcast-tower text-sky-500"></i><span class="text-sm font-semibold text-surface-800">Active RFQs</span></div><div class="grid grid-cols-2 md:grid-cols-4 gap-2">' + existingRFQs.slice(0,4).map(function(r) { return '<div class="bg-surface-50 rounded-lg p-2 text-center"><div class="text-[10px] font-mono text-surface-500">' + (r.id || '').slice(0,8) + '</div><div class="text-xs font-semibold">' + (r.status || 'OPEN') + '</div></div>'; }).join('') + '</div></div>' : '') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-truck-fast text-4xl text-surface-300 mb-3"></i><p class="text-surface-500 text-sm">No trades ready for logistics. Complete EXW lock and packing first.</p></div>' :
-        '<div class="space-y-4">' + trades.map(function(t) {
-          var isFresh = (t.commodity_type || '').match(/FRESH|FROZEN|VEGETABLE|FRUIT|SEAFOOD/i);
-          return '<div class="glass-card p-5 ' + (isFresh ? 'border-l-4 border-l-sky-400' : '') + '">' +
-            '<div class="flex items-center justify-between mb-4">' +
-              '<div class="flex items-center gap-3">' +
-                '<div class="w-10 h-10 rounded-xl bg-gradient-to-br ' + (isFresh ? 'from-sky-100 to-cyan-100' : 'from-sgtx-100 to-sgtx-200') + ' flex items-center justify-center">' +
-                  '<i class="fas ' + (isFresh ? 'fa-snowflake text-sky-600' : 'fa-box text-sgtx-600') + ' text-sm"></i>' +
-                '</div>' +
-                '<div>' +
-                  '<span class="font-mono text-xs text-sgtx-600 font-semibold">' + (t.ustn || t.id) + '</span>' +
-                  '<div class="text-xs text-surface-500 mt-0.5">' + (t.commodity_type || 'General Cargo') + (isFresh ? ' <span class="text-sky-600 font-medium">• Reefer Required</span>' : '') + '</div>' +
-                '</div>' +
-              '</div>' +
-              '<div class="flex items-center gap-2">' + badge(t.status || 'ACTIVE') + '</div>' +
-            '</div>' +
-            (isFresh ? '<div class="flex items-center gap-3 mb-3 px-3 py-2 bg-sky-50 rounded-lg border border-sky-100"><i class="fas fa-temperature-low text-sky-500"></i><span class="text-xs text-sky-700">Temperature-controlled: -18°C to +4°C range • Cold chain integrity monitoring active</span></div>' : '') +
-            (logisticsMode === 'A' ?
-              '<button onclick="autoBundleLogistics(\'' + t.id + '\')" class="btn-success w-full"><i class="fas fa-wand-magic-sparkles mr-2"></i>Auto-Bundle Best Reefer Rate</button>' :
-              '<div class="space-y-3">' +
-                '<div class="grid grid-cols-2 gap-3">' +
-                  '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Origin Port</label><input id="rfq-origin-' + t.id + '" type="text" class="w-full" placeholder="e.g. VNSGN" value="' + (t.origin_port || '') + '"></div>' +
-                  '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Destination Port</label><input id="rfq-dest-' + t.id + '" type="text" class="w-full" placeholder="e.g. NLRTM" value="' + (t.destination_port || t.port_of_discharge || '') + '"></div>' +
-                '</div>' +
-                '<div><label class="text-[10px] text-surface-500 font-semibold block mb-1">Provider GTID <span class="text-surface-400">(leave blank to broadcast)</span></label><input id="rfq-provider-' + t.id + '" type="text" class="w-full" placeholder="SGTX-XX-LOG-XXXX or blank for open broadcast"></div>' +
-                '<div class="flex gap-2">' +
-                  '<button onclick="submitManualRFQ(\'' + t.id + '\')" class="btn-primary flex-1"><i class="fas fa-paper-plane mr-2"></i>Send RFQ to Provider(s)</button>' +
-                  '<button onclick="viewRFQResponses(\'' + t.id + '\')" class="btn-secondary"><i class="fas fa-inbox mr-1"></i>Responses</button>' +
-                '</div>' +
-              '</div>') +
+      fourQuestions('Determine logistics costs for your trade quotes.', 'Enter costs manually (Mode A) or send RFQs (Mode B).', '', 'Costs feed into SGTX fee calculation.') +
+      (requests.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-truck-fast text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trades needing logistics.</p></div>' :
+        '<div class="space-y-3">' + requests.map(function(r) {
+          return '<div class="sgtx-card p-4 hover:shadow-card-hover transition cursor-pointer" onclick="openSellerQuoteBuilder(\'' + r.id + '\')">' +
+            '<div class="flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-truck-fast text-indigo-500"></i><div><div class="text-sm font-medium text-surface-800">' + (r.buyer_name || 'Buyer') + '</div><div class="text-xs text-surface-500">' + (r.incoterm || 'FOB') + ' \u2022 ' + (r.commodity_summary || '') + '</div></div></div><i class="fas fa-arrow-right text-surface-400"></i></div>' +
           '</div>';
         }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-red-500"><i class="fas fa-exclamation-circle text-2xl mb-2"></i><p>Error: ' + e.message + '</p></div>';
-  }
-}
-
-async function autoBundleLogistics(tradeId) {
-  try {
-    showToast('Finding best reefer rates via AI...', 'info');
-    var res = await apiPost('/seller-quote/logistics-rfq', {
-      trade_request_id: tradeId,
-      seller_tenant_id: tenant.id,
-      mode: 'AUTO_BUNDLE',
-      origin_port: 'AUTO',
-      destination_port: 'AUTO',
-      services: ['SEA_FREIGHT', 'REEFER', 'COLD_CHAIN']
-    });
-    var data = res.data || res;
-    showToast('Auto-bundle complete! RFQ ' + (data.rfq_id || '').slice(0,8) + ' sent to logistics network.', 'success');
-    renderLogisticsBuilder();
-  } catch (e) { showToast('Error: ' + (e.message || 'Auto-bundle failed'), 'error'); }
-}
-
-async function submitManualRFQ(tradeId) {
-  var provider = (document.getElementById('rfq-provider-' + tradeId) || {}).value || '';
-  var originPort = (document.getElementById('rfq-origin-' + tradeId) || {}).value || '';
-  var destPort = (document.getElementById('rfq-dest-' + tradeId) || {}).value || '';
-  if (!originPort.trim() || !destPort.trim()) {
-    showToast('Please enter origin and destination ports', 'error');
-    return;
-  }
-  try {
-    var res = await apiPost('/seller-quote/logistics-rfq', {
-      trade_request_id: tradeId,
-      seller_tenant_id: tenant.id,
-      mode: 'MANUAL',
-      origin_port: originPort.trim().toUpperCase(),
-      destination_port: destPort.trim().toUpperCase(),
-      provider_gtid: provider.trim() || null,
-      services: ['SEA_FREIGHT', 'REEFER', 'COLD_CHAIN']
-    });
-    var data = res.data || res;
-    showToast('RFQ ' + (data.rfq_id || '').slice(0,8) + ' sent to ' + (provider.trim() ? provider.trim() : 'all logistics providers') + '!', 'success');
-    renderLogisticsBuilder();
-  } catch (e) { showToast('Error: ' + (e.message || 'RFQ submission failed'), 'error'); }
-}
-
-async function viewRFQResponses(tradeId) {
-  try {
-    var res = await api('/portal/logistics/provider-quotes?tenant_id=' + tenant.id + '&trade_request_id=' + tradeId);
-    var responses = res.data || [];
-    if (responses.length === 0) {
-      showModal(
-        '<div class="text-center py-6"><i class="fas fa-inbox text-4xl text-surface-300 mb-3"></i><h3 class="text-lg font-semibold text-surface-800 mb-1">No Responses Yet</h3><p class="text-sm text-surface-500">Logistics providers have not responded to your RFQ yet. Check back shortly.</p></div>'
-      );
-      return;
-    }
-    var html = '<h3 class="text-lg font-bold text-surface-900 mb-4"><i class="fas fa-truck-fast text-sgtx-500 mr-2"></i>Logistics Quotes Received</h3>' +
-      '<div class="space-y-3">' + responses.map(function(r) {
-        return '<div class="glass-card p-4">' +
-          '<div class="flex items-center justify-between mb-2">' +
-            '<span class="text-sm font-semibold text-surface-800">' + (r.provider_name || r.logistics_tenant_id || 'Provider') + '</span>' +
-            '<span class="text-lg font-bold text-sgtx-600">' + usd(r.total_price || r.price) + '</span>' +
-          '</div>' +
-          '<div class="flex items-center gap-4 text-xs text-surface-500">' +
-            '<span><i class="fas fa-clock mr-1"></i>' + (r.transit_time_days || r.transit_days || '?') + ' days</span>' +
-            '<span><i class="fas fa-ship mr-1"></i>' + (r.services_included || r.service_type || 'SEA_FREIGHT') + '</span>' +
-            (r.valid_until ? '<span><i class="fas fa-calendar mr-1"></i>Valid: ' + time(r.valid_until) + '</span>' : '') +
-          '</div>' +
-          '<button onclick="selectLogisticsQuote(\'' + tradeId + '\',\'' + r.id + '\',\'' + (r.total_price || r.price || 0) + '\')" class="btn-success w-full mt-3 text-xs"><i class="fas fa-check mr-1"></i>Select This Quote</button>' +
-        '</div>';
-      }).join('') + '</div>';
-    showModal(html);
-  } catch(e) { showToast('Error loading responses: ' + e.message, 'error'); }
-}
-
-async function selectLogisticsQuote(tradeId, quoteId, price) {
-  try {
-    await apiPost('/seller-quote/packing-lock', { trade_request_id: tradeId, seller_tenant_id: tenant.id, logistics_quote_id: quoteId, logistics_cost: parseFloat(price) });
-    closeModal();
-    showToast('Logistics quote selected! Ready to submit full quote.', 'success');
-    navigate('quote-submit');
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: QUOTE SUBMISSION (Blueprint 6.2.2 — Phase 2)
+// SELLER: QUOTE SUBMISSION (redirects to builder)
 // ═══════════════════════════════════════════════════════════
 
 async function renderQuoteSubmit() {
-  setTitle('Submit Quote', 'Assemble and submit final quote to buyer');
+  if (sqState.tradeId && sqState.trade && sqState.trade.id) { sqRenderBuilder(); return; }
+  setTitle('Quote Submission', 'Assemble and submit quotes to buyers');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var res = await api('/trades?tenant_id=' + tenant.id + '&status=QUOTE_READY,LOGISTICS_QUOTED&role=seller');
-    var trades = res.data || [];
+    var res = await api('/seller-quote/pending-requests?seller_tenant_id=' + tenant.id);
+    var requests = res.data || [];
     content.innerHTML =
-      fourQuestions('Trades with all components ready for final quote assembly.', 'Click to calculate SGTX fee and submit the complete landed cost quote.', '', 'Once submitted, the buyer can accept, negotiate, or amend.') +
-      (trades.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-paper-plane text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No trades ready for quote submission. Complete EXW, packing, and logistics first.</p></div>' :
-        '<div class="space-y-3">' + trades.map(function(t) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (t.ustn || t.id) + '</span>' + badge(t.status || '', 'blue') + '</div>' +
-            '<p class="text-sm text-surface-300 mb-3">' + (t.commodity_type || '') + ' — ' + (t.incoterm || '') + '</p>' +
-            '<button onclick="assembleAndSubmitQuote(\'' + t.id + '\')" class="w-full py-2.5 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-calculator mr-2"></i>Calculate Fee & Submit</button>' +
+      fourQuestions('Submit your final quote package.', 'Select a trade to open the Quote Builder.', '', 'Quote = EXW + logistics + SGTX fee.') +
+      (requests.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-paper-plane text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No pending requests.</p></div>' :
+        '<div class="space-y-3">' + requests.map(function(r) {
+          return '<div class="sgtx-card p-4 hover:shadow-card-hover transition cursor-pointer" onclick="openSellerQuoteBuilder(\'' + r.id + '\')">' +
+            '<div class="flex items-center justify-between"><div class="flex items-center gap-3"><i class="fas fa-paper-plane text-sgtx-500"></i><div><div class="text-sm font-medium text-surface-800">' + (r.buyer_name || 'Buyer') + '</div><div class="text-xs text-surface-500">' + (r.commodity_summary || 'Trade') + ' \u2022 ' + (r.container_count || '?') + ' containers</div></div></div><i class="fas fa-arrow-right text-surface-400"></i></div>' +
           '</div>';
         }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
-}
-
-async function assembleAndSubmitQuote(tradeId) {
-  try {
-    showToast('Calculating SGTX fee...', 'info');
-    var res = await apiPost('/seller-quote/fee-calculate', { trade_request_id: tradeId, seller_tenant_id: tenant.id });
-    var fee = res.data || res;
-    showModal('Confirm Quote Submission',
-      '<div class="space-y-4">' +
-        '<div class="grid grid-cols-2 gap-3">' +
-          [['EXW Total', usd(fee.exw_total || 0)], ['Logistics', usd(fee.logistics_cost || 0)], ['SGTX Fee', usd(fee.sgtx_fee || 0)], ['Total Landed', usd(fee.total_landed || 0)]].map(function(p) {
-            return '<div class="bg-dark-800/50 rounded-lg p-3 text-center"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm font-semibold text-surface-200">' + p[1] + '</div></div>';
-          }).join('') +
-        '</div>' +
-        '<button onclick="doSubmitQuote(\'' + tradeId + '\')" class="w-full py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600"><i class="fas fa-paper-plane mr-2"></i>Confirm & Submit to Buyer</button>' +
-      '</div>'
-    );
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function doSubmitQuote(tradeId) {
-  try {
-    await apiPost('/seller-quote/submit', { trade_request_id: tradeId, seller_tenant_id: tenant.id });
-    closeModal();
-    showToast('Quote submitted to buyer!', 'success');
-    renderQuoteSubmit();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: QC BOOKING (Blueprint 6.2.2 — Phase 6)
+// SELLER: QC BOOKING (Phase 8)
 // ═══════════════════════════════════════════════════════════
 
 async function renderQCBooking() {
-  setTitle('QC Booking', 'Book quality control inspections');
+  setTitle('QC Booking', 'Request pre-shipment quality inspections');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var res = await api('/qc/jobs?exporter_id=' + tenant.id);
-    var jobs = res.data || [];
+    var res = await api('/inspections?tenant_id=' + tenant.id + '&role=requester');
+    var inspections = res.data || [];
     content.innerHTML =
-      fourQuestions('Quality control inspections for your shipments.', 'Book a new inspection or review results of existing ones.', '', 'QC results feed into the documentation and compliance phase.') +
-      '<div class="flex justify-end mb-4"><button onclick="showBookQCForm()" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600"><i class="fas fa-microscope mr-2"></i>Book Inspection</button></div>' +
-      (jobs.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-microscope text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No QC jobs booked yet.</p></div>' :
-        dataTable(['USTN', 'Inspector', 'Status', 'Date', ''],
-          jobs.map(function(j) {
-            return [
-              '<span class="font-mono text-xs text-brand-300">' + (j.ustn || j.trade_id || '-') + '</span>',
-              j.inspector_name || j.inspector || '-',
-              badge(j.status || 'SCHEDULED', j.status === 'PASSED' ? 'emerald' : j.status === 'FAILED' ? 'red' : 'amber'),
-              j.scheduled_date ? time(j.scheduled_date) : '-',
-              '<button onclick="showQCJobDetail(\'' + j.id + '\')" class="text-xs text-brand-400 hover:text-brand-300"><i class="fas fa-eye"></i></button>'
-            ];
-          })
-        ));
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
+      fourQuestions('Book quality inspections before shipment.', 'Request AQL inspections from certified QC providers.', '', 'QC reports feed into buyer approval and governor compliance.') +
+      '<div class="flex justify-end mb-4"><button onclick="sqShowBookQC()" class="btn-primary"><i class="fas fa-microscope mr-2"></i>Book Inspection</button></div>' +
+      (inspections.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-microscope text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No inspections booked yet.</p></div>' :
+        '<div class="space-y-3">' + inspections.map(function(ins) {
+          return '<div class="sgtx-card p-4"><div class="flex items-center justify-between"><div><div class="text-sm font-medium text-surface-800">' + (ins.commodity_type || 'Inspection') + '</div><div class="text-xs text-surface-500">' + (ins.aql_level || 'AQL 2.5') + ' \u2022 ' + timeAgo(ins.created_at) + '</div></div>' + badge(ins.status || 'PENDING') + '</div></div>';
+        }).join('') + '</div>');
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
-function showBookQCForm() {
+function sqShowBookQC() {
   showModal('Book QC Inspection',
     '<div class="space-y-4">' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="qc-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Inspection Type</label><select id="qc-type" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="PRE_SHIPMENT">Pre-Shipment</option><option value="LOADING">Loading Supervision</option><option value="CONTAINER">Container Inspection</option></select></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Preferred Date</label><input id="qc-date" type="date" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Notes</label><textarea id="qc-notes" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Special requirements..."></textarea></div>' +
-      '<button onclick="bookQCInspection()" class="w-full py-2 bg-brand-500 text-white rounded-lg text-sm font-medium hover:bg-brand-600">Book Inspection</button>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Trade USTN</label><input id="qc-ustn" type="text" class="w-full" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Commodity</label><input id="qc-commodity" type="text" class="w-full" placeholder="Fresh Oranges"></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">AQL Level</label><select id="qc-aql" class="w-full"><option value="AQL_1.0">AQL 1.0 (Strict)</option><option value="AQL_2.5" selected>AQL 2.5 (Standard)</option><option value="AQL_4.0">AQL 4.0 (Relaxed)</option></select></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Date</label><input id="qc-date" type="date" class="w-full"></div>' +
+      '<button onclick="sqSubmitQCBooking()" class="w-full btn-primary py-2.5"><i class="fas fa-check mr-2"></i>Book</button>' +
     '</div>'
   );
 }
 
-async function bookQCInspection() {
-  var ustn = document.getElementById('qc-ustn').value.trim();
-  var type = document.getElementById('qc-type').value;
-  var date = document.getElementById('qc-date').value;
-  var notes = document.getElementById('qc-notes').value.trim();
-  if (!ustn) { showToast('Trade USTN is required', 'error'); return; }
+async function sqSubmitQCBooking() {
   try {
-    await apiPost('/qc/jobs', { ustn: ustn, exporter_tenant_id: tenant.id, inspection_type: type, scheduled_date: date || null, notes: notes });
-    closeModal();
-    showToast('QC inspection booked!', 'success');
-    renderQCBooking();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-async function showQCJobDetail(id) {
-  try {
-    var res = await api('/qc/jobs/' + id);
-    var j = res.data || res;
-    showModal('QC Job Detail',
-      '<div class="space-y-3">' +
-        '<div class="grid grid-cols-2 gap-3">' +
-          [['USTN', j.ustn || '-'], ['Type', j.inspection_type || '-'], ['Status', j.status || '-'], ['Inspector', j.inspector_name || '-'], ['Scheduled', j.scheduled_date ? time(j.scheduled_date) : '-'], ['Result', j.result || 'Pending']].map(function(p) {
-            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
-          }).join('') +
-        '</div>' +
-        (j.inspection_logs ? '<div><h4 class="text-sm font-semibold text-surface-200 mb-2">Inspection Logs</h4><div class="space-y-1 text-xs text-surface-400">' + (j.inspection_logs || []).map(function(l) { return '<div class="bg-dark-800/40 rounded p-2">' + (l.note || l.description || JSON.stringify(l)) + '</div>'; }).join('') + '</div></div>' : '') +
-      '</div>'
-    );
+    await apiPost('/inspections', {
+      tenant_id: tenant.id, ustn: (document.getElementById('qc-ustn') || {}).value,
+      commodity_type: (document.getElementById('qc-commodity') || {}).value,
+      aql_level: (document.getElementById('qc-aql') || {}).value,
+      scheduled_date: (document.getElementById('qc-date') || {}).value
+    });
+    closeModal(); showToast('QC inspection booked', 'success'); renderQCBooking();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: DOCUMENT FINALISATION (Blueprint 6.2.2 — Phase 7)
+// SELLER: DOCUMENT FINALISATION
 // ═══════════════════════════════════════════════════════════
 
 async function renderDocFinalisation() {
-  setTitle('Document Finalisation', 'Sign packing lists and commercial invoices');
-  var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
-  try {
-    var res = await api('/shipments?tenant_id=' + tenant.id);
-    var shipments = res.data || [];
-    content.innerHTML =
-      fourQuestions('Finalize and sign trade documents for your shipments.', 'Sign packing lists and commercial invoices before cargo departs.', '', 'Signed documents trigger the logistics and customs phases.') +
-      (shipments.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-file-signature text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No shipments requiring document finalisation.</p></div>' :
-        '<div class="space-y-3">' + shipments.map(function(s) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-3"><span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span>' + badge(s.status || '', 'blue') + '</div>' +
-            '<div class="grid grid-cols-2 gap-3">' +
-              '<button onclick="signDocument(\'' + (s.ustn || s.id) + '\', \'PACKING_LIST\')" class="py-3 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium hover:bg-purple-500/30 text-center"><i class="fas fa-list mr-1"></i>Sign Packing List</button>' +
-              '<button onclick="signDocument(\'' + (s.ustn || s.id) + '\', \'COMMERCIAL_INVOICE\')" class="py-3 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-500/30 text-center"><i class="fas fa-file-invoice mr-1"></i>Sign Commercial Invoice</button>' +
-            '</div>' +
-          '</div>';
-        }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
-}
-
-async function signDocument(ustn, docType) {
-  try {
-    await apiPost('/documents', { ustn: ustn, document_type: docType, signer_tenant_id: tenant.id, signed: true, status: 'SIGNED' });
-    showToast(docType.replace(/_/g, ' ') + ' signed!', 'success');
-    renderDocFinalisation();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  setTitle('Document Finalisation', 'Prepare and finalise trade documents');
+  document.getElementById('content').innerHTML =
+    fourQuestions('Finalise all trade documentation before shipment.', 'Upload packing lists, invoices, certificates.', '', 'Documents validated against Governor policy.') +
+    '<div class="sgtx-card p-8 text-center"><i class="fas fa-file-circle-check text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">Available after contract signing (Phase 3).</p></div>';
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: BARCODE PRINT (Blueprint 6.2.2 — Phase 5)
+// SELLER: BARCODE PRINT
 // ═══════════════════════════════════════════════════════════
 
 async function renderBarcodePrint() {
-  setTitle('Barcode Print', 'SSCC barcode labels for your shipments');
-  var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
-  try {
-    var res = await api('/shipments?tenant_id=' + tenant.id);
-    var shipments = res.data || [];
-    content.innerHTML =
-      fourQuestions('Print SSCC barcode labels for each shipment.', 'Click print to generate a printable barcode label.', '', 'Barcodes enable tracking through the logistics chain.') +
-      (shipments.length === 0 ? '<div class="glass-card p-8 text-center text-surface-400">No shipments with barcodes.</div>' :
-        '<div class="space-y-3">' + shipments.map(function(s) {
-          return '<div class="glass-card p-4">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs text-brand-300">' + (s.ustn || '-') + '</span><span class="text-xs text-surface-500">' + (s.container_number || '-') + '</span></div>' +
-            '<div class="flex items-center gap-3">' +
-              '<div class="flex-1 font-mono text-xs text-surface-300 bg-dark-800/50 rounded-lg p-2">' + (s.sscc || s.barcode || 'N/A') + '</div>' +
-              '<button onclick="printBarcode(\'' + (s.sscc || s.barcode || '') + '\')" class="px-4 py-2 bg-brand-500/20 text-brand-300 rounded-lg text-xs font-medium hover:bg-brand-500/30"><i class="fas fa-print mr-1"></i>Print</button>' +
-            '</div>' +
-          '</div>';
-        }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
-}
-
-function printBarcode(sscc) {
-  if (!sscc) { showToast('No barcode available', 'error'); return; }
-  showModal('Print Barcode',
-    '<div class="text-center space-y-4">' +
-      '<div class="bg-white rounded-lg p-6 inline-block">' +
-        '<div class="text-black font-mono text-lg font-bold tracking-widest">' + sscc + '</div>' +
-        '<div class="mt-2 flex justify-center gap-px">' + sscc.split('').map(function(c) { var h = 20 + (parseInt(c) || 5) * 3; return '<div class="w-1 bg-black" style="height:' + h + 'px"></div>'; }).join('') + '</div>' +
-      '</div>' +
-      '<p class="text-xs text-surface-400">SSCC: ' + sscc + '</p>' +
-      '<button onclick="window.print()" class="px-6 py-2 bg-brand-500 text-white rounded-lg text-sm font-medium"><i class="fas fa-print mr-2"></i>Print Label</button>' +
-    '</div>'
-  );
+  setTitle('Barcode Print', 'Generate SSCC barcodes for packed containers');
+  document.getElementById('content').innerHTML =
+    fourQuestions('Generate SSCC barcodes for containers.', 'Print barcodes linking physical goods to Loom hash.', '', 'Available after packing plan lock (Phase 2.5).') +
+    '<div class="sgtx-card p-8 text-center"><i class="fas fa-barcode text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">Lock packing plan in Quote Builder first.</p></div>';
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: CASH POSITION (Blueprint 6.2.2 — Finance Overview)
+// SELLER: CASH POSITION
 // ═══════════════════════════════════════════════════════════
 
 async function renderCashPosition() {
-  setTitle('Cash Position', 'Financial overview: contracts, receivables, financing');
+  setTitle('Cash Position', 'Track receivables, payables, and net position');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
-    var stats = {};
-    try { var r1 = await api('/stats'); stats = r1.data || r1; } catch(e) {}
-    var finRes = { data: [] };
-    try { finRes = await api('/financing?tenant_id=' + tenant.id); } catch(e) {}
-    var financing = finRes.data || [];
-
+    var res = await api('/trades?tenant_id=' + tenant.id + '&role=seller');
+    var trades = res.data || [];
+    var tv = 0, tf = 0; trades.forEach(function(t) { tv += (t.total_value || 0); tf += (t.sgtx_fee || 0); });
     content.innerHTML =
-      fourQuestions('Your financial position across all active trades.', 'Monitor receivables, active financing, and settlement status.', '', 'Track cash flow and ensure timely settlements.') +
-      '<div class="grid grid-cols-4 gap-4 mb-6">' +
-        metricCard('fa-file-signature', 'Active Contracts', stats.contracts || 0, null, 'purple') +
-        metricCard('fa-hand-holding-usd', 'Receivables', usd(stats.receivables || 0), null, 'emerald') +
-        metricCard('fa-university', 'Active Financing', financing.filter(function(f) { return f.status === 'FUNDED' || f.status === 'ACTIVE'; }).length, null, 'blue') +
-        metricCard('fa-check-double', 'Settlements', stats.settlements || 0, null, 'cyan') +
+      fourQuestions('Overview of your trade cash flow.', 'Track receivables, SGTX fees, net income.', '', 'Settlement instructions in Phase 6.') +
+      '<div class="grid grid-cols-3 gap-4 mb-6">' +
+        metricCard('fa-coins', 'Total Trade Value', usd(tv), null, 'amber') +
+        metricCard('fa-receipt', 'SGTX Fees (owed)', usd(tf), null, 'red') +
+        metricCard('fa-wallet', 'Net Receivable', usd(tv - tf), null, 'emerald') +
       '</div>' +
-      (financing.length > 0 ? '<div class="glass-card p-4"><h3 class="text-sm font-semibold text-surface-200 mb-3">Active Financing</h3>' +
-        dataTable(['Trade', 'Amount', 'Status', 'Type'],
-          financing.map(function(f) {
-            return [
-              '<span class="font-mono text-xs text-brand-300">' + (f.ustn || f.trade_id || '-') + '</span>',
-              usd(f.amount || 0),
-              badge(f.status || 'PENDING', f.status === 'FUNDED' ? 'emerald' : 'amber'),
-              f.finance_type || '-'
-            ];
-          })
-        ) + '</div>' : '');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
+      (trades.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-chart-area text-4xl text-surface-300 mb-3"></i><p class="text-sm text-surface-500">No trade data.</p></div>' :
+        '<div class="sgtx-card overflow-hidden"><table class="min-w-full text-xs"><thead class="bg-surface-50"><tr><th class="px-4 py-2 text-left">Trade</th><th class="px-4 py-2 text-right">Value</th><th class="px-4 py-2 text-right">Fee</th><th class="px-4 py-2 text-right">Net</th><th class="px-4 py-2 text-center">Status</th></tr></thead><tbody>' +
+          trades.map(function(t) {
+            return '<tr class="border-t border-surface-100"><td class="px-4 py-2 font-mono text-sgtx-600">' + (t.ustn || t.id) + '</td><td class="px-4 py-2 text-right">' + usd(t.total_value || 0) + '</td><td class="px-4 py-2 text-right text-red-500">' + usd(t.sgtx_fee || 0) + '</td><td class="px-4 py-2 text-right font-semibold">' + usd((t.total_value || 0) - (t.sgtx_fee || 0)) + '</td><td class="px-4 py-2 text-center">' + badge(t.status || '-') + '</td></tr>';
+          }).join('') +
+        '</tbody></table></div>');
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELLER: DISTRESSED & OUTREACH (Blueprint 6.2.2 — Phase 10)
+// SELLER: DISTRESSED CARGO & OUTREACH (Phase 10)
 // ═══════════════════════════════════════════════════════════
 
 async function renderDistressedSell() {
   setTitle('Distressed Cargo', 'Declare and manage distressed cargo listings');
   var content = document.getElementById('content');
-  content.innerHTML = shimmerLoader(4);
+  content.innerHTML = shimmerLoader(3);
   try {
     var res = await api('/distressed-listings?seller_tenant_id=' + tenant.id);
     var listings = res.data || [];
     content.innerHTML =
-      fourQuestions('Manage cargo in distress — compliance issues, quality degradation, or market shifts.', 'Declare distressed cargo, choose triage path, launch buyer outreach.', '', 'Triage options: Sell at discount, Comply & re-export, or Claim insurance.') +
-      '<div class="flex justify-end mb-4"><button onclick="showDeclareDistressedForm()" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>Declare Distressed</button></div>' +
-      (listings.length === 0 ? '<div class="glass-card p-8 text-center"><i class="fas fa-box-open text-surface-500 text-4xl mb-3"></i><p class="text-surface-400">No distressed listings.</p></div>' :
+      fourQuestions('Manage cargo in distress.', 'Declare distressed cargo, choose triage, launch outreach.', '', 'Triage: Sell at discount, Comply, or Insurance.') +
+      '<div class="flex justify-end mb-4"><button onclick="sqShowDeclareDistressed()" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600"><i class="fas fa-exclamation-triangle mr-2"></i>Declare Distressed</button></div>' +
+      (listings.length === 0 ? '<div class="sgtx-card p-8 text-center"><i class="fas fa-box-open text-surface-300 text-4xl mb-3"></i><p class="text-sm text-surface-500">No distressed listings.</p></div>' :
         '<div class="space-y-3">' + listings.map(function(l) {
-          return '<div class="glass-card p-4 cursor-pointer hover:bg-white/5" onclick="showDistressedListingDetail(\'' + l.id + '\')">' +
-            '<div class="flex items-center justify-between mb-2"><span class="font-medium text-sm text-surface-200">' + (l.commodity_type || l.title || 'Listing') + '</span>' + badge(l.status || 'ACTIVE', l.status === 'SOLD' ? 'emerald' : l.status === 'ACTIVE' ? 'amber' : 'gray') + '</div>' +
-            '<div class="text-xs text-surface-400 flex gap-4"><span>Ask: ' + usd(l.asking_price || 0) + '</span><span>Qty: ' + (l.quantity || '-') + '</span><span>' + timeAgo(l.created_at) + '</span></div>' +
+          return '<div class="sgtx-card p-4 cursor-pointer hover:shadow-card-hover transition" onclick="sqShowDistressedDetail(\'' + l.id + '\')">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-medium text-sm text-surface-800">' + (l.commodity_type || l.title || 'Listing') + '</span>' + badge(l.status || 'ACTIVE', l.status === 'SOLD' ? 'emerald' : 'amber') + '</div>' +
+            '<div class="text-xs text-surface-500 flex gap-4"><span>Ask: ' + usd(l.asking_price || 0) + '</span><span>' + timeAgo(l.created_at) + '</span></div>' +
           '</div>';
         }).join('') + '</div>');
-  } catch (e) {
-    content.innerHTML = '<div class="glass-card p-8 text-center text-surface-400">Error: ' + e.message + '</div>';
-  }
+  } catch (e) { content.innerHTML = renderError(e.message); }
 }
 
-function showDeclareDistressedForm() {
+function sqShowDeclareDistressed() {
   showModal('Declare Distressed Cargo',
     '<div class="space-y-4">' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Trade USTN</label><input id="dist-ustn" type="text" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="SGTX-..."></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Reason</label><select id="dist-reason" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200"><option value="QUALITY_DEGRADATION">Quality Degradation</option><option value="COMPLIANCE_BLOCK">Compliance Block</option><option value="MARKET_SHIFT">Market Shift</option><option value="LOGISTICS_FAILURE">Logistics Failure</option></select></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Asking Price (USD)</label><input id="dist-price" type="number" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Discounted price"></div>' +
-      '<div><label class="text-xs text-surface-400 block mb-1">Description</label><textarea id="dist-desc" rows="2" class="w-full bg-dark-800 border border-surface-700 rounded-lg px-3 py-2 text-sm text-surface-200" placeholder="Describe cargo condition..."></textarea></div>' +
-      '<button onclick="submitDeclareDistressed()" class="w-full py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">Declare & List</button>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Trade USTN</label><input id="dist-ustn" type="text" class="w-full" placeholder="SGTX-..."></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Reason</label><select id="dist-reason" class="w-full"><option value="QUALITY_DEGRADATION">Quality Degradation</option><option value="COMPLIANCE_BLOCK">Compliance Block</option><option value="MARKET_SHIFT">Market Shift</option><option value="LOGISTICS_FAILURE">Logistics Failure</option></select></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Asking Price (USD)</label><input id="dist-price" type="number" class="w-full" placeholder="Discounted price"></div>' +
+      '<div><label class="text-xs text-surface-600 font-semibold block mb-1">Description</label><textarea id="dist-desc" rows="2" class="w-full" placeholder="Describe cargo condition..."></textarea></div>' +
+      '<button onclick="sqSubmitDistressed()" class="w-full btn-primary py-2.5"><i class="fas fa-exclamation-triangle mr-2"></i>Declare & List</button>' +
     '</div>'
   );
 }
 
-async function submitDeclareDistressed() {
-  var ustn = document.getElementById('dist-ustn').value.trim();
-  var reason = document.getElementById('dist-reason').value;
-  var price = parseFloat(document.getElementById('dist-price').value) || 0;
-  var desc = document.getElementById('dist-desc').value.trim();
-  if (!ustn) { showToast('USTN is required', 'error'); return; }
+async function sqSubmitDistressed() {
+  var ustn = (document.getElementById('dist-ustn') || {}).value || '';
+  if (!ustn) { showToast('USTN required', 'error'); return; }
   try {
-    await apiPost('/distressed-listings', { seller_tenant_id: tenant.id, ustn: ustn, reason: reason, asking_price: price, description: desc });
-    closeModal();
-    showToast('Cargo declared distressed', 'success');
-    renderDistressedSell();
+    await apiPost('/distressed-listings', {
+      seller_tenant_id: tenant.id, ustn: ustn,
+      reason: (document.getElementById('dist-reason') || {}).value,
+      asking_price: parseFloat((document.getElementById('dist-price') || {}).value) || 0,
+      description: (document.getElementById('dist-desc') || {}).value || ''
+    });
+    closeModal(); showToast('Cargo declared distressed', 'success'); renderDistressedSell();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-function showDistressedListingDetail(id) {
+function sqShowDistressedDetail(id) {
   api('/distressed-listings/' + id).then(function(res) {
     var l = res.data || res;
     showModal('Distressed Listing',
       '<div class="space-y-4">' +
         '<div class="grid grid-cols-2 gap-3">' +
-          [['USTN', l.ustn || '-'], ['Reason', l.reason || '-'], ['Ask Price', usd(l.asking_price || 0)], ['Status', l.status || '-'], ['Condition', l.condition_grade || '-'], ['Listed', time(l.created_at)]].map(function(p) {
-            return '<div class="bg-dark-800/50 rounded-lg p-2"><div class="text-[10px] text-surface-500">' + p[0] + '</div><div class="text-sm text-surface-200">' + p[1] + '</div></div>';
+          [['USTN', l.ustn || '-'], ['Reason', l.reason || '-'], ['Ask Price', usd(l.asking_price || 0)], ['Status', l.status || '-']].map(function(p) {
+            return '<div class="bg-surface-50 rounded-lg p-2.5"><div class="text-[10px] text-surface-500 uppercase">' + p[0] + '</div><div class="text-sm font-medium text-surface-800">' + p[1] + '</div></div>';
           }).join('') +
         '</div>' +
-        '<div class="text-xs text-surface-400 font-semibold mb-2">Triage Options:</div>' +
         '<div class="grid grid-cols-3 gap-2">' +
-          '<button class="py-2 bg-amber-500/20 text-amber-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-tag mr-1"></i>Sell</button>' +
-          '<button class="py-2 bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-redo mr-1"></i>Comply</button>' +
-          '<button class="py-2 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-medium text-center"><i class="fas fa-shield-alt mr-1"></i>Insurance</button>' +
+          '<button class="py-2 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium text-center hover:bg-amber-200"><i class="fas fa-tag mr-1"></i>Sell</button>' +
+          '<button class="py-2 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium text-center hover:bg-blue-200"><i class="fas fa-redo mr-1"></i>Comply</button>' +
+          '<button class="py-2 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium text-center hover:bg-purple-200"><i class="fas fa-shield-alt mr-1"></i>Insurance</button>' +
         '</div>' +
-        '<button onclick="launchOutreach(\'' + id + '\')" class="w-full py-2 bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-medium hover:bg-emerald-500/30"><i class="fas fa-bullhorn mr-1"></i>Launch Buyer Outreach</button>' +
+        '<button onclick="sqLaunchOutreach(\'' + id + '\')" class="w-full py-2.5 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-medium hover:bg-emerald-200"><i class="fas fa-bullhorn mr-1"></i>Launch Buyer Outreach</button>' +
       '</div>'
     );
   }).catch(function(e) { showToast('Error: ' + e.message, 'error'); });
 }
 
-async function launchOutreach(listingId) {
+async function sqLaunchOutreach(listingId) {
   try {
     await apiPost('/distressed/outreach/campaign', { listing_id: listingId, seller_tenant_id: tenant.id });
-    showToast('Outreach campaign launched!', 'success');
-    closeModal();
+    showToast('Outreach campaign launched!', 'success'); closeModal();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // LOGISTICS PORTAL

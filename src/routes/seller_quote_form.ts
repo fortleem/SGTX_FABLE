@@ -48,8 +48,8 @@ sellerQuote.get('/seller-quote/pending-requests', async (c) => {
            COALESCE(100 - t.risk_score, 75) as buyer_trust_score
     FROM trade_requests tr
     LEFT JOIN tenants t ON tr.importer_tenant_id = t.id
-    WHERE (tr.assigned_exporter_id = ? OR tr.exporter_tenant_id = ? OR tr.status = 'SUBMITTED')
-    AND tr.status IN ('SUBMITTED', 'PENDING', 'CREATED')
+    WHERE (tr.assigned_exporter_id = ? OR tr.exporter_tenant_id = ?)
+    AND tr.status IN ('PENDING_EXPORTER_RESPONSE', 'MATCHING', 'DRAFT')
     ORDER BY tr.created_at DESC
     LIMIT 50
   `).bind(seller_tenant_id, seller_tenant_id).all();

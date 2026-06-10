@@ -70,11 +70,11 @@ tailwind.config = {
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#c4b5fd,#7c3aed);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:#7c3aed}
 
-/* === GLASS SYSTEM === */
+/* === CARD SYSTEM === */
 .glass{background:rgba(255,255,255,.72);backdrop-filter:blur(16px) saturate(180%);border:1px solid rgba(255,255,255,.4);box-shadow:0 4px 30px rgba(0,0,0,.03)}
 .glass-dark{background:rgba(24,24,27,.88);backdrop-filter:blur(16px);border:1px solid rgba(63,63,70,.5)}
-.glass-card{background:var(--surface-card);border-radius:14px;border:1px solid var(--border-subtle);box-shadow:0 1px 3px rgba(0,0,0,.03),0 1px 2px rgba(0,0,0,.04);transition:all .25s cubic-bezier(.16,1,.3,1)}
-.glass-card:hover{box-shadow:0 8px 32px rgba(124,58,237,.06),0 2px 8px rgba(0,0,0,.04);border-color:#ddd6fe;transform:translateY(-1px)}
+.sgtx-card,.glass-card{background:var(--surface-card);border-radius:14px;border:1px solid var(--border-subtle);box-shadow:0 1px 3px rgba(0,0,0,.03),0 1px 2px rgba(0,0,0,.04);transition:all .25s cubic-bezier(.16,1,.3,1)}
+.sgtx-card:hover,.glass-card:hover{box-shadow:0 8px 32px rgba(124,58,237,.06),0 2px 8px rgba(0,0,0,.04);border-color:#ddd6fe;transform:translateY(-1px)}
 
 /* === FORM INPUTS — High Contrast Light Theme === */
 input, select, textarea { color: var(--text-primary) !important; }
