@@ -11,14 +11,32 @@ const trade = new Hono<{ Bindings: Bindings }>();
 trade.get('/trades', async (c) => {
   const status = c.req.query('status');
   const tenantId = c.req.query('tenant_id');
+  const mode = c.req.query('mode');
   let sql = `SELECT tr.*, t1.legal_name as importer_name, t1.jurisdiction as importer_jurisdiction, t2.legal_name as exporter_name, t2.jurisdiction as exporter_jurisdiction
     FROM trade_requests tr
     LEFT JOIN tenants t1 ON tr.importer_tenant_id = t1.id
     LEFT JOIN tenants t2 ON tr.assigned_exporter_id = t2.id`;
   const conditions: string[] = [];
   const binds: any[] = [];
-  if (status) { conditions.push('tr.status = ?'); binds.push(status); }
-  if (tenantId) { conditions.push('(tr.importer_tenant_id = ? OR tr.assigned_exporter_id = ?)'); binds.push(tenantId, tenantId); }
+  if (status) {
+    // Support comma-separated statuses like "QUOTED,NEGOTIATING,COUNTER_OFFER"
+    const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+    if (statuses.length === 1) {
+      conditions.push('tr.status = ?'); binds.push(statuses[0]);
+    } else if (statuses.length > 1) {
+      conditions.push(`tr.status IN (${statuses.map(() => '?').join(',')})`);
+      binds.push(...statuses);
+    }
+  }
+  if (tenantId) {
+    if (mode === 'SELL') {
+      conditions.push('tr.assigned_exporter_id = ?'); binds.push(tenantId);
+    } else if (mode === 'BUY') {
+      conditions.push('tr.importer_tenant_id = ?'); binds.push(tenantId);
+    } else {
+      conditions.push('(tr.importer_tenant_id = ? OR tr.assigned_exporter_id = ?)'); binds.push(tenantId, tenantId);
+    }
+  }
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
   sql += ' ORDER BY tr.created_at DESC LIMIT 100';
   const stmt = c.env.DB.prepare(sql);

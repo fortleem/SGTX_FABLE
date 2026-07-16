@@ -1,90 +1,144 @@
-// SGTX Platform v6.1 — Registration Page
+// SGTX Platform v11.2 — Registration Page (Gold/Black Brand Identity)
 export function registerHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Register — SGTX Platform</title>
+<title>Register Organization — SGTX</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-<script>tailwind.config={theme:{extend:{colors:{sgtx:{50:'#f0f0ff',100:'#e0e0ff',200:'#c4c0ff',300:'#a49aff',400:'#7c6eff',500:'#4E3FE8',600:'#3d2fc0',700:'#2d2290',800:'#1e1660',900:'#0f0b30'}}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',system-ui,sans-serif}
+body{background:#0D0D0D;background-image:radial-gradient(circle at 80% 20%,rgba(212,160,23,.06) 0%,transparent 50%)}
+.glass-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.12);border-radius:16px;padding:24px}
+.input-field{background:rgba(255,255,255,.05)!important;border:1px solid rgba(201,168,76,.15)!important;color:white!important;border-radius:10px!important;padding:10px 14px!important;font-size:13px!important;width:100%;transition:all .2s;outline:none}
+.input-field:focus{background:rgba(255,255,255,.07)!important;border-color:rgba(212,160,23,.5)!important;box-shadow:0 0 0 3px rgba(212,160,23,.08)!important}
+.input-field::placeholder{color:rgba(255,255,255,.25)!important}
+select.input-field option{background:#1a1a1a;color:white}
+.btn-gold{background:linear-gradient(135deg,#D4A017,#C9A84C);color:#0D0D0D;font-weight:800;border:none;padding:12px;border-radius:10px;width:100%;font-size:14px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(212,160,23,.3)}
+.btn-gold:hover:not(:disabled){box-shadow:0 6px 30px rgba(212,160,23,.5);transform:translateY(-1px)}
+.btn-gold:disabled{opacity:.7;cursor:not-allowed}
+label{color:rgba(255,255,255,.6);font-size:12px;font-weight:500;margin-bottom:4px;display:block}
+.section-title{color:white;font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title i{color:#D4A017}
+</style>
 </head>
-<body class="bg-sgtx-900 min-h-screen flex items-center justify-center py-12">
-<div class="w-full max-w-lg px-6">
+<body class="min-h-screen py-10 px-6">
+
+<div class="max-w-lg mx-auto">
+  <!-- Header -->
   <div class="text-center mb-8">
-    <a href="/" class="inline-flex items-center gap-3 mb-6">
-      <div class="w-12 h-12 bg-sgtx-500 rounded-xl flex items-center justify-center"><i class="fas fa-shield-halved text-white text-xl"></i></div>
-      <div class="text-left"><div class="text-white font-bold text-xl">SGTX</div><div class="text-sgtx-400 text-xs">Platform v6.1</div></div>
+    <a href="/" class="inline-block mb-6">
+      <img src="/static/brand/sgtx-icon-gold.png" alt="SGTX" class="h-12 w-auto mx-auto" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div style="display:none" class="items-center justify-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><span class="font-black text-black">SG</span></div>
+        <span class="font-black text-2xl" style="color:#D4A017">SGTX</span>
+      </div>
     </a>
-    <h1 class="text-2xl font-bold text-white mb-2">Register Organization</h1>
-    <p class="text-sgtx-300 text-sm">Create your organization on the Sovereign Trade Execution Infrastructure</p>
+    <h1 class="text-2xl font-black text-white mb-2">Register Organization</h1>
+    <p class="text-sm" style="color:rgba(255,255,255,.4)">Create your organization on the Sovereign Trade Execution Infrastructure</p>
   </div>
 
-  <div id="reg-error" class="hidden bg-red-500/20 border border-red-500/40 text-red-300 text-sm rounded-lg p-3 mb-4"></div>
-  <div id="reg-success" class="hidden bg-green-500/20 border border-green-500/40 text-green-300 text-sm rounded-lg p-3 mb-4"></div>
+  <!-- Error / Success -->
+  <div id="reg-error" class="hidden text-sm rounded-xl p-3 mb-5" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5"></div>
+  <div id="reg-success" class="hidden text-sm rounded-xl p-4 mb-5" style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#86efac"></div>
 
   <form onsubmit="handleRegister(event)" class="space-y-4">
-    <div class="bg-sgtx-800/50 rounded-lg p-4 mb-2">
-      <h3 class="text-white text-sm font-bold mb-3"><i class="fas fa-building mr-2 text-sgtx-400"></i>Organization Details</h3>
+    
+    <!-- Organization Details -->
+    <div class="glass-card">
+      <div class="section-title"><i class="fas fa-building"></i>Organization Details</div>
       <div class="space-y-3">
         <div>
-          <label class="text-sgtx-300 text-sm mb-1 block">Legal Name *</label>
-          <input id="r-name" required class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="Your Company LLC">
+          <label>Legal Name *</label>
+          <input id="r-name" required class="input-field" placeholder="Your Company LLC">
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-sgtx-300 text-sm mb-1 block">Jurisdiction *</label>
-            <select id="r-jurisdiction" class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none">
-              <option value="US">United States</option><option value="EG">Egypt</option><option value="VN">Vietnam</option>
-              <option value="AE">UAE</option><option value="DE">Germany</option><option value="GB">United Kingdom</option>
-              <option value="SG">Singapore</option><option value="IN">India</option><option value="BR">Brazil</option>
-              <option value="NG">Nigeria</option><option value="KE">Kenya</option><option value="SA">Saudi Arabia</option>
-              <option value="TR">Turkey</option><option value="CN">China</option><option value="ZA">South Africa</option>
-              <option value="ID">Indonesia</option><option value="JP">Japan</option><option value="AU">Australia</option>
-              <option value="CH">Switzerland</option><option value="HK">Hong Kong</option>
+            <label>Jurisdiction *</label>
+            <select id="r-jurisdiction" class="input-field">
+              <option value="US">🇺🇸 United States</option>
+              <option value="EG">🇪🇬 Egypt</option>
+              <option value="VN">🇻🇳 Vietnam</option>
+              <option value="AE">🇦🇪 UAE</option>
+              <option value="DE">🇩🇪 Germany</option>
+              <option value="GB">🇬🇧 United Kingdom</option>
+              <option value="SG">🇸🇬 Singapore</option>
+              <option value="IN">🇮🇳 India</option>
+              <option value="BR">🇧🇷 Brazil</option>
+              <option value="NG">🇳🇬 Nigeria</option>
+              <option value="KE">🇰🇪 Kenya</option>
+              <option value="SA">🇸🇦 Saudi Arabia</option>
+              <option value="TR">🇹🇷 Turkey</option>
+              <option value="CN">🇨🇳 China</option>
+              <option value="ZA">🇿🇦 South Africa</option>
+              <option value="ID">🇮🇩 Indonesia</option>
+              <option value="JP">🇯🇵 Japan</option>
+              <option value="AU">🇦🇺 Australia</option>
+              <option value="CH">🇨🇭 Switzerland</option>
+              <option value="HK">🇭🇰 Hong Kong</option>
             </select>
           </div>
           <div>
-            <label class="text-sgtx-300 text-sm mb-1 block">Organization Type *</label>
-            <select id="r-type" class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none">
-              <option value="CORPORATE">Trading Company</option><option value="FINANCIAL">Financial Institution</option>
-              <option value="LOGISTICS">Logistics Provider</option><option value="QUALITY_CONTROL">QC / Inspection</option>
+            <label>Organization Type *</label>
+            <select id="r-type" class="input-field">
+              <option value="CORPORATE">Trading Company</option>
+              <option value="FINANCIAL">Financial Institution</option>
+              <option value="LOGISTICS">Logistics Provider</option>
+              <option value="QUALITY_CONTROL">QC / Inspection</option>
             </select>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="bg-sgtx-800/50 rounded-lg p-4">
-      <h3 class="text-white text-sm font-bold mb-3"><i class="fas fa-user-shield mr-2 text-sgtx-400"></i>Admin Account</h3>
+    <!-- Admin Account -->
+    <div class="glass-card">
+      <div class="section-title"><i class="fas fa-user-shield"></i>Admin Account</div>
       <div class="space-y-3">
         <div>
-          <label class="text-sgtx-300 text-sm mb-1 block">Full Name *</label>
-          <input id="r-admin-name" required class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="John Smith">
+          <label>Full Name *</label>
+          <input id="r-admin-name" required class="input-field" placeholder="John Smith">
         </div>
         <div>
-          <label class="text-sgtx-300 text-sm mb-1 block">Email *</label>
-          <input id="r-email" type="email" required class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="admin@company.com">
+          <label>Email *</label>
+          <input id="r-email" type="email" required class="input-field" placeholder="admin@company.com">
         </div>
         <div>
-          <label class="text-sgtx-300 text-sm mb-1 block">Password *</label>
-          <input id="r-password" type="password" required minlength="6" class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-2.5 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="Min. 6 characters">
+          <label>Password *</label>
+          <input id="r-password" type="password" required minlength="6" class="input-field" placeholder="Min. 6 characters">
         </div>
       </div>
     </div>
 
-    <div class="flex items-start gap-2 text-xs text-sgtx-400">
-      <input type="checkbox" required class="mt-0.5">
-      <span>I acknowledge that SGTX is a non-custodial platform headquartered in NJ, USA. It does NOT hold funds or process payments. Users bear 100% compliance responsibility.</span>
+    <!-- Disclaimer -->
+    <div class="rounded-xl p-4" style="background:rgba(212,160,23,.04);border:1px solid rgba(212,160,23,.12)">
+      <label class="flex items-start gap-3 cursor-pointer" style="color:rgba(255,255,255,.55);font-size:12px;line-height:1.5;margin:0">
+        <input type="checkbox" required class="mt-0.5 accent-yellow-500 flex-shrink-0">
+        <span>I acknowledge that SGTX is a <strong style="color:rgba(212,160,23,.8)">non-custodial platform</strong> headquartered in NJ, USA. It does NOT hold funds or process payments directly. Users bear 100% compliance responsibility. Max liability = SGTX fees paid in last 12 months.</span>
+      </label>
     </div>
 
-    <button type="submit" id="reg-btn" class="w-full bg-sgtx-500 text-white py-3 rounded-lg font-semibold hover:bg-sgtx-400 transition">
-      <i class="fas fa-rocket mr-2"></i>Register Organization (Governor Gated)
+    <button type="submit" id="reg-btn" class="btn-gold">
+      <i class="fas fa-rocket mr-2"></i>Register Organization — Governor Gated
     </button>
+
+    <!-- What happens next -->
+    <div class="rounded-xl p-4" style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06)">
+      <p class="text-xs font-semibold mb-3" style="color:rgba(255,255,255,.4)">What happens next:</p>
+      <div class="space-y-2">
+        ${['Governor pre-screens your jurisdiction for compliance (instant)','Your GTID is issued (e.g. SGTX-US-TRD-000001-A1B2)','Sandbox provisioned with demo data for immediate testing','Onboarding checklist appears on first login'].map((s,i)=>`
+        <div class="flex items-center gap-2">
+          <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style="background:rgba(212,160,23,.1);color:#D4A017">${i+1}</div>
+          <span class="text-xs" style="color:rgba(255,255,255,.35)">${s}</span>
+        </div>`).join('')}
+      </div>
+    </div>
   </form>
 
   <div class="mt-6 text-center">
-    <p class="text-sgtx-400 text-sm">Already registered? <a href="/login" class="text-sgtx-400 hover:text-sgtx-300 underline">Sign in</a></p>
+    <p class="text-sm" style="color:rgba(255,255,255,.35)">Already registered? <a href="/login" class="underline transition" style="color:#D4A017">Sign in</a></p>
   </div>
 </div>
 
@@ -94,7 +148,7 @@ async function handleRegister(e){
   const btn=document.getElementById('reg-btn');
   const err=document.getElementById('reg-error');
   const suc=document.getElementById('reg-success');
-  btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i>Registering (Governor evaluating)...';
+  btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i>Governor evaluating...';
   btn.disabled=true;
   err.classList.add('hidden');suc.classList.add('hidden');
   try{
@@ -112,10 +166,10 @@ async function handleRegister(e){
     localStorage.setItem('sgtx_token',d.data.session.token);
     localStorage.setItem('sgtx_tenant',JSON.stringify(d.data.tenant));
     localStorage.setItem('sgtx_employee',JSON.stringify(d.data.employee));
-    suc.innerHTML='<i class="fas fa-check-circle mr-2"></i>Organization registered! GTID: <b>'+d.data.tenant.gtid+'</b>. Redirecting...';
+    suc.innerHTML='<i class="fas fa-check-circle mr-2"></i><strong>Organization registered!</strong> Your GTID: <code style="background:rgba(212,160,23,.2);padding:2px 6px;border-radius:4px">'+d.data.tenant.gtid+'</code> — Redirecting to dashboard...';
     suc.classList.remove('hidden');
-    setTimeout(()=>window.location.href='/app',1500);
-  }catch(ex){err.textContent='Network error';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-rocket mr-2"></i>Register';btn.disabled=false;}
+    setTimeout(()=>window.location.href='/app',2000);
+  }catch(ex){err.textContent='Network error — please try again';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-rocket mr-2"></i>Register Organization';btn.disabled=false;}
 }
 </script>
 </body>

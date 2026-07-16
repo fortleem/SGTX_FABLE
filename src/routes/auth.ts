@@ -128,9 +128,22 @@ auth.post('/register', async (c) => {
 // LOGIN (Part 2.3 — validates employee status, lifecycle, trader mode context)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Portal → allowed tenant types map (Blueprint Part 12C — individual portal authentication)
+const PORTAL_TENANT_TYPES: Record<string, string[]> = {
+  trader: ['TRD', 'CORPORATE'],
+  logistics: ['LSP', 'CBR', 'LOGISTICS'],
+  shipping: ['SHIP', 'LOGISTICS'],
+  financier: ['FIN', 'FINANCIAL'],
+  qc: ['QC', 'QUALITY_CONTROL'],
+  laboratory: ['LAB', 'LABORATORY'],
+  government: ['GOV', 'REGULATORY', 'GOVERNMENT'],
+  admin: ['*'], // role-gated below
+  marketplace: ['MKT', 'MARKETPLACE_PARTNER', 'TRD'],
+};
+
 auth.post('/login', async (c) => {
   const body = await c.req.json();
-  const { email, password } = body;
+  const { email, password, portal } = body;
   if (!email || !password) return c.json({ error: 'Email and password required' }, 400);
 
   const pwHash = await sha256(password);
@@ -146,6 +159,20 @@ auth.post('/login', async (c) => {
   `).bind(email, pwHash).first() as any;
 
   if (!employee) return c.json({ error: 'Invalid credentials or account not active' }, 401);
+
+  // ─── Per-portal tenant-type gate (Blueprint 12C: each portal is a sovereign entrance) ───
+  if (portal && PORTAL_TENANT_TYPES[portal]) {
+    const allowed = PORTAL_TENANT_TYPES[portal];
+    const role = (employee.role || employee.role_name || '').toUpperCase();
+    const isPlatformAdmin = role === 'PLATFORM_ADMIN';
+    if (portal === 'admin') {
+      if (!isPlatformAdmin) {
+        return c.json({ error: 'Admin Portal requires PLATFORM_ADMIN role. Your account is not authorised for this entrance.' }, 403);
+      }
+    } else if (!allowed.includes('*') && !allowed.includes(employee.tenant_type) && !isPlatformAdmin) {
+      return c.json({ error: `This entrance only accepts ${allowed.filter((t: string) => t.length <= 4).join('/')} organisations. Your organisation type is ${employee.tenant_type}. Use the correct portal at /portals.` }, 403);
+    }
+  }
 
   // Check tenant lifecycle — SUSPENDED/ARCHIVED tenants cannot login
   if (employee.lifecycle_state === 'SUSPENDED') {

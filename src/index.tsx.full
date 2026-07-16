@@ -44,22 +44,14 @@ import sellerQuote from './routes/seller_quote_form';
 import tradeFinance from './routes/trade_finance';
 // Blueprint Gap Closure: Phase 5 Physical Execution, Phase 7/8 Distressed, Phase 10 Disputes, QC AQL
 import gapClosure from './routes/gap_closure';
-// Blueprint Gap Closure v2: Lab Selection, Gov Permits, Compliance, Logistics Providers, Enhanced APIs
-import gapClosureV2 from './routes/gap_closure_v2';
-// Complete Portal Backend: Shipping Line, Logistics, Financier, Government, Admin, Marketplace, Lab, QC
-import portalsComplete from './routes/portals_complete';
 // Trader Portal: Consolidated endpoints for all trader tabs (inbox, contacts, employees, decisions, etc.)
 import traderPortal from './routes/trader_portal';
-// Seller Workflow: Gap closure bridge routes, AI integration, trade actions, finance endpoints
-import sellerWorkflow from './routes/seller_workflow';
-import worldTrade from './routes/world_trade';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
 import { loginHTML } from './pages/login';
 import { registerHTML } from './pages/register';
 import { tradeRequestFormHTML } from './pages/trade_request';
-import { portalsHubHTML, portalLoginHTML, getPortal } from './pages/portals';
 import { sellerQuoteFormHTML } from './pages/seller_quote';
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -72,18 +64,6 @@ app.get('/', (c) => c.html(landingPageHTML()));
 app.get('/login', (c) => c.html(loginHTML()));
 app.get('/register', (c) => c.html(registerHTML()));
 app.get('/app', (c) => c.html(appHTML()));
-// ─── INDIVIDUAL PORTAL ENTRANCES (Blueprint Part 12C) ───
-app.get('/portals', (c) => c.html(portalsHubHTML()));
-app.get('/portal/:id/login', (c) => {
-  const portal = getPortal(c.req.param('id'));
-  if (!portal) return c.redirect('/portals');
-  return c.html(portalLoginHTML(portal));
-});
-app.get('/portal/:id', (c) => {
-  const portal = getPortal(c.req.param('id'));
-  if (!portal) return c.redirect('/portals');
-  return c.html(appHTML());
-});
 app.get('/trade-request', (c) => c.html(tradeRequestFormHTML()));
 app.get('/seller-quote', (c) => c.html(sellerQuoteFormHTML()));
 
@@ -131,23 +111,15 @@ app.route('/api/v1', sellerQuote);
 app.route('/api/v1', tradeFinance);
 // Blueprint Gap Closure Routes (Phase 5, 7/8, 10, QC AQL)
 app.route('/api/v1', gapClosure);
-// Blueprint Gap Closure v2 Routes (Lab, Gov, Logistics Providers, Enhanced APIs)
-app.route('/api/v1', gapClosureV2);
-// Complete Portal Backend Routes (All portals end-to-end)
-app.route('/api/v1', portalsComplete);
-// Seller Workflow & AI Bridge Routes (gap closure frontend support)
-app.route('/api/v1', sellerWorkflow);
 
 // Part 0: Constitution, Fee Model, AI Ladder, Seven Pillars
 app.route('/api/v1', constitution);
-// World Trade Intelligence Module (Gemini AI + AIS + indices)
-app.route('/api/v1', worldTrade);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
   status: 'operational',
-  platform: 'SGTX v11.2',
-  version: '11.2.0',
+  platform: 'SGTX v11.1',
+  version: '11.1.0',
   blueprint: 'Part 0 — Executive Summary & Core Philosophy',
   description: 'Sovereign, AI-Governed, Non-Custodial Global Trade Execution Infrastructure',
   governance_invariant: 'No irreversible action without Governor approval',
@@ -161,7 +133,6 @@ app.get('/api/health', (c) => c.json({
     'contracting_part3', 'settlement_part6', 'trade_request_form', 'seller_quote_form',
     'trade_finance_phase4',
     'gap_closure_phase5_7_10_qc',
-    'gap_closure_v2_labs_gov_logistics',
     'constitution_part0'
   ],
   timestamp: new Date().toISOString(),

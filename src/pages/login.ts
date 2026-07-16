@@ -1,77 +1,125 @@
-// SGTX Platform v6.3 — Login Page
+// SGTX Platform v11.2 — Login Page (Gold/Black Brand Identity)
 export function loginHTML(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login — SGTX Platform v6.3</title>
+<title>Sign In — SGTX Sovereign Governed Trade Execution</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-<script>tailwind.config={theme:{extend:{colors:{sgtx:{50:'#f0f0ff',100:'#e0e0ff',200:'#c4c0ff',300:'#a49aff',400:'#7c6eff',500:'#4E3FE8',600:'#3d2fc0',700:'#2d2290',800:'#1e1660',900:'#0f0b30'}}}}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',system-ui,sans-serif}
+body{background:#0D0D0D;background-image:radial-gradient(circle at 20% 50%,rgba(212,160,23,.06) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(212,160,23,.04) 0%,transparent 40%)}
+.glass-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15);backdrop-filter:blur(16px)}
+.input-field{background:rgba(255,255,255,.05)!important;border:1px solid rgba(201,168,76,.15)!important;color:white!important;border-radius:10px!important;padding:11px 14px!important;font-size:14px!important;width:100%;transition:all .2s;outline:none}
+.input-field:focus{background:rgba(255,255,255,.07)!important;border-color:rgba(212,160,23,.5)!important;box-shadow:0 0 0 3px rgba(212,160,23,.08)!important}
+.input-field::placeholder{color:rgba(255,255,255,.3)!important}
+.btn-gold{background:linear-gradient(135deg,#D4A017,#C9A84C);color:#0D0D0D;font-weight:800;border:none;padding:12px;border-radius:10px;width:100%;font-size:14px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(212,160,23,.3)}
+.btn-gold:hover:not(:disabled){box-shadow:0 6px 30px rgba(212,160,23,.5);transform:translateY(-1px)}
+.btn-gold:disabled{opacity:.7;cursor:not-allowed}
+.demo-row{display:flex;justify-content:space-between;align-items:center;cursor:pointer;border-radius:8px;padding:9px 12px;transition:all .2s;border:1px solid transparent}
+.demo-row:hover{background:rgba(212,160,23,.06);border-color:rgba(212,160,23,.15)}
+label{color:rgba(255,255,255,.6);font-size:13px;font-weight:500;margin-bottom:5px;display:block}
+</style>
 </head>
-<body class="bg-sgtx-900 min-h-screen flex items-center justify-center">
-<div class="w-full max-w-md px-6">
-  <div class="text-center mb-8">
-    <a href="/" class="inline-flex items-center gap-3 mb-6">
-      <div class="w-12 h-12 bg-sgtx-500 rounded-xl flex items-center justify-center"><i class="fas fa-shield-halved text-white text-xl"></i></div>
-      <div class="text-left"><div class="text-white font-bold text-xl">SGTX</div><div class="text-sgtx-400 text-xs">Platform v6.3</div></div>
-    </a>
-    <h1 class="text-2xl font-bold text-white mb-2">Sign In</h1>
-    <p class="text-sgtx-300 text-sm">Access your organization's trade execution dashboard</p>
-  </div>
+<body class="min-h-screen flex">
 
-  <div id="login-error" class="hidden bg-red-500/20 border border-red-500/40 text-red-300 text-sm rounded-lg p-3 mb-4"></div>
-
-  <form onsubmit="handleLogin(event)" class="space-y-4">
-    <div>
-      <label class="text-sgtx-300 text-sm mb-1 block">Email</label>
-      <input id="email" type="email" required class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-3 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="admin@company.com">
+<!-- Left panel - decorative -->
+<div class="hidden lg:flex lg:w-1/2 relative overflow-hidden" style="background:linear-gradient(135deg,#0D0D0D 0%,#1a1a1a 100%)">
+  <div class="absolute inset-0" style="background:radial-gradient(circle at 40% 50%,rgba(212,160,23,.08) 0%,transparent 60%)"></div>
+  <div class="relative z-10 flex flex-col justify-center px-16">
+    <img src="/static/brand/sgtx-icon-gold.png" alt="SGTX" class="h-14 w-auto mb-12" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div style="display:none" class="items-center gap-3 mb-12">
+      <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><span class="font-black text-black text-xl">SG</span></div>
+      <span class="font-black text-3xl" style="color:#D4A017">SGTX</span>
     </div>
-    <div>
-      <label class="text-sgtx-300 text-sm mb-1 block">Password</label>
-      <input id="password" type="password" required class="w-full bg-sgtx-800 border border-sgtx-700 text-white rounded-lg px-4 py-3 text-sm focus:border-sgtx-500 focus:outline-none" placeholder="••••••••">
-    </div>
-    <button type="submit" id="login-btn" class="w-full bg-sgtx-500 text-white py-3 rounded-lg font-semibold hover:bg-sgtx-400 transition">
-      <i class="fas fa-sign-in-alt mr-2"></i>Sign In
-    </button>
-  </form>
-
-  <div class="mt-6 text-center">
-    <p class="text-sgtx-400 text-sm">Don't have an organization? <a href="/register" class="text-sgtx-400 hover:text-sgtx-300 underline">Register here</a></p>
-  </div>
-
-  <div class="mt-8 bg-sgtx-800/50 rounded-lg p-4">
-    <h3 class="text-sgtx-300 text-xs font-bold mb-3"><i class="fas fa-users mr-1"></i> Demo Accounts <span class="text-sgtx-500 font-normal">(click to auto-login)</span></h3>
-    <div class="space-y-1.5 text-xs">
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('ahmed@cairoimports.eg','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-building text-blue-400"></i><span class="text-sgtx-200 group-hover:text-white">Cairo Imports Co.</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Importer · EG</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('nguyen@saigontex.vn','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-industry text-green-400"></i><span class="text-sgtx-200 group-hover:text-white">Saigon Textiles</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Exporter · VN</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('chen@asiafinance.sg','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-landmark text-amber-400"></i><span class="text-sgtx-200 group-hover:text-white">Asia Trade Finance</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Financier · SG</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('muller@hamburg-log.de','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-truck text-cyan-400"></i><span class="text-sgtx-200 group-hover:text-white">Hamburg Logistics</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Logistics · DE</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('james@londonqc.co.uk','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-microscope text-purple-400"></i><span class="text-sgtx-200 group-hover:text-white">London QC Services</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">QC · GB</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
-      <div class="flex justify-between items-center cursor-pointer hover:bg-sgtx-700/40 rounded-lg px-3 py-2 transition group" onclick="demoLogin('admin@sgtx.us','password123')">
-        <div class="flex items-center gap-2"><i class="fas fa-shield-halved text-red-400"></i><span class="text-sgtx-200 group-hover:text-white">SGTX Platform</span></div>
-        <div class="flex items-center gap-2"><span class="text-[10px] text-sgtx-500 bg-sgtx-800 px-2 py-0.5 rounded">Admin · US</span><i class="fas fa-arrow-right text-sgtx-500 group-hover:text-sgtx-300 text-[10px]"></i></div>
-      </div>
+    <h2 class="text-4xl font-black text-white mb-4 leading-tight">Sovereign<br><span style="color:#D4A017">Governed</span><br>Trade Execution</h2>
+    <p class="text-sm leading-relaxed mb-8" style="color:rgba(255,255,255,.45)">Non-custodial. AI-governed. Cryptographically certain. The operating system for global trade — not a marketplace, not a bank.</p>
+    <div class="space-y-3">
+      ${['Non-Custodial by Design','AI-Governed, Never Autonomous','Fixed 1.5% Transparent Fee','Jurisdiction-Aware at Every Step'].map(f=>`
+      <div class="flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(212,160,23,.15)"><i class="fas fa-check text-[9px]" style="color:#D4A017"></i></div>
+        <span class="text-sm" style="color:rgba(255,255,255,.6)">${f}</span>
+      </div>`).join('')}
     </div>
   </div>
+  <!-- Decorative hexagon pattern -->
+  <div class="absolute bottom-10 right-10 opacity-5">
+    <img src="/static/brand/sgtx-icon-gold.png" alt="" class="h-64 w-auto">
+  </div>
+</div>
 
-  <div class="mt-6 text-center text-[10px] text-sgtx-600">
-    <i class="fas fa-balance-scale mr-1"></i> SGTX Platform Inc., NJ, USA. Non-custodial. No irreversible action without Governor approval.
+<!-- Right panel - login form -->
+<div class="flex-1 flex items-center justify-center px-6 py-12">
+  <div class="w-full max-w-md">
+    
+    <!-- Mobile logo -->
+    <div class="lg:hidden text-center mb-8">
+      <img src="/static/brand/sgtx-icon-gold.png" alt="SGTX" class="h-10 w-auto mx-auto mb-4" onerror="this.style.display='none'">
+    </div>
+
+    <h1 class="text-2xl font-black text-white mb-1">Welcome back</h1>
+    <p class="text-sm mb-8" style="color:rgba(255,255,255,.4)">Sign in to your organization's trade execution dashboard</p>
+
+    <div id="login-error" class="hidden text-sm rounded-xl p-3 mb-5" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5"></div>
+
+    <form onsubmit="handleLogin(event)" class="space-y-4">
+      <div>
+        <label>Email Address</label>
+        <input id="email" type="email" required class="input-field" placeholder="admin@company.com">
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="password" type="password" required class="input-field" placeholder="••••••••">
+      </div>
+      <button type="submit" id="login-btn" class="btn-gold">
+        <i class="fas fa-sign-in-alt mr-2"></i>Sign In to SGTX
+      </button>
+    </form>
+
+    <div class="mt-6 text-center">
+      <p class="text-sm" style="color:rgba(255,255,255,.35)">Don't have an organization? <a href="/register" class="underline transition" style="color:#D4A017">Register here</a></p>
+    </div>
+
+    <!-- Demo Accounts -->
+    <div class="mt-8 rounded-2xl p-5" style="background:rgba(255,255,255,.02);border:1px solid rgba(201,168,76,.1)">
+      <h3 class="text-xs font-bold mb-4 flex items-center gap-2" style="color:rgba(255,255,255,.5)">
+        <i class="fas fa-users" style="color:#D4A017"></i> Demo Accounts <span style="color:rgba(255,255,255,.25);font-weight:400">(click to auto-login)</span>
+      </h3>
+      <div class="space-y-1">
+        ${[
+          ['hans@euimport.com','Importer / Buyer','EU Import GmbH','DE','fas fa-building','#60a5fa'],
+          ['ahmed@nilefoods.com','Exporter / Seller','Nile Foods Export Co.','EG','fas fa-industry','#34d399'],
+          ['khaled@pharaohagri.com','Dual-Mode Trader','Pharaoh Agri Trading','EG','fas fa-right-left','#f59e0b'],
+          ['fatma@nbe.com.eg','Financier','National Bank of Egypt','EG','fas fa-landmark','#fbbf24'],
+          ['yasser@nilelogistics.com','Logistics (LSP)','Nile Logistics','EG','fas fa-truck','#22d3ee'],
+          ['captain@medshipping.com','Shipping Line','Med Shipping Lines','EG','fas fa-ship','#38bdf8'],
+          ['noha@qualitycheck.com','QC Inspector','QualityCheck Intl','EG','fas fa-microscope','#c084fc'],
+          ['dr.samir@cairolabs.com','Laboratory','Cairo Labs','EG','fas fa-flask','#a78bfa'],
+          ['mohamed@deltabrokers.com','Customs Broker','Delta Brokers','EG','fas fa-file-signature','#f472b6'],
+          ['general.ibrahim@customs.gov.eg','Government','Egyptian Customs Authority','EG','fas fa-building-columns','#94a3b8'],
+          ['admin@sgtx.io','Platform Admin','SGTX Platform','—','fas fa-shield-halved','#fb7185','admin123'],
+        ].map(([e,role,name,ctry,icon,clr,pw])=>`
+        <div class="demo-row" onclick="demoLogin('${e}','${pw||'demo123'}')">
+          <div class="flex items-center gap-3">
+            <i class="${icon} text-sm" style="color:${clr}"></i>
+            <div>
+              <div class="text-sm font-semibold text-white">${name}</div>
+              <div class="text-xs" style="color:rgba(255,255,255,.35)">${e}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="background:rgba(212,160,23,.1);color:rgba(212,160,23,.8);border:1px solid rgba(212,160,23,.15)">${role} · ${ctry}</span>
+            <i class="fas fa-arrow-right text-[10px]" style="color:rgba(255,255,255,.2)"></i>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="mt-6 text-center text-[11px]" style="color:rgba(255,255,255,.2)">
+      <i class="fas fa-balance-scale mr-1" style="color:rgba(212,160,23,.4)"></i> SGTX Platform — Non-custodial. No irreversible action without Governor approval.
+    </div>
   </div>
 </div>
 
@@ -79,8 +127,8 @@ export function loginHTML(): string {
 function fillDemo(e,p){document.getElementById('email').value=e;document.getElementById('password').value=p;}
 function demoLogin(e,p){fillDemo(e,p);document.querySelector('form').dispatchEvent(new Event('submit',{cancelable:true}));}
 
-async function handleLogin(e){
-  e.preventDefault();
+async function handleLogin(ev){
+  ev.preventDefault();
   const btn=document.getElementById('login-btn');
   const err=document.getElementById('login-error');
   btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i>Authenticating...';
@@ -90,12 +138,13 @@ async function handleLogin(e){
     const r=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     const d=await r.json();
-    if(!r.ok){err.textContent=d.error||'Login failed';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-sign-in-alt mr-2"></i>Sign In';btn.disabled=false;return;}
+    if(!r.ok){err.textContent=d.error||'Login failed';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-sign-in-alt mr-2"></i>Sign In to SGTX';btn.disabled=false;return;}
     localStorage.setItem('sgtx_token',d.data.session.token);
     localStorage.setItem('sgtx_tenant',JSON.stringify(d.data.tenant));
     localStorage.setItem('sgtx_employee',JSON.stringify(d.data.employee));
+    btn.innerHTML='<i class="fas fa-check mr-2"></i>Success! Redirecting...';
     window.location.href='/app';
-  }catch(ex){err.textContent='Network error';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-sign-in-alt mr-2"></i>Sign In';btn.disabled=false;}
+  }catch(ex){err.textContent='Network error — please try again';err.classList.remove('hidden');btn.innerHTML='<i class="fas fa-sign-in-alt mr-2"></i>Sign In to SGTX';btn.disabled=false;}
 }
 </script>
 </body>

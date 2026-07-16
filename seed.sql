@@ -1,211 +1,219 @@
--- Seed data for SGTX Platform v6.3 — Blueprint Parts 0-2 Aligned
--- Creates base tenants, employees, and essential reference data
--- Uses proper GTID format with CRC32 checksums, lifecycle states, etc.
--- ALIGNED with migration 0019 demo accounts
--- All demo passwords: password123
--- SHA256: sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
-PRAGMA foreign_keys = OFF;
-PRAGMA defer_foreign_keys = ON;
+-- SGTX Platform Seed Data - Demo/Pilot Environment
+-- Egyptian agricultural export focus (Phase 1 per blueprint)
+
+-- Jurisdictions
+INSERT OR IGNORE INTO jurisdictions (code, name, sanctions_level, defi_allowed, distressed_sale_allowed, kyc_tier_required, deferred_fees_allowed, private_lending_allowed) VALUES
+('EG', 'Egypt', 'LOW', 0, 'ALLOWED', 2, '["IMPORT_DUTIES","VAT"]', 0),
+('DE', 'Germany', 'LOW', 1, 'ALLOWED', 2, '["IMPORT_DUTIES"]', 1),
+('AE', 'United Arab Emirates', 'LOW', 1, 'ALLOWED', 2, '[]', 1),
+('VN', 'Vietnam', 'LOW', 1, 'ALLOWED', 2, '[]', 1),
+('NG', 'Nigeria', 'MEDIUM', 0, 'CONDITIONAL', 3, '["IMPORT_DUTIES","VAT"]', 1),
+('US', 'United States', 'LOW', 0, 'ALLOWED', 2, '[]', 1);
+
+-- Ports
+INSERT OR IGNORE INTO ports (unlocode, name, country_code, latitude, longitude) VALUES
+('EGALY', 'Alexandria Port', 'EG', 31.2000, 29.9167),
+('EGDAM', 'Damietta Port', 'EG', 31.4167, 31.8167),
+('EGPSD', 'Port Said', 'EG', 31.2567, 32.3017),
+('EGSOK', 'Sokhna Port', 'EG', 29.6500, 32.3500),
+('DEHAM', 'Hamburg Port', 'DE', 53.5511, 9.9937),
+('DEBRV', 'Bremerhaven', 'DE', 53.5500, 8.5833),
+('AEDXB', 'Jebel Ali Port', 'AE', 25.0000, 55.0500),
+('VNSGN', 'Ho Chi Minh City', 'VN', 10.7667, 106.7167);
+
+-- Demo Tenants (with kyb_status, onboarding_completed, sandbox_mode)
+INSERT OR IGNORE INTO tenants (gtid, legal_name, legal_name_ar, type, jurisdiction, trust_score, sanctions_cleared, lifecycle_state, default_trader_mode, kyb_tier, kyb_status, onboarding_completed, sandbox_mode) VALUES
+('SGTX-EG-TRD-002139-7F3A', 'Nile Foods Export Co.', 'شركة نايل فودز للتصدير', 'TRD', 'EG', 92.5, 1, 'ACTIVE', 'SELL', 2, 'VERIFIED', 1, 0),
+('SGTX-DE-TRD-001234-5B6C', 'European Importer GmbH', NULL, 'TRD', 'DE', 88.3, 1, 'ACTIVE', 'BUY', 2, 'VERIFIED', 1, 0),
+('SGTX-EG-TRD-003456-8A2B', 'Pharaoh AgriTrade', 'فرعون أجري تريد', 'TRD', 'EG', 85.0, 1, 'ACTIVE', 'DUAL', 2, 'VERIFIED', 1, 0),
+('SGTX-AE-TRD-007890-3C1D', 'Dubai Fresh Imports LLC', NULL, 'TRD', 'AE', 90.1, 1, 'ACTIVE', 'BUY', 2, 'VERIFIED', 1, 0),
+('SGTX-VN-TRD-005678-9E4F', 'Mekong Fresh Co.', NULL, 'TRD', 'VN', 78.4, 1, 'ACTIVE', 'SELL', 2, 'VERIFIED', 1, 0),
+('SGTX-EG-LSP-001100-1A2B', 'Nile Logistics Solutions', 'نايل لوجيستكس', 'LSP', 'EG', 87.0, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-SHIP-002200-3C4D', 'Med Shipping Lines', NULL, 'SHIP', 'EG', 82.5, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-LAB-003300-5E6F', 'Cairo Labs International', 'معامل القاهرة الدولية', 'LAB', 'EG', 94.0, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-QC-004400-7A8B', 'QualityCheck Egypt', NULL, 'QC', 'EG', 89.0, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-CBR-005500-9C0D', 'Delta Customs Brokers', 'دلتا للوساطة الجمركية', 'CBR', 'EG', 86.5, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-FIN-006600-1E2F', 'National Bank of Egypt Trade Finance', 'البنك الأهلي المصري - تمويل التجارة', 'FIN', 'EG', 95.0, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-AE-FIN-007700-3A4B', 'Gulf Private Capital Ltd', NULL, 'FIN', 'AE', 75.0, 1, 'ACTIVE', NULL, 2, 'VERIFIED', 1, 0),
+('SGTX-EG-GOV-008800-5C6D', 'Egyptian Customs Authority', 'مصلحة الجمارك المصرية', 'GOV', 'EG', 100.0, 1, 'ACTIVE', NULL, 3, 'VERIFIED', 1, 0),
+('SGTX-EG-GOV-009900-7E8F', 'Ministry of Agriculture Egypt', 'وزارة الزراعة المصرية', 'GOV', 'EG', 100.0, 1, 'ACTIVE', NULL, 3, 'VERIFIED', 1, 0),
+('SGTX-ADM-000001-0A1B', 'SGTX Platform Governance Authority', NULL, 'TRD', 'EG', 100.0, 1, 'ACTIVE', 'DUAL', 3, 'VERIFIED', 1, 0);
+
+-- Update financier subtype
+UPDATE tenants SET financier_subtype = 'BANK' WHERE gtid = 'SGTX-EG-FIN-006600-1E2F';
+UPDATE tenants SET financier_subtype = 'PRIVATE' WHERE gtid = 'SGTX-AE-FIN-007700-3A4B';
+UPDATE tenants SET lsp_subtype = 'FORWARDER' WHERE gtid = 'SGTX-EG-LSP-001100-1A2B';
+
+-- Demo Employees (password: demo123 for all, admin123 for admin)
+-- demo123 hash: sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791
+-- admin123 hash: sha256:240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9
+INSERT OR IGNORE INTO employees (tenant_id, email, full_name, password_hash, role, status, active_trader_mode_context, default_trader_mode, allow_role_switching) VALUES
+(1, 'ahmed@nilefoods.com', 'Ahmed Hassan', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', 'SELL', 'SELL', 1),
+(1, 'mona@nilefoods.com', 'Mona El-Sayed', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'VIEWER', 'ACTIVE', 'SELL', 'SELL', 0),
+(2, 'hans@euimport.com', 'Hans Mueller', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', 'BUY', 'BUY', 1),
+(3, 'khaled@pharaohagri.com', 'Khaled Mahmoud', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', 'DUAL', 'DUAL', 1),
+(4, 'omar@dubaifresh.com', 'Omar Al-Rashid', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', 'BUY', 'BUY', 0),
+(5, 'linh@mekongfresh.com', 'Linh Nguyen', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', 'SELL', 'SELL', 1),
+(6, 'yasser@nilelogistics.com', 'Yasser Ibrahim', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(7, 'captain@medshipping.com', 'Captain Adel Soliman', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(8, 'dr.samir@cairolabs.com', 'Dr. Samir Naguib', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(9, 'noha@qualitycheck.com', 'Noha Fathy', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(10, 'mohamed@deltabrokers.com', 'Mohamed Adel', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(11, 'fatma@nbe.com.eg', 'Fatma El-Shazly', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(12, 'rashid@gulfcapital.com', 'Rashid Al-Mansoori', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(13, 'general.ibrahim@customs.gov.eg', 'General Ibrahim Fawzy', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(14, 'dr.heba@agri.gov.eg', 'Dr. Heba Salem', 'sha256:d3ad9315b7be5dd53b31a273b3b3aba5defe700808305aa16a3062b76658a791', 'ADMIN', 'ACTIVE', NULL, NULL, 0),
+(15, 'admin@sgtx.io', 'SGTX Admin', 'sha256:240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'PLATFORM_ADMIN', 'ACTIVE', 'DUAL', 'DUAL', 1);
+
+-- Roles
+INSERT OR IGNORE INTO roles (tenant_id, name, permissions) VALUES
+(1, 'Admin', '["trade.create","trade.manage","contract.sign","finance.request","documents.upload","company.manage","employees.manage"]'),
+(1, 'Viewer', '["trade.view","documents.view"]'),
+(2, 'Admin', '["trade.create","trade.manage","contract.sign","documents.view","company.manage"]'),
+(11, 'Loan Officer', '["financing.view","financing.bid","financing.manage","portfolio.view","margin_call.issue"]'),
+(13, 'Senior Officer', '["trade.monitor","clearance.approve","clearance.override","documents.verify","audit.view","compliance.view","anonymous_trade.declassification"]'),
+(15, 'Platform Admin', '["*"]');
+
+-- Platform Configuration
+INSERT OR IGNORE INTO platform_config (config_key, config_value, description) VALUES
+('platform.name', 'SGTX Platform', 'Platform display name'),
+('platform.version', '11.0', 'Blueprint version'),
+('fee.default_rate', '0.015', 'Default SGTX fee rate (1.5%)'),
+('fee.financing_rate', '0.0025', 'Financing facilitation fee (0.25%)'),
+('fee.currency', 'USD', 'Default fee currency'),
+('governor.auto_clearance_threshold', '30', 'Risk score below which auto-clearance applies'),
+('shipment.health_weights', '{"compliance":0.20,"documentation":0.20,"logistics":0.15,"payment":0.15,"risk":0.20,"timeline":0.10}', 'Trade Health Score component weights'),
+('auth.session_ttl_minutes', '900', 'Session TTL in minutes (15 hours)'),
+('auth.jwt_ttl_minutes', '15', 'JWT TTL in minutes');
+
+-- Jurisdiction Matrix
+INSERT OR IGNORE INTO jurisdiction_matrix (country_code, module_name, enabled, config) VALUES
+('EG', 'auto_clearance', 1, '{"threshold":30}'),
+('EG', 'multi_agency_workflow', 1, '{"agencies":["customs","agriculture","health"]}'),
+('EG', 'anonymous_trade', 1, '{}'),
+('EG', 'nafeza_integration', 1, '{"api_url":"https://nafeza.gov.eg/api/v1"}'),
+('EG', 'defi_financing', 0, '{"reason":"Law No. 194 of 2020"}'),
+('EG', 'private_lending', 0, '{"reason":"Law No. 194 of 2020"}'),
+('DE', 'auto_clearance', 1, '{"threshold":25}'),
+('AE', 'defi_financing', 1, '{}'),
+('AE', 'private_lending', 1, '{}'),
+('VN', 'defi_financing', 1, '{}');
+
+-- Document Templates
+INSERT OR IGNORE INTO document_templates (template_type, name, jurisdiction, template_text, required_fields) VALUES
+('COMMERCIAL_INVOICE', 'Commercial Invoice', NULL, 'COMMERCIAL INVOICE\n\nSeller: {{seller_name}}\nBuyer: {{buyer_name}}\nDate: {{date}}\n\nDescription: {{description}}\nQuantity: {{quantity}}\nUnit Price: {{unit_price}}\nTotal: {{total_amount}}\n\nIncoterm: {{incoterm}}\nPayment Terms: {{payment_terms}}', '["seller_name","buyer_name","description","quantity","unit_price","total_amount","incoterm"]'),
+('PACKING_LIST', 'Packing List', NULL, 'PACKING LIST\n\nShipper: {{shipper_name}}\nConsignee: {{consignee_name}}\n\nItem | Description | Quantity | Net Weight | Gross Weight\n{{items}}', '["shipper_name","consignee_name","items"]'),
+('CERTIFICATE_OF_ORIGIN', 'Certificate of Origin', NULL, 'CERTIFICATE OF ORIGIN\n\nCountry of Origin: {{country}}\nExporter: {{exporter_name}}\nImporter: {{importer_name}}\nHS Code: {{hs_code}}\n\nThis is to certify that the goods described above originate from {{country}}.', '["country","exporter_name","hs_code"]'),
+('BILL_OF_LADING', 'Bill of Lading', NULL, 'BILL OF LADING\n\nVessel: {{vessel}}\nVoyage: {{voyage}}\nPort of Loading: {{loading_port}}\nPort of Discharge: {{discharge_port}}\n\nContainer: {{container}}\nDescription: {{description}}\nGross Weight: {{weight}}', '["vessel","loading_port","discharge_port","container","description"]');
 
 -- ═══════════════════════════════════════════════════════════════════
--- 1. Seed Tenants (matching migration 0019 demo names)
+-- TRADE REQUESTS — Full workflow seed data for seller portal demo
+-- Nile Foods (tenant 1) as seller, European Importer (tenant 2) / Dubai Fresh (tenant 4) as buyers
 -- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO tenants (id, gtid, legal_name, jurisdiction, type, kyb_status, kyb_tier, cryptographic_hash, risk_score, sanctions_cleared, operating_mode, default_trader_mode, lifecycle_state, sandbox_mode, onboarding_completed, created_at, updated_at)
-VALUES
-  ('tenant-001', 'SGTX-EG-TRD-000001-A1B2', 'Cairo Imports Co.', 'EG', 'CORPORATE', 'VERIFIED', 3, 'sha256:imp001', 15.5, 1, 'ADVANCED', 'BUY', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-002', 'SGTX-VN-TRD-000002-C3D4', 'Saigon Textiles', 'VN', 'CORPORATE', 'VERIFIED', 3, 'sha256:exp001', 12.3, 1, 'ADVANCED', 'SELL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-003', 'SGTX-SG-FIN-000001-E5F6', 'Asia Trade Finance', 'SG', 'FINANCIAL', 'VERIFIED', 4, 'sha256:fin001', 8.1, 1, 'ENTERPRISE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-004', 'SGTX-EG-GOV-000001-G7H8', 'Egyptian Customs Authority', 'EG', 'GOVERNMENT', 'VERIFIED', 4, 'sha256:gov001', 5.0, 1, 'ENTERPRISE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-005', 'SGTX-DE-LOG-000001-I9J0', 'Hamburg Logistics', 'DE', 'LOGISTICS', 'VERIFIED', 3, 'sha256:log001', 10.0, 1, 'SIMPLE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-006', 'SGTX-GB-QC-000001-K1L2', 'London QC Services', 'GB', 'QUALITY_CONTROL', 'VERIFIED', 3, 'sha256:qc001', 7.5, 1, 'SIMPLE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now')),
-  ('tenant-007', 'SGTX-US-TRD-000007-M3N4', 'SGTX Platform', 'US', 'CORPORATE', 'VERIFIED', 4, 'sha256:admin007', 5.0, 1, 'ENTERPRISE', 'DUAL', 'VERIFIED', 0, 1, datetime('now'), datetime('now'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 2. Seed Lifecycle History
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO tenant_lifecycle_history (id, tenant_id, from_state, to_state, reason, changed_at)
-VALUES
-  ('tlh-001', 'tenant-001', 'NONE', 'REGISTERED', 'Tenant registration', datetime('now', '-30 days')),
-  ('tlh-002', 'tenant-001', 'REGISTERED', 'ONBOARDING', 'Started onboarding', datetime('now', '-29 days')),
-  ('tlh-003', 'tenant-001', 'ONBOARDING', 'KYB_PENDING', 'KYB submitted', datetime('now', '-28 days')),
-  ('tlh-004', 'tenant-001', 'KYB_PENDING', 'VERIFIED', 'KYB approved tier 3', datetime('now', '-25 days')),
-  ('tlh-005', 'tenant-002', 'NONE', 'REGISTERED', 'Tenant registration', datetime('now', '-30 days')),
-  ('tlh-006', 'tenant-002', 'REGISTERED', 'VERIFIED', 'Fast-track verification', datetime('now', '-28 days'));
+-- Trade 1: PENDING_EXPORTER_RESPONSE — New incoming request for seller
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, created_by, created_at, updated_at) VALUES
+('TRD-SELL-001', 2, 1, 'Valencia Oranges, 40RF, Grade A, 24MT', '{"commodity":"Valencia Oranges","grade":"A","variety":"Valencia","caliber":"72-88mm"}', '{"moisture":"<14%","brix":">=11","defects":"<5%"}', 'PENDING_EXPORTER_RESPONSE', 'Valencia Oranges', 28800, 24, 'MT', 1, '40RF', 'EGALY', 'DEHAM', 'CFR', 'hans@euimport.com', datetime('now','-2 days'), datetime('now','-2 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 3. Seed Roles
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO roles (id, tenant_id, name, permissions, created_at)
-VALUES
-  ('role-admin-001', 'tenant-001', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-002', 'tenant-002', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-003', 'tenant-003', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-004', 'tenant-004', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-005', 'tenant-005', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-006', 'tenant-006', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-admin-007', 'tenant-007', 'TENANT_ADMIN', '["*"]', datetime('now')),
-  ('role-trader-001', 'tenant-001', 'Trader', '["trade.create","trade.view","contract.sign","shipment.milestone.confirm"]', datetime('now')),
-  ('role-trader-002', 'tenant-002', 'Trader', '["trade.create","trade.view","contract.sign","quote.submit","packing.plan"]', datetime('now'));
+-- Trade 2: PENDING_EXPORTER_RESPONSE — Another incoming request
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, created_by, created_at, updated_at) VALUES
+('TRD-SELL-002', 4, 1, 'Medjool Dates, Premium, 20MT', '{"commodity":"Medjool Dates","grade":"Premium","size":"Large"}', '{"moisture":"<22%","sugar":">=65%","defects":"<2%"}', 'PENDING_EXPORTER_RESPONSE', 'Medjool Dates', 64000, 20, 'MT', 1, '40RF', 'EGALY', 'AEDXB', 'FOB', 'omar@dubaifresh.com', datetime('now','-1 day'), datetime('now','-1 day'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 4. Seed Employees (all demo accounts use password: password123)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO employees (id, tenant_id, email, full_name, role_id, kyc_status, kyc_tier, status, default_trader_mode, active_trader_mode_context, mfa_enabled, password_hash, created_at)
-VALUES
-  ('emp-001', 'tenant-001', 'ahmed@cairoimports.eg', 'Ahmed Hassan', 'role-admin-001', 'VERIFIED', 3, 'ACTIVE', 'BUY', 'BUY', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-002', 'tenant-001', 'fatima@cairoimports.eg', 'Fatima Al-Rashid', 'role-trader-001', 'VERIFIED', 2, 'ACTIVE', 'BUY', 'BUY', 0, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-003', 'tenant-002', 'nguyen@saigontex.vn', 'Nguyen Van Minh', 'role-admin-002', 'VERIFIED', 3, 'ACTIVE', 'SELL', 'SELL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-004', 'tenant-002', 'tran@saigontex.vn', 'Tran Thi Lan', 'role-trader-002', 'VERIFIED', 2, 'ACTIVE', 'SELL', 'SELL', 0, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-005', 'tenant-003', 'james@asiatradefinance.sg', 'James Richardson', 'role-admin-003', 'VERIFIED', 4, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-006', 'tenant-004', 'customs@egypt.gov.eg', 'Mohamed Saeed', 'role-admin-004', 'VERIFIED', 4, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-007', 'tenant-005', 'hans@hamburglogistics.de', 'Hans Mueller', 'role-admin-005', 'VERIFIED', 3, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-008', 'tenant-006', 'sarah@londonqc.co.uk', 'Sarah Williams', 'role-admin-006', 'VERIFIED', 3, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-009', 'tenant-007', 'admin@sgtx.io', 'SGTX Admin', 'role-admin-007', 'VERIFIED', 4, 'ACTIVE', 'DUAL', 'DUAL', 1, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now')),
-  ('emp-010', 'tenant-007', 'support@sgtx.io', 'SGTX Support', 'role-admin-007', 'VERIFIED', 4, 'ACTIVE', 'DUAL', 'DUAL', 0, 'sha256:ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f', datetime('now'));
+-- Trade 3: PENDING_EXPORTER_RESPONSE — Third request, multi-container
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, created_by, created_at, updated_at) VALUES
+('TRD-SELL-003', 2, 1, 'Egyptian Strawberries, Class I, 3x40RF', '{"commodity":"Strawberries","class":"I","variety":"Festival"}', '{"size":"28-32mm","color":"75% red min","firmness":"firm"}', 'PENDING_EXPORTER_RESPONSE', 'Strawberries', 96000, 72, 'MT', 3, '40RF', 'EGDAM', 'DEBRV', 'CIF', 'hans@euimport.com', datetime('now','-6 hours'), datetime('now','-6 hours'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 5. Seed Employee Permissions (Part 2.3: OPA-style)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO employee_permissions (employee_id, permission, grant_type, trader_mode_context, granted_by, granted_at)
-VALUES
-  ('emp-001', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-002', 'trade.create', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
-  ('emp-002', 'trade.view', 'ALLOW', '["BUY","SELL"]', 'emp-001', datetime('now')),
-  ('emp-002', 'contract.sign', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
-  ('emp-002', 'shipment.milestone.confirm', 'ALLOW', '["BUY"]', 'emp-001', datetime('now')),
-  ('emp-003', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-004', 'trade.create', 'ALLOW', '["SELL"]', 'emp-003', datetime('now')),
-  ('emp-004', 'quote.submit', 'ALLOW', '["SELL"]', 'emp-003', datetime('now')),
-  ('emp-005', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-006', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-007', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-008', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-009', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now')),
-  ('emp-010', '*', 'ALLOW', '["BUY","SELL","DUAL"]', 'SYSTEM', datetime('now'));
+-- Trade 4: ACCEPTED / PRICING — Seller accepted, needs EXW price lock
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, created_by, created_at, updated_at) VALUES
+('TRD-SELL-004', 2, 1, 'Navel Oranges, Export Grade, 2x40RF', '{"commodity":"Navel Oranges","grade":"Export","caliber":"64-80mm"}', '{"brix":">=10","acid":"<=1.2%","juice":">=35%"}', 'ACCEPTED', 'Navel Oranges', 48000, 48, 'MT', 2, '40RF', 'EGALY', 'DEHAM', 'CFR', NULL, NULL, 'hans@euimport.com', datetime('now','-5 days'), datetime('now','-3 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 6. Seed Data Scopes (Part 2.3)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO data_scopes (employee_id, country_access, document_types, max_transaction_value, custom_filters, hidden_cost_components, allow_role_switching)
-VALUES
-  ('emp-001', '["*"]', '["*"]', NULL, '{}', '[]', 1),
-  ('emp-002', '["EG","VN","GB","DE","SG"]', '["INVOICE","BL","PACKING_LIST"]', 500000, '{}', '[]', 0),
-  ('emp-003', '["*"]', '["*"]', NULL, '{}', '[]', 1),
-  ('emp-004', '["VN","EG","AE"]', '["INVOICE","CERTIFICATE_OF_ORIGIN","PACKING_LIST"]', 300000, '{}', '[]', 0),
-  ('emp-005', '["*"]', '["*"]', NULL, '{}', '["PLATFORM_FEE"]', 1),
-  ('emp-006', '["EG"]', '["*"]', NULL, '{}', '[]', 0),
-  ('emp-007', '["*"]', '["*"]', NULL, '{}', '[]', 1),
-  ('emp-008', '["*"]', '["*"]', NULL, '{}', '[]', 1),
-  ('emp-009', '["*"]', '["*"]', NULL, '{}', '[]', 1),
-  ('emp-010', '["*"]', '["*"]', NULL, '{}', '[]', 0);
+-- Trade 5: PRICING — EXW price being set
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, created_by, created_at, updated_at) VALUES
+('TRD-SELL-005', 4, 1, 'Egyptian Table Grapes, Flame Seedless, 40RF', '{"commodity":"Table Grapes","variety":"Flame Seedless","grade":"Extra"}', '{"berry_size":">=18mm","color":"deep_red","brix":">=16"}', 'PRICING', 'Table Grapes', 52000, 22, 'MT', 1, '40RF', 'EGALY', 'AEDXB', 'EXW', 2200, 48400, 'omar@dubaifresh.com', datetime('now','-7 days'), datetime('now','-2 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 7. Seed Trust Scores
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO trust_scores (gtid, score, model_version, components, buy_mode_score, sell_mode_score, updated_at)
-VALUES
-  ('SGTX-EG-TRD-000001-A1B2', 85.5, 'xgboost-v1.0', '{"kyb":90,"trade_history":82,"dispute_record":95,"payment_history":88,"delivery_record":80,"document_accuracy":85}', 87.0, 72.0, datetime('now')),
-  ('SGTX-VN-TRD-000002-C3D4', 91.2, 'xgboost-v1.0', '{"kyb":95,"trade_history":90,"dispute_record":98,"payment_history":92,"delivery_record":85,"document_accuracy":88}', 75.0, 93.0, datetime('now')),
-  ('SGTX-SG-FIN-000001-E5F6', 96.0, 'xgboost-v1.0', '{"kyb":99,"trade_history":95,"dispute_record":100,"payment_history":98,"delivery_record":90,"document_accuracy":95}', 96.0, 96.0, datetime('now')),
-  ('SGTX-EG-GOV-000001-G7H8', 99.0, 'xgboost-v1.0', '{"kyb":100,"trade_history":0,"dispute_record":100,"payment_history":0}', 99.0, 99.0, datetime('now')),
-  ('SGTX-DE-LOG-000001-I9J0', 88.0, 'xgboost-v1.0', '{"kyb":92,"trade_history":85,"dispute_record":97,"payment_history":80,"delivery_record":92}', 88.0, 88.0, datetime('now')),
-  ('SGTX-GB-QC-000001-K1L2', 93.0, 'xgboost-v1.0', '{"kyb":95,"trade_history":88,"dispute_record":100,"payment_history":92}', 93.0, 93.0, datetime('now')),
-  ('SGTX-US-TRD-000007-M3N4', 99.0, 'xgboost-v1.0', '{"kyb":100,"trade_history":99,"dispute_record":100,"payment_history":100}', 99.0, 99.0, datetime('now'));
+-- Trade 6: QUOTED — Quote submitted, awaiting buyer response
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, exw_locked, logistics_cost, sgtx_fee, quote_deadline, created_by, created_at, updated_at) VALUES
+('TRD-SELL-006', 2, 1, 'Fresh Green Beans, Fine, 2x40RF', '{"commodity":"Green Beans","grade":"Fine","type":"Bobby"}', '{"length":"12-14cm","color":"dark_green","moisture":"<90%"}', 'QUOTED', 'Green Beans', 76000, 44, 'MT', 2, '40RF', 'EGALY', 'DEHAM', 'CFR', 1500, 66000, 1, 8500, 1140, datetime('now','+48 hours'), 'ahmed@nilefoods.com', datetime('now','-10 days'), datetime('now','-1 day'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 8. Seed Jurisdictions (code is PK)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO jurisdictions (code, name, sanctions_level, kyc_tier_required, cbdc_status, psp_partners, distressed_sale_allowed, distressed_country_factor)
-VALUES
-  ('EG', 'Egypt', 'NONE', 2, 'PILOT', '["STRIPE","FLUTTERWAVE","FAWRY"]', 1, 0.85),
-  ('VN', 'Vietnam', 'NONE', 2, 'NONE', '["STRIPE","VNPAY"]', 1, 0.80),
-  ('GB', 'United Kingdom', 'NONE', 1, 'PILOT', '["STRIPE","WISE","SWIFT_GPI"]', 1, 1.0),
-  ('DE', 'Germany', 'NONE', 1, 'NONE', '["STRIPE","SEPA","SWIFT_GPI"]', 1, 1.0),
-  ('SG', 'Singapore', 'NONE', 1, 'PILOT', '["STRIPE","DBS_PAYLAH","SWIFT_GPI"]', 1, 1.0),
-  ('AE', 'United Arab Emirates', 'NONE', 1, 'ACTIVE', '["STRIPE","NOON_PAY","SWIFT_GPI"]', 1, 1.0),
-  ('NG', 'Nigeria', 'NONE', 2, 'ACTIVE', '["FLUTTERWAVE","PAYSTACK"]', 1, 0.75),
-  ('KE', 'Kenya', 'NONE', 2, 'NONE', '["FLUTTERWAVE","MPESA"]', 1, 0.70),
-  ('US', 'United States', 'NONE', 1, 'NONE', '["STRIPE","SWIFT_GPI","FEDWIRE"]', 1, 1.0),
-  ('CN', 'China', 'NONE', 3, 'ACTIVE', '["ALIPAY","WECHAT_PAY","SWIFT_GPI"]', 1, 0.90),
-  ('BR', 'Brazil', 'NONE', 2, 'PILOT', '["PIX","STRIPE","SWIFT_GPI"]', 1, 0.85),
-  ('CH', 'Switzerland', 'NONE', 1, 'NONE', '["STRIPE","SWIFT_GPI","SIX"]', 1, 1.0);
+-- Trade 7: CONTRACTED — Contract signed, in packing/containerisation phase
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, exw_locked, packing_locked, logistics_cost, sgtx_fee, created_by, created_at, updated_at) VALUES
+('TRD-SELL-007', 2, 1, 'Pomegranate, Wonderful variety, 40RF', '{"commodity":"Pomegranate","variety":"Wonderful","size":"Large"}', '{"weight":"350-500g","color":"deep_red","arils":"ruby_red","brix":">=15"}', 'CONTRACTED', 'Pomegranate', 42000, 22, 'MT', 1, '40RF', 'EGALY', 'DEHAM', 'CFR', 1800, 39600, 1, 0, 3200, 630, 'ahmed@nilefoods.com', datetime('now','-15 days'), datetime('now','-3 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 9. Seed Tenant Contacts (with enrichment fields)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO tenant_contacts (tenant_id, contact_gtid, relationship_type, trade_count, total_value, first_interaction, last_interaction, is_favorite, is_blocked, auto_saved, trust_snapshot, relationship_health_score, smart_labels)
-VALUES
-  ('tenant-001', 'SGTX-VN-TRD-000002-C3D4', 'TRADE_PARTNER', 12, 2450000.00, datetime('now', '-180 days'), datetime('now', '-2 days'), 1, 0, 0, '{"score":91.2,"trend":"STABLE"}', 0.92, '["RELIABLE","TEXTILES","HIGH_VOLUME"]'),
-  ('tenant-001', 'SGTX-SG-FIN-000001-E5F6', 'FINANCIER', 5, 1800000.00, datetime('now', '-120 days'), datetime('now', '-5 days'), 0, 0, 1, '{"score":96.0,"trend":"IMPROVING"}', 0.95, '["PREFERRED_LENDER","SINGAPORE"]'),
-  ('tenant-002', 'SGTX-EG-TRD-000001-A1B2', 'TRADE_PARTNER', 12, 2450000.00, datetime('now', '-180 days'), datetime('now', '-2 days'), 1, 0, 0, '{"score":85.5,"trend":"IMPROVING"}', 0.88, '["REPEAT_BUYER","EGYPT"]'),
-  ('tenant-002', 'SGTX-DE-LOG-000001-I9J0', 'LOGISTICS_PROVIDER', 8, 320000.00, datetime('now', '-150 days'), datetime('now', '-7 days'), 0, 0, 1, '{"score":88.0}', 0.85, '["HAMBURG_LOGISTICS","CONTAINER_SHIPPING"]');
+-- Trade 8: CONTRACTED — In logistics/doc finalisation phase (packing locked)
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, exw_locked, packing_locked, logistics_cost, sgtx_fee, created_by, created_at, updated_at) VALUES
+('TRD-SELL-008', 4, 1, 'Fresh Artichokes, Egyptian, 2x40RF', '{"commodity":"Artichokes","variety":"Egyptian Globe","grade":"Class I"}', '{"head_size":">=8cm","color":"green","freshness":"max_2_days_post_harvest"}', 'CONTRACTED', 'Artichokes', 58000, 40, 'MT', 2, '40RF', 'EGDAM', 'AEDXB', 'CIF', 1300, 52000, 1, 1, 5200, 870, 'ahmed@nilefoods.com', datetime('now','-20 days'), datetime('now','-5 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 10. Seed Payment Aggregators
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO payment_aggregators (id, name, country_codes, supported_currencies, api_endpoint, uptime_score, is_active, api_type, fee_structure, avg_settlement_hours)
-VALUES
-  ('psp-001', 'Stripe Connect', 'US,GB,EU,EG,AE,SG,DE', 'USD,GBP,EUR,EGP,AED,SGD', 'https://api.stripe.com', 99.95, 1, 'REST', '{"percentage":2.9,"fixed":0.30}', 2),
-  ('psp-002', 'Wise', 'GLOBAL', 'USD,EUR,GBP,SGD,VND,EGP', 'https://api.wise.com', 99.8, 1, 'REST', '{"percentage":0.5,"fixed":0}', 12),
-  ('psp-003', 'SWIFT GPI', 'GLOBAL', 'USD,EUR,GBP,JPY,CHF,SGD', 'https://swift.com/gpi', 99.99, 1, 'ISO20022', '{"fixed":25}', 4),
-  ('psp-004', 'Flutterwave', 'NG,GH,KE,EG,ZA', 'NGN,GHS,KES,EGP,ZAR', 'https://api.flutterwave.com', 99.2, 1, 'REST', '{"percentage":1.4,"fixed":0}', 24),
-  ('psp-005', 'Circle (USDC)', 'GLOBAL', 'USDC', 'https://api.circle.com', 99.5, 1, 'REST', '{"percentage":0.1,"fixed":0}', 0.1);
+-- Trade 9: IN_TRANSIT — Shipped, tracking active
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, exw_locked, packing_locked, logistics_cost, sgtx_fee, created_by, created_at, updated_at) VALUES
+('TRD-SELL-009', 2, 1, 'Egyptian Jasmine Rice, Long Grain, 40ST', '{"commodity":"Jasmine Rice","type":"Long Grain","origin":"Dakahlia"}', '{"moisture":"<14%","broken":"<5%","purity":">=95%"}', 'IN_TRANSIT', 'Jasmine Rice', 32000, 24, 'MT', 1, '40ST', 'EGDAM', 'DEHAM', 'CFR', 1200, 28800, 1, 1, 2800, 480, 'ahmed@nilefoods.com', datetime('now','-25 days'), datetime('now','-8 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 11. Seed DeFi Protocols
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO defi_protocols (id, protocol_name, chain, tvl, apy_range, audit_status, supported_stablecoins, active)
-VALUES
-  ('defi-001', 'Aave V3', 'Polygon', 5000000000, '{"min":3.2,"max":8.5}', 'CERTIFIED', '["USDC","USDT","DAI"]', 1),
-  ('defi-002', 'Compound V3', 'Ethereum', 3000000000, '{"min":2.8,"max":6.2}', 'CERTIFIED', '["USDC","USDT"]', 1),
-  ('defi-003', 'Maple Finance', 'Ethereum', 800000000, '{"min":6.0,"max":12.0}', 'CERTIFIED', '["USDC"]', 1);
+-- Trade 10: COMPLETED — Fully delivered trade
+INSERT OR IGNORE INTO trade_requests (id, importer_tenant_id, assigned_exporter_id, raw_description, parsed_specs, specifications, status, commodity, total_value, quantity, weight_unit, container_count, container_type, origin_port, destination_port, incoterm, exw_price_per_ton, exw_total, exw_locked, packing_locked, logistics_cost, sgtx_fee, created_by, created_at, updated_at) VALUES
+('TRD-SELL-010', 4, 1, 'Egyptian Cotton, Extra Long Staple, 40ST', '{"commodity":"Egyptian Cotton","type":"ELS Giza 96","length":"36mm+"}', '{"grade":"Good+","staple":"36mm+","micronaire":"3.5-4.9","strength":">=32"}', 'COMPLETED', 'Egyptian Cotton', 120000, 20, 'MT', 1, '40ST', 'EGALY', 'AEDXB', 'FOB', 5500, 110000, 1, 1, 8500, 1800, 'ahmed@nilefoods.com', datetime('now','-45 days'), datetime('now','-15 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 12. Seed Tenant Onboarding States
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO tenant_onboarding_state (id, tenant_id, current_step, total_steps, sandbox_active, completed_at, created_at, updated_at)
-VALUES
-  ('onb-001', 'tenant-001', 6, 6, 0, datetime('now', '-25 days'), datetime('now', '-30 days'), datetime('now', '-25 days')),
-  ('onb-002', 'tenant-002', 6, 6, 0, datetime('now', '-28 days'), datetime('now', '-30 days'), datetime('now', '-28 days')),
-  ('onb-003', 'tenant-003', 6, 6, 0, datetime('now', '-20 days'), datetime('now', '-22 days'), datetime('now', '-20 days')),
-  ('onb-004', 'tenant-005', 6, 6, 0, datetime('now', '-15 days'), datetime('now', '-18 days'), datetime('now', '-15 days')),
-  ('onb-005', 'tenant-006', 6, 6, 0, datetime('now', '-12 days'), datetime('now', '-14 days'), datetime('now', '-12 days'));
+-- Exporter Quotes for trades that have been quoted
+INSERT OR IGNORE INTO exporter_quotes (id, trade_request_id, exporter_tenant_id, exw_price, exw_currency, exw_locked_at, incoterm, validity_days, status) VALUES
+('EQ-006', 'TRD-SELL-006', 1, 1500, 'USD', datetime('now','-1 day'), 'CFR', 7, 'SUBMITTED'),
+('EQ-007', 'TRD-SELL-007', 1, 1800, 'USD', datetime('now','-5 days'), 'CFR', 14, 'ACCEPTED'),
+('EQ-008', 'TRD-SELL-008', 1, 1300, 'USD', datetime('now','-10 days'), 'CIF', 14, 'ACCEPTED'),
+('EQ-009', 'TRD-SELL-009', 1, 1200, 'USD', datetime('now','-15 days'), 'CFR', 14, 'ACCEPTED'),
+('EQ-010', 'TRD-SELL-010', 1, 5500, 'USD', datetime('now','-40 days'), 'FOB', 14, 'ACCEPTED');
 
--- ═══════════════════════════════════════════════════════════════════
--- 13. Seed Marketplace Partners
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO marketplace_partners (id, partner_name, api_key_hash, commission_split_percent, status, partner_type, contact_email, country, created_at)
-VALUES
-  ('mp-001', 'TradeFlow Connect', 'hash-mp-001', 15.0, 'ACTIVE', 'REFERRAL', 'api@tradeflow.io', 'AE', datetime('now')),
-  ('mp-002', 'AgriConnect Platform', 'hash-mp-002', 12.5, 'ACTIVE', 'MARKETPLACE', 'partners@agriconnect.com', 'KE', datetime('now'));
+-- Contracts for contracted/shipped trades
+INSERT OR IGNORE INTO contracts (id, trade_request_id, contract_type, incoterm, status, commission_responsibility, created_at, updated_at) VALUES
+('CTR-007', 'TRD-SELL-007', 'SINGLE_SHIPMENT', 'CFR', 'ACTIVE', '{"default_payer":"IMPORTER"}', datetime('now','-10 days'), datetime('now','-3 days')),
+('CTR-008', 'TRD-SELL-008', 'SINGLE_SHIPMENT', 'CIF', 'ACTIVE', '{"default_payer":"IMPORTER"}', datetime('now','-15 days'), datetime('now','-5 days')),
+('CTR-009', 'TRD-SELL-009', 'SINGLE_SHIPMENT', 'CFR', 'ACTIVE', '{"default_payer":"IMPORTER"}', datetime('now','-22 days'), datetime('now','-8 days')),
+('CTR-010', 'TRD-SELL-010', 'SINGLE_SHIPMENT', 'FOB', 'COMPLETED', '{"default_payer":"IMPORTER"}', datetime('now','-40 days'), datetime('now','-15 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 14. Seed Platform Governance Proposals (Part 1.3 — multisig)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO platform_governance_proposals (id, proposal_type, description, proposed_by, required_signatures, total_signers, current_signatures, signers, status, expires_at, created_at)
-VALUES
-  ('pgp-001', 'POLICY_UPDATE', 'Increase commission ceiling from 2.5% to 3.0% for high-risk jurisdictions', 'SGTX-EG-TRD-000001-A1B2', 3, 5, 2, '["SGTX-EG-TRD-000001-A1B2","SGTX-SG-FIN-000001-E5F6"]', 'PENDING', datetime('now', '+5 days'), datetime('now', '-2 days'));
+-- Shipments for in-transit and completed trades
+INSERT OR IGNORE INTO shipments (id, ustn, contract_id, origin_port, destination_port, vessel_name, imo_number, status, departure_date, eta, created_at) VALUES
+('SHP-009', 'SGTX-EG-26-F3A-9', 'CTR-009', 'EGDAM', 'DEHAM', 'MSC OSCAR', '9703318', 'IN_TRANSIT', datetime('now','-8 days'), datetime('now','+6 days'), datetime('now','-8 days')),
+('SHP-010', 'SGTX-EG-26-F3A-10', 'CTR-010', 'EGALY', 'AEDXB', 'EVER GIVEN', '9811000', 'DELIVERED', datetime('now','-35 days'), datetime('now','-20 days'), datetime('now','-35 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 15. Seed Legal Disclaimer
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR REPLACE INTO legal_disclaimers (id, disclaimer_text, version, effective_date, displayed_count)
-VALUES
-  ('ld-001', 'SGTX Platform is a non-custodial trade facilitation infrastructure. All financial transactions are governed by the constitutional AI Governor. No irreversible action occurs without Governor approval (Part 0.3). SGTX Fee rates are clamped between 0.1% and 2.5% (Part 0.5). All actions are Loom-hashed for immutable auditability.', '6.3.0', datetime('now'), 0);
+-- Smart Inbox items for seller
+INSERT OR IGNORE INTO inbox_items (id, tenant_id, category, title, message, priority_score, action_type, action_page, reference_id, status, created_at) VALUES
+('INB-S001', 1, 'TRADE', 'New Trade Request: Valencia Oranges', 'European Importer GmbH has requested 24 MT Valencia Oranges (CFR Hamburg). Respond within 48 hours.', 95, 'REVIEW_REQUEST', 'pending-requests', 'TRD-SELL-001', 'UNREAD', datetime('now','-2 days')),
+('INB-S002', 1, 'TRADE', 'New Trade Request: Medjool Dates', 'Dubai Fresh Imports has requested 20 MT Medjool Dates (FOB Alexandria). Premium grade required.', 90, 'REVIEW_REQUEST', 'pending-requests', 'TRD-SELL-002', 'UNREAD', datetime('now','-1 day')),
+('INB-S003', 1, 'TRADE', 'Urgent: Strawberries 3×40RF Request', 'European Importer requests 72 MT Strawberries (CIF Bremerhaven). Multi-container — 3×40RF.', 98, 'REVIEW_REQUEST', 'pending-requests', 'TRD-SELL-003', 'UNREAD', datetime('now','-6 hours')),
+('INB-S004', 1, 'COMPLIANCE', 'EXW Price Lock Required: Navel Oranges', 'Trade TRD-SELL-004 accepted. Set your EXW price to proceed with quote building.', 85, 'SET_PRICE', 'exw-price-lock', 'TRD-SELL-004', 'UNREAD', datetime('now','-3 days')),
+('INB-S005', 1, 'DOCUMENT', 'Packing Plan: Pomegranate — Action Required', 'Contract CTR-007 for Pomegranate needs packing plan. Lock required before shipping.', 80, 'PACK', 'containerisation', 'TRD-SELL-007', 'UNREAD', datetime('now','-2 days')),
+('INB-S006', 1, 'DOCUMENT', 'Document Finalisation: Artichokes', 'Contract CTR-008 — 4 of 6 documents are ready. Phytosanitary and Fumigation certificates pending.', 75, 'SIGN_DOCS', 'doc-finalisation', 'TRD-SELL-008', 'READ', datetime('now','-4 days')),
+('INB-S007', 1, 'LOGISTICS', 'Vessel Tracking: MSC OSCAR — Jasmine Rice', 'Shipment SHP-009 is in transit. ETA Hamburg: ' || datetime('now','+6 days'), 60, 'TRACK', 'shipments-vault', 'SHP-009', 'READ', datetime('now','-5 days')),
+('INB-S008', 1, 'FINANCE', 'Payment Received: Egyptian Cotton', 'Full payment of $120,000 received for Trade TRD-SELL-010. Settlement complete.', 40, 'VIEW', 'cash-position', 'TRD-SELL-010', 'READ', datetime('now','-14 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 16. Seed Logistics Subrole Permissions
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO logistics_subrole_permissions (tenant_id, subrole, can_respond_rfq, can_issue_ebl, can_manage_booking, can_dispatch, can_verify_docs)
-VALUES
-  ('tenant-005', 'FREIGHT_FORWARDER', 1, 0, 1, 0, 1);
+-- Laboratories for Lab Selection tab
+INSERT OR IGNORE INTO laboratories (id, name, country_code, city, accreditation, price_tier, rating, turnaround_days, rush_available, sgtx_verified, specialisations, testing_capabilities, contact_email, website, created_at) VALUES
+('LAB-001', 'SGS Egypt', 'EG', 'Cairo', 'ISO 17025:2017', 'PREMIUM', 4.8, 5, 1, 1, '["Fresh Produce","Grains","Spices","Seafood"]', '["Pesticide Residue","Microbiological","Heavy Metals","Aflatoxin","Moisture"]', 'egypt@sgs.com', 'https://www.sgs.com/egypt', datetime('now','-180 days')),
+('LAB-002', 'Bureau Veritas Egypt', 'EG', 'Alexandria', 'ISO 17025:2017', 'PREMIUM', 4.6, 4, 1, 1, '["Fresh Produce","Textiles","Chemicals"]', '["Physical Analysis","Chemical Analysis","Microbiological","Shelf Life"]', 'alex@bureauveritas.com', 'https://www.bureauveritas.com', datetime('now','-180 days')),
+('LAB-003', 'Central Lab for Food Safety', 'EG', 'Cairo', 'EGAC Accredited', 'STANDARD', 4.2, 7, 0, 1, '["Fresh Produce","Dairy","Meat","Processed Foods"]', '["Microbiological","Chemical Residues","Nutritional Analysis","Shelf Life"]', 'clfs@gov.eg', NULL, datetime('now','-180 days')),
+('LAB-004', 'Al-Azhar University Lab', 'EG', 'Cairo', 'University Accredited', 'BUDGET', 3.9, 10, 0, 0, '["Grains","Spices","Tea"]', '["Aflatoxin","Moisture","Pesticide Residue","Heavy Metals"]', 'lab@azhar.edu.eg', NULL, datetime('now','-180 days')),
+('LAB-005', 'Eurofins Scientific Egypt', 'EG', 'Cairo', 'ISO 17025:2017 + ISO 22000', 'PREMIUM', 4.9, 3, 1, 1, '["Fresh Produce","Coffee","Cocoa","Nuts","Seafood"]', '["Pesticide Residue","Mycotoxins","Allergens","GMO","Nutritional","Microbiological","Heavy Metals"]', 'cairo@eurofins.com', 'https://www.eurofins.com', datetime('now','-180 days'));
 
--- ═══════════════════════════════════════════════════════════════════
--- 17. Seed Financier Preferences (Part 4.3)
--- ═══════════════════════════════════════════════════════════════════
-INSERT OR IGNORE INTO financier_preferences (id, tenant_id, country_include, country_exclude, min_amount, max_amount, tenor_max_days, commodity_include, risk_appetite, settlement_types, auto_bid_enabled, created_at)
-VALUES
-  ('fp-001', 'tenant-003', '["EG","VN","SG","DE","GB","AE"]', '["KP","IR","SY"]', 50000, 5000000, 180, '["TEXTILES","AGRICULTURAL","ELECTRONICS"]', 'MODERATE', '["LC","TT","DEFERRED"]', 0, datetime('now'));
+-- Lab Test Types
+INSERT OR IGNORE INTO lab_test_types (id, name, category, description, typical_duration_days, typical_cost_usd, is_mandatory) VALUES
+('LTT-001', 'Pesticide Residue Analysis', 'SAFETY', 'Multi-residue analysis for 400+ pesticides per EU MRL limits', 5, 350, 1),
+('LTT-002', 'Microbiological Testing', 'SAFETY', 'E.coli, Salmonella, Listeria, Total Plate Count, Yeast & Mold', 3, 200, 1),
+('LTT-003', 'Heavy Metal Analysis', 'SAFETY', 'Lead, Cadmium, Mercury, Arsenic per Codex/EU limits', 4, 250, 1),
+('LTT-004', 'Aflatoxin Analysis', 'SAFETY', 'Aflatoxin B1, B2, G1, G2 and total aflatoxin', 3, 180, 0),
+('LTT-005', 'Moisture Content', 'QUALITY', 'Karl Fischer / Oven drying moisture determination', 1, 60, 0),
+('LTT-006', 'Brix / Sugar Content', 'QUALITY', 'Refractometer brix measurement for fruits', 1, 50, 0),
+('LTT-007', 'Shelf Life Study', 'QUALITY', 'Accelerated shelf life testing under controlled conditions', 14, 800, 0),
+('LTT-008', 'Phytosanitary Compliance', 'REGULATORY', 'Plant health inspection per ISPM-15 and destination country requirements', 2, 150, 1),
+('LTT-009', 'Nutritional Analysis', 'LABELING', 'Full nutritional panel per Codex/EU/FDA requirements', 7, 400, 0),
+('LTT-010', 'Fumigation Certificate', 'REGULATORY', 'Methyl bromide or phosphine fumigation verification', 1, 120, 0);
 
--- Note: FK constraints may be re-enabled by the migration framework
--- PRAGMA foreign_keys = ON;
+-- Packing Plans for contracted trades
+INSERT OR IGNORE INTO packing_plans (id, trade_request_id, container_type, gross_weight_kg, net_weight_kg, pallet_count, pallet_weight_kg, packaging_weight_kg, stacking_layers, locked, locked_at, loom_hash, created_at) VALUES
+('PP-008', 'TRD-SELL-008', '40RF', 24000, 22500, 20, 25, 500, 5, 1, datetime('now','-8 days'), 'loom:pp008:a1b2c3d4e5f6', datetime('now','-10 days')),
+('PP-009', 'TRD-SELL-009', '40ST', 25000, 23500, 24, 22, 472, 6, 1, datetime('now','-12 days'), 'loom:pp009:f6e5d4c3b2a1', datetime('now','-14 days')),
+('PP-010', 'TRD-SELL-010', '40ST', 21000, 20000, 20, 25, 500, 4, 1, datetime('now','-38 days'), 'loom:pp010:9a8b7c6d5e4f', datetime('now','-40 days'));
+
+-- Initial Loom Chain (genesis block)
+INSERT OR IGNORE INTO loom_chain (previous_hash, current_hash, event_type, event_data, sequence_num) VALUES
+('0000000000000000000000000000000000000000000000000000000000000000', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0', 'GENESIS', '{"platform":"SGTX","version":"11.0","timestamp":"2026-06-10T00:00:00Z"}', 0);
+
+-- Financier Preferences
+INSERT OR IGNORE INTO financier_preferences (financier_tenant_id, accepted_borrower_countries, min_borrower_trust_score, min_trade_value, max_financed_amount, preferred_financing_types, preferred_settlement_methods) VALUES
+(11, '["EG"]', 70.0, 10000.0, 500000.0, '["PRE_SHIPMENT","POST_SHIPMENT"]', '["BANK_TRANSFER"]'),
+(12, '["EG","VN","AE"]', 60.0, 5000.0, 200000.0, '["PRE_SHIPMENT","INVOICE_FACTORING"]', '["BANK_TRANSFER","DEFI"]');
