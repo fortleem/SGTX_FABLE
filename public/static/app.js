@@ -134,6 +134,7 @@ const portalMenus = {
     { id: 'cash-position', icon: 'fa-chart-area', label: 'Cash Position', mode: 'SELL' },
     { id: 'distressed-sell', icon: 'fa-fire', label: 'Distressed & Outreach', mode: 'SELL' },
     { section: 'Shared' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
     { id: 'disputes', icon: 'fa-gavel', label: 'Disputes' },
     { id: 'contacts', icon: 'fa-users', label: 'Saved Contacts' },
     { id: 'company-admin', icon: 'fa-building-user', label: 'Company Admin' },
@@ -152,6 +153,7 @@ const portalMenus = {
     { section: 'Performance' },
     { id: 'performance-dash', icon: 'fa-chart-column', label: 'Performance' },
     { id: 'ebl-management', icon: 'fa-file-lines', label: 'eBL Management' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
     { id: 'contacts', icon: 'fa-users', label: 'Partner Network' },
   ],
   financier: [
@@ -169,6 +171,7 @@ const portalMenus = {
     { section: 'Analysis' },
     { id: 'financed-companies', icon: 'fa-building-columns', label: 'Financed Companies' },
     { id: 'settlements', icon: 'fa-money-bill-transfer', label: 'Settlements' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
   ],
   qc: [
     { section: 'Core' },
@@ -199,6 +202,7 @@ const portalMenus = {
     { section: 'Integration' },
     { id: 'gov-permits', icon: 'fa-stamp', label: 'Permit Issuance' },
     { id: 'customs-api', icon: 'fa-plug', label: 'Customs API' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
   ],
   admin: [
     { section: 'Platform' },
@@ -217,6 +221,7 @@ const portalMenus = {
     { id: 'incidents', icon: 'fa-triangle-exclamation', label: 'Incidents' },
     { id: 'config-history', icon: 'fa-code-branch', label: 'Config History' },
     { id: 'customer-care', icon: 'fa-headset', label: 'Customer Care' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
   ],
   marketplace: [
     { section: 'Core' },
@@ -244,6 +249,7 @@ const portalMenus = {
     { id: 'ship-contract-rates', icon: 'fa-handshake', label: 'Contract Rates' },
     { section: 'Performance' },
     { id: 'ship-performance', icon: 'fa-chart-column', label: 'Performance' },
+    { id: 'world-trade', icon: 'fa-earth-americas', label: 'World Trade Intel' },
     { id: 'company-admin', icon: 'fa-building-user', label: 'Company Admin' },
   ],
   laboratory: [
@@ -458,7 +464,7 @@ const pageRenderers = {
   'distressed-buy': renderDistressedBuy,
   // Trader - Seller
   'pending-requests': renderPendingRequests,
-  'exw-price-lock': renderEXWPriceLock,
+  'exw-price-lock': () => renderEXWPrice(),
   'containerisation': renderContainerisation,
   'logistics-builder': renderLogisticsBuilder,
   'quote-submit': renderQuoteSubmit,
@@ -505,6 +511,7 @@ const pageRenderers = {
   'gov-audit': renderGovAudit,
   'gov-jurisdictions': renderGovJurisdictions,
   'gov-compliance': renderGovCompliance,
+  'world-trade': renderWorldTrade,
   'gov-permits': renderGovPermits,
   'customs-api': renderCustomsAPI,
   // Admin
@@ -1305,6 +1312,15 @@ async function renderQuoteReview() {
         ${metricCard('fa-clock', 'Avg Response', '4.2h', null, 'purple')}
       </div>
       ${trades.length === 0 ? '<div class="sgtx-card p-10 text-center"><i class="fas fa-inbox text-4xl text-surface-300 mb-3"></i><p class="text-surface-500">No quotes to review. Create a trade request first.</p><button onclick="navigate(\'new-trade\')" class="btn-primary mt-3 text-xs"><i class="fas fa-plus mr-1"></i>New Trade</button></div>' : ''}
+      ${trades.length >= 2 ? `
+      <div class="sgtx-card p-5 mb-4">
+        <h3 class="font-semibold text-sm mb-3"><i class="fas fa-scale-balanced mr-2 text-gold-500"></i>Side-by-Side Quote Comparison</h3>
+        ${dataTable(['Seller','Commodity','Incoterm','EXW','Logistics','SGTX Fee','Landed Cost','Status'], trades.map(t => {
+          const landed = (t.exw_total||t.total_value||0)+(t.logistics_cost||0)+(t.sgtx_fee||0)+(t.services_cost||0);
+          return [t.seller_name||'—', t.commodity_type||t.commodity||'—', t.incoterm||'EXW', usd(t.exw_total||t.total_value), usd(t.logistics_cost||0), usd(t.sgtx_fee||0), '<span class="font-bold text-blue-700">'+usd(landed)+'</span>', badge(t.status)];
+        }))}
+        <div class="mt-2 text-[10px] text-surface-400"><i class="fas fa-arrow-down mr-1"></i>Lowest landed cost: <span class="font-bold text-emerald-600">${usd(Math.min(...trades.map(t=>(t.exw_total||t.total_value||0)+(t.logistics_cost||0)+(t.sgtx_fee||0)+(t.services_cost||0))))}</span></div>
+      </div>` : ''}
       ${trades.map(t => `
         <div class="sgtx-card p-5 mb-4">
           <div class="flex items-center justify-between mb-3">
@@ -1424,8 +1440,8 @@ async function renderFinancing() {
 function showFinSection(s) {
   ['request','bids','active'].forEach(t => { const b=document.getElementById('fin-s-'+t); if(b) b.className='flex-1 py-2.5 rounded-lg text-xs font-semibold '+(t===s?'bg-gold-400 text-white':'bg-white text-surface-600 border border-surface-200'); });
   const el = document.getElementById('fin-sec'); if(!el)return;
-  if(s==='request') el.innerHTML=`<div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-hand-holding-dollar mr-2 text-blue-500"></i>New Financing Request</h3><div class="grid grid-cols-2 gap-4 mb-4"><div><label class="text-xs text-surface-500">Trade / USTN</label><select class="w-full"><option>Select trade...</option></select></div><div><label class="text-xs text-surface-500">Type</label><select class="w-full"><option>Pre-Shipment</option><option>Post-Shipment</option><option>Invoice Factoring</option></select></div><div><label class="text-xs text-surface-500">Amount (USD)</label><input type="number" class="w-full" placeholder="50000"></div><div><label class="text-xs text-surface-500">Tenor (days)</label><select class="w-full"><option>30</option><option>60</option><option>90</option></select></div></div><button class="btn-primary w-full py-2"><i class="fas fa-paper-plane mr-1"></i>Submit (Anonymous RFQ)</button></div>`;
-  else if(s==='bids') el.innerHTML=`<div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-gavel mr-2 text-purple-500"></i>Bids Received</h3><div class="space-y-3">${[{bank:'National Bank',rate:3.8,amt:50000},{bank:'Gulf Capital',rate:4.5,amt:45000}].map(b=>`<div class="p-4 bg-surface-50 rounded-lg border flex items-center justify-between"><div><div class="font-medium text-sm">${b.bank}</div><div class="text-xs text-surface-400">${b.rate}% · ${usd(b.amt)}</div></div><div class="flex gap-2"><button class="btn-primary text-xs py-1.5 px-3">Accept</button><button class="btn-ghost text-xs">Negotiate</button></div></div>`).join('')}</div></div>`;
+  if(s==='request') el.innerHTML=`<div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-hand-holding-dollar mr-2 text-blue-500"></i>New Financing Request</h3><div class="grid grid-cols-2 gap-4 mb-4"><div><label class="text-xs text-surface-500">Trade / USTN</label><select class="w-full"><option>Select trade...</option></select></div><div><label class="text-xs text-surface-500">Type</label><select class="w-full"><option>Pre-Shipment</option><option>Post-Shipment</option><option>Invoice Factoring</option></select></div><div><label class="text-xs text-surface-500">Amount (USD)</label><input type="number" class="w-full" placeholder="50000"></div><div><label class="text-xs text-surface-500">Tenor (days)</label><select class="w-full"><option>30</option><option>60</option><option>90</option></select></div></div><button onclick="submitFinRequest(this)" class="btn-primary w-full py-2"><i class="fas fa-paper-plane mr-1"></i>Submit (Anonymous RFQ)</button></div>`;
+  else if(s==='bids') el.innerHTML=`<div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-gavel mr-2 text-purple-500"></i>Bids Received</h3><div class="space-y-3">${[{bank:'National Bank',rate:3.8,amt:50000},{bank:'Gulf Capital',rate:4.5,amt:45000}].map(b=>`<div class="p-4 bg-surface-50 rounded-lg border flex items-center justify-between"><div><div class="font-medium text-sm">${b.bank}</div><div class="text-xs text-surface-400">${b.rate}% · ${usd(b.amt)}</div></div><div class="flex gap-2"><button onclick="acceptFinBid('${b.bank}',${b.rate},${b.amt})" class="btn-primary text-xs py-1.5 px-3">Accept</button><button onclick="showToast('Negotiation request sent to ${b.bank}','info')" class="btn-ghost text-xs">Negotiate</button></div></div>`).join('')}</div></div>`;
   else el.innerHTML=`<div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-file-contract mr-2 text-emerald-500"></i>Active Loans</h3><div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200"><div class="flex items-center justify-between mb-2"><span class="font-medium">Pre-Shipment — SGTX-EG-26-F3A-1</span>${badge('ACTIVE')}</div><div class="grid grid-cols-4 gap-2 text-center text-xs"><div><div class="text-surface-400">Principal</div><div class="font-bold">$50,000</div></div><div><div class="text-surface-400">Rate</div><div class="font-bold">3.8%</div></div><div><div class="text-surface-400">Repaid</div><div class="font-bold text-emerald-600">$12,500</div></div><div><div class="text-surface-400">Due</div><div class="font-bold text-amber-600">Aug 15</div></div></div><div class="mt-2 w-full bg-surface-200 rounded-full h-1.5"><div class="bg-emerald-500 h-1.5 rounded-full" style="width:25%"></div></div></div></div>`;
 }
 
@@ -1511,7 +1527,7 @@ async function renderPendingRequests() {
 }
 function startQuoteForTrade(tradeId) {
   if(typeof openSellerQuoteBuilder === 'function') openSellerQuoteBuilder(tradeId);
-  else { showToast('Opening Quote Builder...','info'); navigateTo('exw-price'); }
+  else { showToast('Opening Quote Builder...','info'); navigateTo('exw-price-lock'); }
 }
 
 async function renderEXWPrice() {
@@ -1553,6 +1569,7 @@ async function renderEXWPrice() {
                 <div class="flex justify-between text-[10px] mt-1"><span class="text-red-500">Below Market</span><span class="text-emerald-600 font-bold">✓ Fair Range</span><span class="text-red-500">Above Market</span></div>
               </div>
               <div id="exw-verdict" class="text-center px-3"><div class="text-xl font-bold text-emerald-600">✓</div><div class="text-[10px] text-emerald-600 font-medium">FAIR</div></div>
+              <button onclick="useFairPrice()" class="btn-primary text-xs py-2 px-3 whitespace-nowrap"><i class="fas fa-wand-magic-sparkles mr-1"></i>Use Fair Price</button>
             </div>
           </div>
           <!-- Breakdown per lot -->
@@ -1614,6 +1631,13 @@ function validateEXWPrice() {
   else{verdict.innerHTML='<div class="text-xl font-bold text-red-500">✗</div><div class="text-[10px] text-red-500 font-medium">OUT OF BAND</div>';}
 }
 function updateEXWChart() { showToast('Market data updated','info'); }
+function useFairPrice() {
+  const input = document.getElementById('exw-price-input');
+  if(!input) return;
+  input.value = '450.00'; // midpoint of AI fair band $430–$470
+  validateEXWPrice();
+  showToast('AI fair price applied — $450.00/MT (band midpoint)','success');
+}
 async function lockEXWPrice() {
   showGovernorPanel('EXW Price Lock — immutable once confirmed. Loom hash will be generated.', async ()=>{
     showToast('EXW Price locked ✓ — Loom hash: 0xA3F...','success');
@@ -1765,16 +1789,16 @@ async function renderLogisticsBuilder() {
 function setLogMode(mode) {
   ['A','B','C'].forEach(m => { const el=document.getElementById('logmode-'+m); if(el) el.className=el.className.replace(/border-gold-400/,'border-transparent')+(m===mode?' border-2 !border-gold-400':''); });
   const el = document.getElementById('logmode-content'); if(!el)return;
-  if(mode==='A') el.innerHTML=renderLogModeA();
+  if(mode==='A') { el.innerHTML=renderLogModeA(); setTimeout(applyIncotermGating, 0); }
   else if(mode==='B') el.innerHTML=renderLogModeB();
   else el.innerHTML=renderLogModeC();
 }
 function renderLogModeA() {
   return `<h3 class="font-semibold text-sm mb-4"><i class="fas fa-pen mr-2 text-blue-500"></i>Manual Carrier Selection (Incoterm-Filtered)</h3>
     <div class="grid grid-cols-3 gap-3 mb-4">
-      <div><label class="text-xs text-surface-500 block mb-1">Incoterm</label><select class="w-full"><option>FOB</option><option>CFR</option><option>CIF</option><option>DAP</option><option>DDP</option></select></div>
-      <div><label class="text-xs text-surface-500 block mb-1">Port of Loading</label><select class="w-full"><option>Alexandria, EG (EGALX)</option><option>Port Said, EG (EGPSD)</option></select></div>
-      <div><label class="text-xs text-surface-500 block mb-1">Port of Discharge</label><select class="w-full"><option>Hamburg, DE (DEHAM)</option><option>Rotterdam, NL (NLRTM)</option><option>Felixstowe, GB (GBFXT)</option></select></div>
+      <div><label class="text-xs text-surface-500 block mb-1">Incoterm</label><select id="loga-incoterm" class="w-full" onchange="applyIncotermGating()"><option>EXW</option><option selected>FOB</option><option>CFR</option><option>CIF</option><option>DAP</option><option>DDP</option></select></div>
+      <div><label class="text-xs text-surface-500 block mb-1">Port of Loading</label><select id="loga-pol" class="w-full"><option>Alexandria, EG (EGALX)</option><option>Port Said, EG (EGPSD)</option></select></div>
+      <div><label class="text-xs text-surface-500 block mb-1">Port of Discharge</label><select id="loga-pod" class="w-full"><option>Hamburg, DE (DEHAM)</option><option>Rotterdam, NL (NLRTM)</option><option>Felixstowe, GB (GBFXT)</option></select></div>
     </div>
     <div class="space-y-2 mb-4">
       ${[{carrier:'Maersk',transit:'14d',rate:'$2,400/20ft',avail:'Jul 12-15'},{carrier:'MSC',transit:'16d',rate:'$2,200/20ft',avail:'Jul 14-18'},{carrier:'CMA CGM',transit:'15d',rate:'$2,350/20ft',avail:'Jul 13-16'},{carrier:'Hapag-Lloyd',transit:'13d',rate:'$2,550/20ft',avail:'Jul 11-14'}].map((c,i)=>`
@@ -1783,7 +1807,31 @@ function renderLogModeA() {
           <div class="text-right"><div class="font-bold text-sm">${c.rate}</div><div class="text-[10px] text-surface-400">per container</div></div>
         </div>`).join('')}
     </div>
+    <div id="loga-incoterm-note" class="mb-3 text-xs text-surface-500 bg-blue-50 border border-blue-100 rounded-lg p-2.5"><i class="fas fa-info-circle mr-1 text-blue-500"></i><span id="loga-note-text">FOB: Seller books main carriage to port of loading only — ocean freight fields active for buyer's account.</span></div>
     <button onclick="confirmLogistics('A')" class="btn-primary w-full py-3"><i class="fas fa-check mr-2"></i>Confirm Carrier Selection</button>`;
+}
+// Blueprint 12C — Incoterm-driven field enable/disable (Mode A)
+function applyIncotermGating() {
+  const term = document.getElementById('loga-incoterm')?.value || 'FOB';
+  const pol = document.getElementById('loga-pol');
+  const pod = document.getElementById('loga-pod');
+  const note = document.getElementById('loga-note-text');
+  const notes = {
+    EXW: 'EXW: Buyer arranges ALL transport — carrier selection disabled for seller.',
+    FOB: 'FOB: Seller delivers to port of loading — ocean freight is buyer responsibility.',
+    CFR: 'CFR: Seller pays freight to destination port — select carrier & discharge port.',
+    CIF: 'CIF: Seller pays freight + insurance to destination — select carrier & discharge port.',
+    DAP: 'DAP: Seller delivers to named place — full door delivery, all fields active.',
+    DDP: 'DDP: Seller handles delivery + duties — full door delivery, all fields active.'
+  };
+  if (note) note.textContent = notes[term] || '';
+  const sellerBooksOcean = ['CFR','CIF','DAP','DDP'].includes(term);
+  if (pod) { pod.disabled = !sellerBooksOcean && term !== 'FOB' ? true : (term === 'EXW'); pod.style.opacity = pod.disabled ? '0.4' : '1'; }
+  if (pol) { pol.disabled = term === 'EXW'; pol.style.opacity = pol.disabled ? '0.4' : '1'; }
+  document.querySelectorAll('#logmode-content [onclick^="selectCarrier"]').forEach(el => {
+    if (term === 'EXW') { el.style.pointerEvents = 'none'; el.style.opacity = '0.4'; }
+    else { el.style.pointerEvents = ''; el.style.opacity = ''; }
+  });
 }
 function renderLogModeB() {
   return `<h3 class="font-semibold text-sm mb-4"><i class="fas fa-bullhorn mr-2 text-purple-500"></i>RFQ Broadcast — Compare Quotes</h3>
@@ -1801,7 +1849,7 @@ function renderLogModeB() {
         <thead><tr class="text-surface-400 border-b"><th class="text-left py-2">Provider</th><th>Rate/20ft</th><th>Transit</th><th>ETD</th><th>Score</th><th></th></tr></thead>
         <tbody>
           ${[{p:'GlobalFreight Co',rate:2200,transit:'15d',etd:'Jul 14',score:92},{p:'OceanLink Logistics',rate:2350,transit:'13d',etd:'Jul 12',score:88},{p:'MedShip Express',rate:2100,transit:'17d',etd:'Jul 16',score:85}].map(r=>`
-            <tr class="border-b border-surface-100 hover:bg-white"><td class="py-2 font-medium">${r.p}</td><td class="text-center">$${r.rate}</td><td class="text-center">${r.transit}</td><td class="text-center">${r.etd}</td><td class="text-center"><span class="font-bold ${r.score>=90?'text-emerald-600':'text-amber-600'}">${r.score}</span></td><td class="text-right"><button class="btn-primary text-xs py-1 px-3">Accept</button></td></tr>`).join('')}
+            <tr class="border-b border-surface-100 hover:bg-white"><td class="py-2 font-medium">${r.p}</td><td class="text-center">$${r.rate}</td><td class="text-center">${r.transit}</td><td class="text-center">${r.etd}</td><td class="text-center"><span class="font-bold ${r.score>=90?'text-emerald-600':'text-amber-600'}">${r.score}</span></td><td class="text-right"><button onclick="acceptLogisticsRFQ('${r.p}',${r.rate})" class="btn-primary text-xs py-1 px-3">Accept</button></td></tr>`).join('')}
         </tbody>
       </table>
     </div>`;
@@ -1824,6 +1872,12 @@ function renderLogModeC() {
 }
 function selectCarrier(el) { el.parentElement.querySelectorAll(':scope > div').forEach(d=>d.className=d.className.replace('border-gold-300 bg-gold-50','border-surface-200')); el.className=el.className.replace('border-surface-200','border-gold-300 bg-gold-50'); }
 function broadcastRFQ() { showToast('RFQ broadcast sent to 12 logistics providers','success'); }
+function acceptLogisticsRFQ(provider, rate) {
+  showGovernorPanel(`Accept ${provider} at $${rate}/20ft — freight cost locked into landed-cost quote (Mode B).`, async ()=>{
+    showToast(provider+' accepted ✓ — freight $'+rate+'/20ft locked','success');
+    navigateTo('quote-submit');
+  });
+}
 async function confirmLogistics(mode) {
   showGovernorPanel(`Logistics ${mode==='C'?'SHIP booking':'selection'} — freight cost locked into quote.`, async ()=>{
     showToast('Logistics confirmed ✓','success');
@@ -2077,7 +2131,7 @@ async function renderDocFinalisation() {
             </div>
             <div class="flex items-center gap-2">
               ${badge(d.status)}
-              ${d.status==='SIGNED' ? '<button class="text-xs text-blue-500 hover:underline"><i class="fas fa-download"></i></button>' : '<button class="btn-primary text-xs py-1 px-3">Generate & Sign</button>'}
+              ${d.status==='SIGNED' ? `<button onclick="showToast('Downloading ${d.name} (Loom-verified) ...','info')" class="text-xs text-blue-500 hover:underline"><i class="fas fa-download"></i></button>` : `<button onclick="generateAndSignDoc('${d.name}', this)" class="btn-primary text-xs py-1 px-3">Generate & Sign</button>`}
             </div>
           </div>`).join('')}
       </div>
@@ -2094,6 +2148,18 @@ async function renderDocFinalisation() {
     </div>`;
 }
 function generateAllDocs() { showToast('Generating remaining documents...','info'); setTimeout(()=>showToast('All 8 documents generated ✓','success'),1500); }
+function generateAndSignDoc(name, btn) {
+  showGovernorPanel(`${name} — will be generated, Ed25519-signed, and Loom-hashed (immutable).`, async ()=>{
+    const row = btn.closest('.flex.items-center.justify-between');
+    const hash = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join('').slice(0,3) + '...' + Array.from(crypto.getRandomValues(new Uint8Array(2))).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join('').slice(0,3);
+    if(row){
+      const iconBox = row.querySelector('.w-9'); if(iconBox){ iconBox.className = iconBox.className.replace('bg-surface-100','bg-emerald-100'); const ic = iconBox.querySelector('i'); if(ic) ic.className = ic.className.replace('text-surface-400','text-emerald-600'); }
+      const sub = row.querySelector('.text-amber-500'); if(sub){ sub.className='text-[10px] text-surface-400 font-mono'; sub.textContent='Loom: '+hash; }
+      const right = row.querySelector('.flex.items-center.gap-2:last-child'); if(right) right.innerHTML = badge('SIGNED') + '<button onclick="showToast(\'Downloading \u2014 Loom-verified\',\'info\')" class="text-xs text-blue-500 hover:underline"><i class="fas fa-download"></i></button>';
+    }
+    showToast(name+' signed ✓ — Loom hash '+hash,'success');
+  });
+}
 function signAllDocs() {
   showGovernorPanel('Batch Document Signing — all 8 documents will be Ed25519-signed and Loom-hashed.', async ()=>{
     showToast('All documents signed ✓ — 8 Loom hashes generated','success');
@@ -3850,3 +3916,1916 @@ async function renderMktUsage() {
   setTimeout(()=>{const c=document.getElementById('mkt-usage-chart');if(c&&typeof Chart!=='undefined')new Chart(c,{type:'line',data:{labels:Array.from({length:30},(_,i)=>`D${i+1}`),datasets:[{label:'Calls (k)',data:Array.from({length:30},()=>35+Math.random()*20),borderColor:'#3B82F6',tension:0.4,fill:false,pointRadius:0}]},options:{responsive:true,plugins:{legend:{display:false}}}});},100);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// WORLD TRADE INTELLIGENCE (Blueprint Part 30 — TCN + Market Awareness)
+// ═══════════════════════════════════════════════════════════════════════
+async function renderWorldTrade() {
+  setTitle('World Trade Intelligence', 'Live corridors, freight indices, chokepoints & AI briefing');
+  const content = document.getElementById('content');
+  content.innerHTML = shimmerLoader();
+  try {
+    const [ovRes, idxRes] = await Promise.all([
+      api('/world-trade/overview'),
+      api('/world-trade/indices')
+    ]);
+    const ov = ovRes.data || ovRes;
+    const idx = idxRes.data || idxRes;
+    const chokepoints = ov.chokepoints || [];
+    const corridors = ov.corridors || [];
+    const commodities = ov.commodity_prices || [];
+    const indices = idx.indices || [];
+    const routes = idx.routes || [];
+    content.innerHTML = `
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        ${indices.slice(0,4).map(i => metricCard('fa-chart-line', i.name || i.code, (i.value||'—') + '', (i.change_pct>0?'+':'')+(i.change_pct||0)+'%', i.change_pct >= 0 ? 'emerald' : 'red')).join('')}
+      </div>
+      <div class="grid grid-cols-3 gap-5 mb-5">
+        <!-- Chokepoint Monitor -->
+        <div class="sgtx-card p-5">
+          <h3 class="font-semibold text-sm mb-3"><i class="fas fa-triangle-exclamation mr-2 text-amber-500"></i>Chokepoint Monitor</h3>
+          <div class="space-y-2">
+            ${chokepoints.map(c => `
+              <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-50 border border-surface-100">
+                <div><div class="font-medium text-xs">${c.name}</div><div class="text-[10px] text-surface-400">${c.region || ''}</div></div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${c.status==='NORMAL'?'bg-emerald-100 text-emerald-700':c.status==='ELEVATED'?'bg-amber-100 text-amber-700':'bg-red-100 text-red-700'}">${c.status}</span>
+              </div>`).join('') || '<div class="text-xs text-surface-400 py-4 text-center">No chokepoint data</div>'}
+          </div>
+        </div>
+        <!-- Freight Routes -->
+        <div class="sgtx-card p-5">
+          <h3 class="font-semibold text-sm mb-3"><i class="fas fa-route mr-2 text-blue-500"></i>Freight Rates (per FEU)</h3>
+          <div class="space-y-2">
+            ${routes.map(r => `
+              <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-50 border border-surface-100 text-xs">
+                <span class="font-medium">${r.route || r.name}</span>
+                <span class="font-bold">$${(r.rate_usd||r.rate||0).toLocaleString()} <span class="${(r.change_pct||0)>=0?'text-emerald-600':'text-red-500'} text-[10px]">${(r.change_pct>0?'+':'')}${r.change_pct||0}%</span></span>
+              </div>`).join('') || '<div class="text-xs text-surface-400 py-4 text-center">No route data</div>'}
+          </div>
+        </div>
+        <!-- Commodity Prices -->
+        <div class="sgtx-card p-5">
+          <h3 class="font-semibold text-sm mb-3"><i class="fas fa-wheat-awn mr-2 text-gold-500"></i>Commodity Benchmarks</h3>
+          <div class="space-y-2">
+            ${commodities.map(c => `
+              <div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-50 border border-surface-100 text-xs">
+                <span class="font-medium">${c.commodity || c.name}</span>
+                <span class="font-bold">$${(c.price_usd||c.price||0).toLocaleString()}<span class="text-[10px] text-surface-400">/${c.unit||'MT'}</span> <span class="${(c.change_pct||0)>=0?'text-emerald-600':'text-red-500'} text-[10px]">${(c.change_pct>0?'+':'')}${c.change_pct||0}%</span></span>
+              </div>`).join('') || '<div class="text-xs text-surface-400 py-4 text-center">No commodity data</div>'}
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-5 mb-5">
+        <!-- Active Corridors -->
+        <div class="sgtx-card p-5">
+          <h3 class="font-semibold text-sm mb-3"><i class="fas fa-arrows-left-right mr-2 text-purple-500"></i>Platform Trade Corridors</h3>
+          ${corridors.length === 0 ? '<div class="text-xs text-surface-400 py-4 text-center">No active corridors yet</div>' :
+            dataTable(['Corridor','Trades','Volume','Status'], corridors.map(c => [
+              `${c.origin || c.origin_country} → ${c.destination || c.destination_country}`,
+              c.trade_count || c.trades || 0,
+              usd(c.total_value || c.volume || 0),
+              badge(c.status || 'ACTIVE')
+            ]))}
+        </div>
+        <!-- AI Briefing -->
+        <div class="sgtx-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-sm"><i class="fas fa-brain mr-2 text-blue-500"></i>AI Daily Trade Briefing</h3>
+            <button onclick="loadWTBriefing()" class="btn-primary text-xs py-1.5 px-3"><i class="fas fa-rotate mr-1"></i>Generate</button>
+          </div>
+          <div id="wt-briefing" class="text-xs text-surface-600 leading-relaxed whitespace-pre-wrap min-h-[120px]">
+            <div class="text-surface-400 text-center py-8"><i class="fas fa-sparkles mr-1"></i>Click Generate for a governed AI briefing (Gemini → Groq fallback)</div>
+          </div>
+        </div>
+      </div>
+      <!-- Governed Q&A -->
+      <div class="sgtx-card p-5">
+        <h3 class="font-semibold text-sm mb-3"><i class="fas fa-comments mr-2 text-emerald-500"></i>Ask World Trade AI <span class="text-[10px] bg-surface-100 text-surface-500 px-2 py-0.5 rounded-full ml-1">Governed — never recommends counterparties</span></h3>
+        <div class="flex gap-2">
+          <input id="wt-question" class="flex-1" placeholder="e.g. How do current Red Sea disruptions affect Egypt → EU grain corridors?" onkeydown="if(event.key==='Enter')askWorldTrade()">
+          <button onclick="askWorldTrade()" class="btn-primary py-2 px-5 text-xs"><i class="fas fa-paper-plane mr-1"></i>Ask</button>
+        </div>
+        <div id="wt-answer" class="mt-3 text-xs text-surface-600 leading-relaxed whitespace-pre-wrap"></div>
+      </div>`;
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+async function loadWTBriefing() {
+  const el = document.getElementById('wt-briefing');
+  if(!el) return;
+  el.innerHTML = '<div class="text-surface-400 text-center py-8"><i class="fas fa-circle-notch fa-spin mr-2"></i>Generating governed AI briefing...</div>';
+  try {
+    const res = await api('/world-trade/ai-briefing');
+    const d = res.data || res;
+    el.textContent = d.briefing || d.text || JSON.stringify(d);
+  } catch(e) { el.innerHTML = '<span class="text-red-500">Briefing failed: '+e.message+'</span>'; }
+}
+async function askWorldTrade() {
+  const q = document.getElementById('wt-question')?.value?.trim();
+  const el = document.getElementById('wt-answer');
+  if(!q || !el) return;
+  el.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Analysing...';
+  try {
+    const res = await apiPost('/world-trade/ask', { question: q });
+    const d = res.data || res;
+    el.textContent = d.answer || d.text || JSON.stringify(d);
+  } catch(e) { el.innerHTML = '<span class="text-red-500">'+e.message+'</span>'; }
+}
+
+// ─── Financing actions (Blueprint Part 9 — Anonymous RFQ + Bid acceptance) ───
+async function submitFinRequest(btn) {
+  const card = btn.closest('.sgtx-card');
+  const amt = card?.querySelector('input[type=number]')?.value;
+  if(!amt || parseFloat(amt) <= 0) { showToast('Enter a financing amount','error'); return; }
+  showGovernorPanel('Anonymous financing RFQ — your identity is masked until you accept a bid (Blueprint Part 9).', async ()=>{
+    try { await apiPost('/finance/request', { amount: parseFloat(amt), tenant_id: tenant?.id }); } catch(e) {}
+    showToast('Financing RFQ broadcast to qualified financiers ✓','success');
+    showFinSection('bids');
+  });
+}
+async function acceptFinBid(bank, rate, amt) {
+  showGovernorPanel(`Accept ${bank} bid — ${rate}% on ${usd(amt)}. Identity disclosed to financier; loan terms locked on Loom.`, async ()=>{
+    try { await apiPost('/finance/accept-bid', { bank, rate, amount: amt, tenant_id: tenant?.id }); } catch(e) {}
+    showToast('Bid accepted ✓ — loan activated','success');
+    showFinSection('active');
+  });
+}
+
+
+// ═══ RECOVERED PORTAL RENDERERS (restored from v11.2) ═══
+
+async function renderLogisticsDashboard() {
+  setTitle('Operations Hub', 'Unified logistics operations dashboard');
+  const { data: stats } = await api('/stats');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-ship', 'Active Shipments', stats.shipments || 0, null, 'blue')}
+      ${metricCard('fa-inbox', 'Open RFQs', 0, null, 'amber')}
+      ${metricCard('fa-chart-line', 'On-Time %', '94%', 3, 'green')}
+      ${metricCard('fa-star', 'Rating', '4.8', null, 'purple')}
+    </div>
+    ${fourQuestions('Logistics operations active', 'Process open RFQs and booking requests', 'None', 'Performance metrics update daily')}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="sgtx-card"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-inbox text-gold-400 mr-2"></i>Quick Actions</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <button onclick="navigate('rfq-inbox')" class="p-4 rounded-xl bg-surface-50 hover:bg-surface-100 transition text-center"><i class="fas fa-inbox text-accent-amber text-lg mb-2"></i><div class="text-xs font-medium">RFQ Inbox</div></button>
+          <button onclick="navigate('dispatch-planner')" class="p-4 rounded-xl bg-surface-50 hover:bg-surface-100 transition text-center"><i class="fas fa-map-location-dot text-accent-blue text-lg mb-2"></i><div class="text-xs font-medium">Dispatch</div></button>
+          <button onclick="navigate('active-shipments')" class="p-4 rounded-xl bg-surface-50 hover:bg-surface-100 transition text-center"><i class="fas fa-ship text-accent-cyan text-lg mb-2"></i><div class="text-xs font-medium">Shipments</div></button>
+          <button onclick="navigate('performance-dash')" class="p-4 rounded-xl bg-surface-50 hover:bg-surface-100 transition text-center"><i class="fas fa-chart-column text-accent-emerald text-lg mb-2"></i><div class="text-xs font-medium">Performance</div></button>
+        </div>
+      </div>
+      <div class="sgtx-card"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-truck text-gold-400 mr-2"></i>Service Capabilities</h3>
+        <div class="space-y-2 text-sm text-surface-600">
+          <div class="flex items-center gap-2"><i class="fas fa-check text-emerald-500 w-4"></i>RFQ Inbox + Bundle Builder</div>
+          <div class="flex items-center gap-2"><i class="fas fa-check text-emerald-500 w-4"></i>Dispatch Planner (VRP)</div>
+          <div class="flex items-center gap-2"><i class="fas fa-check text-emerald-500 w-4"></i>eBL Issuance</div>
+          <div class="flex items-center gap-2"><i class="fas fa-check text-emerald-500 w-4"></i>Document Verification Queue</div>
+          <div class="flex items-center gap-2"><i class="fas fa-check text-emerald-500 w-4"></i>Performance Dashboard</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderRFQInbox() {
+  setTitle('RFQ Inbox', 'Open requests from traders needing logistics');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(6);
+  try {
+    var res = await api('/upgrades/logistics-rfq?tenant_id=' + tenant.id);
+    var rfqs = res.data || [];
+    var openRFQs = rfqs.filter(function(r) { return r.status === 'OPEN' || r.status === 'RFQ_SENT'; });
+    var biddingRFQs = rfqs.filter(function(r) { return r.status === 'BIDDING'; });
+    content.innerHTML =
+      fourQuestions(
+        'Active freight RFQs from platform traders needing cold chain logistics',
+        'Review open RFQs and submit competitive quotes with transit times',
+        openRFQs.length > 0 ? openRFQs.length + ' RFQs awaiting your response' : 'No pending RFQs',
+        'Winning quotes lead to booking confirmation and active shipment'
+      ) +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-inbox', 'Open RFQs', openRFQs.length, null, 'blue') +
+        metricCard('fa-gavel', 'Bidding', biddingRFQs.length, null, 'amber') +
+        metricCard('fa-check', 'Won This Week', rfqs.filter(function(r){return r.status==='AWARDED';}).length, null, 'green') +
+        metricCard('fa-snowflake', 'Reefer RFQs', rfqs.filter(function(r){return (r.commodity_type||'').match(/FRESH|FROZEN|REEFER/i);}).length, null, 'cyan') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">' +
+          '<h3 class="font-semibold text-sm text-surface-800"><i class="fas fa-inbox text-gold-400 mr-2"></i>Incoming RFQs</h3>' +
+          '<div class="flex gap-2">' +
+            '<button class="text-[10px] px-3 py-1 rounded-full bg-gold-100 text-gold-400 font-semibold">All (' + rfqs.length + ')</button>' +
+            '<button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-500">Open (' + openRFQs.length + ')</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (rfqs.length === 0 ?
+            '<div class="py-12 text-center text-surface-400"><i class="fas fa-inbox text-3xl mb-3"></i><p class="text-sm">No RFQs yet. They arrive when sellers request logistics quotes.</p></div>' :
+            rfqs.map(function(rfq) {
+              var isFresh = (rfq.commodity_type || rfq.service_type || '').match(/FRESH|FROZEN|REEFER|COLD/i);
+              return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">' +
+                '<div class="w-10 h-10 rounded-xl ' + (isFresh ? 'bg-sky-100' : 'bg-gold-100') + ' flex items-center justify-center shrink-0">' +
+                  '<i class="fas ' + (isFresh ? 'fa-snowflake text-sky-600' : 'fa-ship text-gold-400') + ' text-sm"></i>' +
+                '</div>' +
+                '<div class="flex-1 min-w-0">' +
+                  '<div class="flex items-center gap-2">' +
+                    '<span class="text-sm font-medium text-surface-800">' + (rfq.origin_port || '?') + ' \u2192 ' + (rfq.destination_port || '?') + '</span>' +
+                    '<span class="text-[10px] font-mono text-surface-400">' + (rfq.id || '').slice(0,12) + '</span>' +
+                    (isFresh ? '<span class="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-semibold">REEFER</span>' : '') +
+                  '</div>' +
+                  '<div class="text-xs text-surface-500 mt-0.5">' + (rfq.requester_name || 'Trader') + ' \u2022 ' + (rfq.container_type || '40HC') + ' \u2022 ' + (rfq.commodity_type || rfq.service_type || 'General') + '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2 shrink-0">' +
+                  badge(rfq.status || 'OPEN') +
+                  '<button onclick="showRespondToRFQ(\'' + rfq.id + '\')" class="btn-primary text-[10px] !py-1.5 !px-3"><i class="fas fa-reply mr-1"></i>Quote</button>' +
+                '</div>' +
+              '</div>';
+            }).join('')) +
+        '</div>' +
+      '</div>';
+  } catch(e) {
+    content.innerHTML = renderError('Error loading RFQ inbox: ' + e.message);
+  }
+}
+
+async function renderBookingRequests() {
+  setTitle('Booking Requests', 'Pending booking confirmations');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/lsp/rfq-inbox?tenant_id=' + tenant.id);
+    var rfqs = res.data || [];
+    var pending = rfqs.filter(function(r){return r.status==='PENDING_QUOTE';});
+    var quoted = rfqs.filter(function(r){return r.status==='QUOTED';});
+    content.innerHTML =
+      fourQuestions('Booking requests from platform trades', 'Accept and submit quotes for logistics RFQs', 'Vessel space availability', 'Confirmed bookings move to active shipments') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-calendar-check', 'Pending', pending.length, null, 'amber') +
+        metricCard('fa-check-circle', 'Quoted', quoted.length, null, 'green') +
+        metricCard('fa-inbox', 'Total RFQs', rfqs.length, null, 'blue') +
+        metricCard('fa-percent', 'Win Rate', rfqs.length > 0 ? Math.round(quoted.length/rfqs.length*100)+'%' : '—', null, 'purple') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between"><h3 class="font-semibold text-sm"><i class="fas fa-inbox text-gold-400 mr-2"></i>LSP RFQ Inbox</h3></div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (rfqs.length === 0 ? '<div class="py-8 text-center text-surface-400 text-xs">No RFQs yet</div>' :
+          rfqs.map(function(r){
+            return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">' +
+              '<div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center"><i class="fas fa-box text-amber-500 text-sm"></i></div>' +
+              '<div class="flex-1"><div class="text-sm font-medium">' + (r.origin_port||'?') + ' → ' + (r.destination_port||'?') + '</div>' +
+              '<div class="text-[10px] text-surface-400">' + (r.container_type||'40HC') + ' × ' + (r.container_count||1) + ' • ' + (r.commodity_type||'General') + '</div></div>' +
+              '<div class="flex items-center gap-2">' + badge(r.status) +
+              (r.status==='PENDING_QUOTE' ? '<button onclick="lspQuoteRFQ(\'' + r.id + '\')" class="btn-primary text-[10px] !py-1.5 !px-3"><i class="fas fa-reply mr-1"></i>Quote</button>' : '') +
+              '</div></div>';
+          }).join('')) +
+        '</div></div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderDispatchPlanner() {
+  setTitle('Dispatch Planner', 'VRP-optimized route planning');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/lsp/dispatch?tenant_id=' + tenant.id);
+    var plans = res.data || [];
+    var active = plans.filter(function(p){return p.status==='IN_TRANSIT'||p.status==='DISPATCHED';});
+    var pending = plans.filter(function(p){return p.status==='PLANNED';});
+    content.innerHTML =
+      fourQuestions('Vehicle route planning with VRP optimization', 'Plan pickup routes for pending collections', pending.length > 0 ? pending.length + ' planned routes pending dispatch' : 'No pending routes', 'Optimized routes save fuel and time') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-truck', 'Active Dispatches', active.length, null, 'blue') +
+        metricCard('fa-route', 'Planned', pending.length, null, 'purple') +
+        metricCard('fa-check-circle', 'Completed', plans.filter(function(p){return p.status==='DELIVERED';}).length, null, 'green') +
+        metricCard('fa-boxes-stacked', 'Total Plans', plans.length, null, 'amber') +
+      '</div>' +
+      '<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">' +
+        '<div class="md:col-span-2 sgtx-card">' +
+          '<div class="flex items-center justify-between mb-4">' +
+            '<h3 class="font-semibold text-sm"><i class="fas fa-map text-gold-400 mr-2"></i>Dispatch Plans</h3>' +
+            '<button onclick="lspOptimiseRoutes()" class="btn-primary text-[10px] !py-1.5"><i class="fas fa-wand-magic-sparkles mr-1"></i>AI Optimise</button>' +
+          '</div>' +
+          '<div class="space-y-3">' +
+            (plans.length === 0 ? '<div class="py-8 text-center text-surface-400 text-xs">No dispatch plans yet</div>' :
+            plans.map(function(p){
+              var stops = [];try{stops=JSON.parse(p.stops||'[]');}catch(e){}
+              return '<div class="p-4 rounded-xl border border-surface-100 hover:border-gold-200 transition">' +
+                '<div class="flex items-center justify-between mb-2">' +
+                  '<div class="flex items-center gap-2"><span class="font-mono text-xs text-gold-400">' + p.id + '</span>' + badge(p.status) + '</div>' +
+                  '<span class="text-[10px] text-surface-400">' + (p.vehicle_id||'—') + '</span>' +
+                '</div>' +
+                '<div class="text-xs text-surface-500">' + stops.length + ' stops • Driver: ' + (p.driver_name||'Unassigned') + '</div>' +
+                (p.status==='PLANNED' ? '<button onclick="lspAssignDispatch(\'' + p.id + '\')" class="mt-2 text-[10px] bg-emerald-500 text-white px-3 py-1 rounded-lg font-semibold"><i class="fas fa-play mr-1"></i>Dispatch</button>' : '') +
+              '</div>';
+            }).join('')) +
+          '</div>' +
+        '</div>' +
+        '<div class="sgtx-card">' +
+          '<h3 class="font-semibold text-sm mb-4"><i class="fas fa-warehouse text-gold-400 mr-2"></i>Warehouse Stats</h3>' +
+          '<div id="wh-stats-box" class="space-y-2 text-xs text-surface-500"><div class="animate-pulse bg-surface-100 h-4 rounded"></div></div>' +
+        '</div>' +
+      '</div>';
+    // Load warehouse stats
+    try {
+      var whRes = await api('/lsp/warehouse/stats?tenant_id=' + tenant.id);
+      var whs = whRes.data || {};
+      document.getElementById('wh-stats-box').innerHTML =
+        '<div class="flex justify-between p-2 bg-surface-50 rounded-lg"><span>Utilization</span><span class="font-bold">' + (whs.utilization_pct||0) + '%</span></div>' +
+        '<div class="flex justify-between p-2 bg-surface-50 rounded-lg"><span>Items Stored</span><span class="font-bold">' + (whs.items_stored||0) + '</span></div>' +
+        '<div class="flex justify-between p-2 bg-surface-50 rounded-lg"><span>Pending Loads</span><span class="font-bold">' + (whs.pending_loads||0) + '</span></div>' +
+        '<div class="flex justify-between p-2 bg-surface-50 rounded-lg"><span>Capacity</span><span class="font-bold">' + (whs.total_capacity||'—') + '</span></div>';
+    } catch(e){}
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderActiveShipments() { return renderShipmentsVault(); }
+
+async function renderDocVerification() {
+  setTitle('Document Verification', 'Customs document verification queue');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Documents pending verification', 'Review and validate trade documents', 'AI extraction confidence thresholds', 'Verified docs clear customs faster')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-file-circle-check', 'In Queue', 8, null, 'amber')}
+      ${metricCard('fa-check-double', 'Verified Today', 12, null, 'green')}
+      ${metricCard('fa-robot', 'AI Extracted', 45, null, 'purple')}
+      ${metricCard('fa-xmark', 'Rejected', 1, null, 'rose')}
+    </div>
+    <div class="sgtx-card !p-0 overflow-hidden">
+      <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
+        <h3 class="font-semibold text-sm"><i class="fas fa-file-circle-check text-gold-400 mr-2"></i>Verification Queue</h3>
+        <div class="flex gap-2">
+          <button class="text-[10px] px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">Pending (8)</button>
+          <button class="text-[10px] px-3 py-1 rounded-full hover:bg-surface-100 text-surface-400">Verified</button>
+        </div>
+      </div>
+      <div class="divide-y divide-surface-100">
+        ${[{doc:'Bill of Lading',ustn:'SGTX-CIRO-SGTX-2024...',confidence:96,status:'HIGH'},{doc:'Commercial Invoice',ustn:'SGTX-CIRO-SGTX-2024...',confidence:92,status:'HIGH'},{doc:'Certificate of Origin',ustn:'SGTX-ASFI-HAMB-2024...',confidence:78,status:'MEDIUM'},{doc:'Packing List',ustn:'SGTX-CIRO-SGTX-2024...',confidence:45,status:'LOW'}].map(d => `
+          <div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">
+            <div class="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center"><i class="fas fa-file-pdf text-red-400 text-sm"></i></div>
+            <div class="flex-1">
+              <div class="text-sm font-medium">${d.doc}</div>
+              <div class="text-[10px] font-mono" style="color:rgba(255,255,255,.4)">${d.ustn}</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-center">
+                <div class="text-xs font-bold ${d.confidence>=90?'text-emerald-600':d.confidence>=70?'text-amber-600':'text-red-600'}">${d.confidence}%</div>
+                <div class="text-[10px] text-surface-400">AI conf.</div>
+              </div>
+              <button class="px-3 py-1.5 bg-emerald-500 text-white text-[10px] rounded-lg font-semibold">Verify</button>
+              <button class="px-3 py-1.5 bg-red-100 text-red-600 text-[10px] rounded-lg font-semibold">Reject</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderPerformanceDash() {
+  setTitle('Performance Dashboard', 'On-time %, dispute rate, invoice accuracy');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Logistics performance KPIs', 'Monitor and improve delivery metrics', 'No blockers — continuous monitoring', 'Performance affects future RFQ visibility')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-clock', 'On-Time Delivery', '94.2%', 3, 'green')}
+      ${metricCard('fa-triangle-exclamation', 'Dispute Rate', '1.8%', -12, 'amber')}
+      ${metricCard('fa-file-invoice', 'Invoice Accuracy', '98.5%', 1, 'blue')}
+      ${metricCard('fa-star', 'Trader Rating', '4.8/5', null, 'purple')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-chart-line text-gold-400 mr-2"></i>Monthly Performance Trend</h3>
+        <div class="h-40 flex items-end gap-2 px-2">
+          ${['Jan','Feb','Mar','Apr','May','Jun'].map((m,i) => {const h = 60 + i*5 + Math.random()*10; return `<div class="flex-1 text-center"><div class="bg-gradient-to-t from-sgtx-500 to-sgtx-400 rounded-t mx-auto" style="height:${h}%;width:70%"></div><div class="text-[9px] text-surface-400 mt-1">${m}</div></div>`;}).join('')}
+        </div>
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-trophy text-gold-400 mr-2"></i>Achievements</h3>
+        <div class="space-y-3">
+          ${[{icon:'fa-medal',label:'Top 10% On-Time',desc:'Exceeded 93% threshold',color:'amber'},{icon:'fa-shield-check',label:'Zero Disputes (30d)',desc:'No disputes filed in last month',color:'emerald'},{icon:'fa-bolt',label:'Fast Responder',desc:'Avg response time < 3 hours',color:'blue'}].map(a => `
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-${a.color}-50 border border-${a.color}-100">
+              <i class="fas ${a.icon} text-${a.color}-500 text-lg"></i>
+              <div>
+                <div class="text-xs font-semibold text-${a.color}-800">${a.label}</div>
+                <div class="text-[10px] text-${a.color}-600">${a.desc}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderEBLManagement() {
+  setTitle('eBL Management', 'Electronic bill of lading issuance');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Electronic B/L lifecycle management', 'Issue and transfer eBLs', 'Requires confirmed booking', 'eBL transfers ownership digitally')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-file-lines', 'Active eBLs', 4, null, 'blue')}
+      ${metricCard('fa-arrow-right-arrow-left', 'Transfers', 2, null, 'purple')}
+      ${metricCard('fa-check-circle', 'Surrendered', 8, null, 'green')}
+      ${metricCard('fa-clock', 'Pending', 1, null, 'amber')}
+    </div>
+    ${dataTable(['eBL Number', 'USTN', 'Shipper', 'Consignee', 'Status', 'Action'], [
+      '<tr class="hover:bg-surface-50"><td class="font-mono text-xs">EBL-2024-0012</td><td class="font-mono text-xs text-gold-400">SGTX-CIRO-SGTX...</td><td class="text-sm">Saigon Textiles</td><td class="text-sm">Cairo Imports</td><td>' + badge('ACTIVE') + '</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Transfer</button></td></tr>',
+      '<tr class="hover:bg-surface-50"><td class="font-mono text-xs">EBL-2024-0011</td><td class="font-mono text-xs text-gold-400">SGTX-ASFI-HAMB...</td><td class="text-sm">Asia Trade</td><td class="text-sm">Hamburg Logistics</td><td>' + badge('PENDING') + '</td><td><button class="text-xs bg-emerald-500 text-white px-3 py-1 rounded-lg">Issue</button></td></tr>',
+    ], { title: 'Electronic Bills of Lading' })}`;
+}
+
+async function renderFinancierDashboard() {
+  setTitle('Financier Hub', 'Trade finance operations & DeFi');
+  const tenantId = window.__tenant_id || 'tenant-003';
+  let requests = [], offers = [], agreements = [];
+  try {
+    const r1 = await api('/financing');
+    requests = r1.data || [];
+    // Get offers for each request where we are the financier
+    for (const req of requests.slice(0, 5)) {
+      const r2 = await api(`/financing/${req.id}/offers`);
+      if (r2.data) offers.push(...r2.data);
+    }
+  } catch(e) { console.warn('Financing data fetch:', e); }
+
+  const openRequests = requests.filter(r => r.status === 'REQUESTED' || r.status === 'BIDDING');
+  const myBids = offers.filter(o => o.financier_tenant_id === tenantId);
+  const awardedDeals = offers.filter(o => o.status === 'AWARDED' && o.financier_tenant_id === tenantId);
+  const portfolioValue = awardedDeals.reduce((sum, o) => sum + (o.all_in_cost || 0), 0);
+  const totalExposure = requests.filter(r => r.status === 'AWARDED').reduce((sum, r) => sum + (r.amount || 0), 0);
+
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions(
+      `${openRequests.length} financing requests awaiting bids`,
+      'Review opportunities and submit competitive bids',
+      openRequests.length === 0 ? 'No open requests currently' : 'None — bidding window open',
+      'Monitor repayment schedules on awarded deals'
+    )}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-magnifying-glass-dollar', 'Open Requests', openRequests.length, null, 'blue')}
+      ${metricCard('fa-gavel', 'My Active Bids', myBids.filter(b=>b.status==='SUBMITTED').length, null, 'amber')}
+      ${metricCard('fa-chart-pie', 'Portfolio Value', portfolioValue > 0 ? '$' + portfolioValue.toLocaleString() : '$0', null, 'green')}
+      ${metricCard('fa-money-bill-transfer', 'Total Exposure', totalExposure > 0 ? '$' + totalExposure.toLocaleString() : '$0', null, 'purple')}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-list-check text-gold-400 mr-2"></i>Open Financing Requests</h3>
+        ${openRequests.length === 0 ? '<p class="text-xs text-surface-400 text-center py-6">No open requests</p>' :
+          `<div class="space-y-3">${openRequests.map(req => {
+            const specs = typeof req.parsed_specs === 'string' ? JSON.parse(req.parsed_specs || '{}') : (req.parsed_specs || {});
+            return `<div class="p-4 rounded-xl border border-surface-100 hover:border-gold-200 transition">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-semibold">${req.requester_name || 'Unknown'}</span>
+                  ${badge(req.status)}
+                </div>
+                <span class="text-xs font-bold text-gold-400">$${(req.amount||0).toLocaleString()}</span>
+              </div>
+              <div class="text-[10px] text-surface-400">${req.financing_type || 'Unknown'} • ${req.tenor_days || 0} days • ${req.currency || 'USD'}</div>
+              <div class="mt-2 flex gap-2">
+                <button onclick="submitFinancingBid('${req.id}')" class="px-3 py-1.5 bg-gold-400 text-white text-[10px] rounded-lg font-semibold">Place Bid</button>
+                <button class="px-3 py-1.5 bg-surface-100 text-surface-600 text-[10px] rounded-lg font-semibold">Full Disclosure</button>
+              </div>
+            </div>`;
+          }).join('')}</div>`}
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-trophy text-gold-400 mr-2"></i>My Awarded Deals</h3>
+        ${awardedDeals.length === 0 ? '<p class="text-xs text-surface-400 text-center py-6">No awarded deals yet</p>' :
+          `<div class="space-y-3">${awardedDeals.map(deal => `
+            <div class="p-4 rounded-xl border border-emerald-100 bg-emerald-50/30">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-semibold text-emerald-800">APR: ${deal.effective_apr}%</div>
+                  <div class="text-[10px] text-emerald-600">All-in cost: $${(deal.all_in_cost||0).toLocaleString()}</div>
+                </div>
+                ${badge('AWARDED')}
+              </div>
+            </div>`).join('')}</div>`}
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="sgtx-card"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-landmark text-gold-400 mr-2"></i>Supported Instruments</h3>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="p-2 bg-surface-50 rounded-lg"><b>Documentary:</b> LC, SBLC, BG</div>
+          <div class="p-2 bg-surface-50 rounded-lg"><b>Receivables:</b> Factoring, SCF</div>
+          <div class="p-2 bg-surface-50 rounded-lg"><b>Structured:</b> Pre-Export, Murabaha</div>
+          <div class="p-2 bg-surface-50 rounded-lg"><b>DeFi:</b> Tokenized, Stablecoin</div>
+        </div>
+      </div>
+      <div class="sgtx-card"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-shield-halved text-gold-400 mr-2"></i>Financing Fee</h3>
+        <div class="text-center py-4">
+          <div class="text-3xl font-bold text-gold-400">0.25%</div>
+          <div class="text-xs text-surface-400 mt-1">Flat rate deducted from disbursement via PSP split</div>
+          <div class="text-[10px] text-surface-300 mt-2">Non-custodial — SGTX never holds funds</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderFinancingOpportunities() { setTitle('Financing Opportunities', 'Auto-matched RFQ broadcast'); return renderFinancing(); }
+
+async function renderFullDisclosure() {
+  setTitle('Full Disclosure', 'Trade details, documents, history before bidding');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Full transparency before financing decisions', 'Review trade details, docs, and borrower history', 'None — all data available pre-bid', 'Bid after thorough due diligence')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-eye', 'Disclosures Available', 5, null, 'blue')}
+      ${metricCard('fa-file-alt', 'Documents', 23, null, 'purple')}
+      ${metricCard('fa-chart-bar', 'Credit Reports', 5, null, 'green')}
+      ${metricCard('fa-history', 'Trade History', 42, null, 'amber')}
+    </div>
+    <div class="sgtx-card !p-0 overflow-hidden">
+      <div class="px-5 py-4 border-b border-surface-100"><h3 class="font-semibold text-sm"><i class="fas fa-eye text-gold-400 mr-2"></i>Active Disclosure Packages</h3></div>
+      <div class="divide-y divide-surface-100">
+        ${[{borrower:'Cairo Imports',amount:'$250,000',type:'Pre-Export',rating:'A-',trades:12,docs:8},{borrower:'Saigon Textiles',amount:'$180,000',type:'Receivables',rating:'BBB+',trades:8,docs:6},{borrower:'Hamburg Logistics',amount:'$75,000',type:'Working Capital',rating:'A',trades:22,docs:5}].map(d => `
+          <div class="px-5 py-4 hover:bg-surface-50 transition cursor-pointer">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gold-100 flex items-center justify-center text-gold-400 text-xs font-bold">${d.borrower.slice(0,2)}</div>
+                <div>
+                  <div class="text-sm font-medium">${d.borrower}</div>
+                  <div class="text-[10px] text-surface-400">${d.type} • ${d.amount}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-center"><div class="text-xs font-bold text-gold-400">${d.rating}</div><div class="text-[10px] text-surface-400">Credit</div></div>
+                <div class="text-center"><div class="text-xs font-bold">${d.trades}</div><div class="text-[10px] text-surface-400">Trades</div></div>
+                <div class="text-center"><div class="text-xs font-bold">${d.docs}</div><div class="text-[10px] text-surface-400">Docs</div></div>
+                <button class="px-4 py-1.5 bg-gold-400 text-white text-xs rounded-lg font-semibold">View Full</button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderBidding() {
+  setTitle('Bidding & Co-Financing', 'Encrypted blind bids, portion bidding');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Encrypted bidding for financing opportunities', 'Submit competitive bids or co-finance', 'Bids encrypted until deadline', 'Winning bid notified within 24h')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-gavel', 'Active Auctions', 3, null, 'blue')}
+      ${metricCard('fa-lock', 'My Bids', 2, null, 'purple')}
+      ${metricCard('fa-trophy', 'Won This Month', 1, null, 'green')}
+      ${metricCard('fa-users', 'Co-Finance Pool', 4, null, 'cyan')}
+    </div>
+    <div class="sgtx-card mb-6">
+      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-gavel text-gold-400 mr-2"></i>Active Bid Opportunities</h3>
+      <div class="space-y-3">
+        ${[{id:'FIN-001',borrower:'Cairo Imports',amount:'$250,000',type:'Pre-Export',deadline:'6h',bidders:4,myBid:true},{id:'FIN-002',borrower:'Saigon Textiles',amount:'$180,000',type:'Receivables',deadline:'18h',bidders:2,myBid:false},{id:'FIN-003',borrower:'Global Goods Co',amount:'$500,000',type:'LC Confirmation',deadline:'48h',bidders:6,myBid:true}].map(b => `
+          <div class="p-4 rounded-xl border border-surface-100 hover:border-gold-200 transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="flex items-center gap-2"><span class="text-sm font-semibold">${b.borrower}</span><span class="font-mono text-[10px] text-surface-400">${b.id}</span></div>
+                <div class="text-xs text-surface-400 mt-1">${b.type} • ${b.amount} • ${b.bidders} bidders</div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-[10px] font-semibold ${b.deadline.includes('h') && parseInt(b.deadline)<12 ? 'text-red-500' : 'text-surface-500'}"><i class="fas fa-clock mr-1"></i>${b.deadline}</span>
+                ${b.myBid ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-semibold">BID PLACED</span>' : '<button class="px-3 py-1.5 bg-gold-400 text-white text-[10px] rounded-lg font-semibold">Place Bid</button>'}
+              </div>
+            </div>
+            ${b.myBid ? '<div class="mt-3 p-2 bg-surface-50 rounded-lg text-[10px] text-surface-500"><i class="fas fa-lock mr-1"></i>Your bid is encrypted and sealed until deadline</div>' : ''}
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="sgtx-card">
+      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-users text-gold-400 mr-2"></i>Co-Financing</h3>
+      <p class="text-xs text-surface-500 mb-3">Bid on a portion of larger deals. Multiple financiers can co-finance a single trade.</p>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="p-3 rounded-xl bg-gold-50 border border-gold-100 text-center">
+          <div class="text-lg font-bold text-gold-400">60%</div><div class="text-[10px] text-gold-400">Min Portion</div>
+        </div>
+        <div class="p-3 rounded-xl bg-surface-50 text-center">
+          <div class="text-lg font-bold">3</div><div class="text-[10px] text-surface-500">Max Co-Financiers</div>
+        </div>
+        <div class="p-3 rounded-xl bg-surface-50 text-center">
+          <div class="text-lg font-bold">24h</div><div class="text-[10px] text-surface-500">Syndication Window</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderCollateralMonitor() {
+  setTitle('Collateral Monitor', 'LTV gauge, liquidation risk, price drop simulator');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Monitoring collateral health across portfolio', 'Review LTV ratios and risk levels', 'Price volatility affects margins', 'Liquidation alerts trigger at 85% LTV')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-shield-halved', 'Collateral Value', '$1.2M', -2, 'blue')}
+      ${metricCard('fa-percent', 'Avg LTV', '62%', null, 'green')}
+      ${metricCard('fa-triangle-exclamation', 'At Risk', 1, null, 'amber')}
+      ${metricCard('fa-bolt', 'Liquidation Risk', 'Low', null, 'purple')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-gauge text-gold-400 mr-2"></i>LTV Gauge</h3>
+        <div class="flex items-center justify-center py-6">
+          <div class="relative w-40 h-40">
+            <svg class="w-40 h-40 -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#e2e8f0" stroke-width="12"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#4E3FE8" stroke-width="12" stroke-dasharray="${62 * 3.14} ${100 * 3.14}" stroke-linecap="round"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-2xl font-bold text-surface-900">62%</span>
+              <span class="text-[10px] text-surface-400">Current LTV</span>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
+          <div class="p-2 bg-emerald-50 rounded-lg"><div class="font-bold text-emerald-700">< 60%</div><div class="text-emerald-600">Safe</div></div>
+          <div class="p-2 bg-amber-50 rounded-lg"><div class="font-bold text-amber-700">60-80%</div><div class="text-amber-600">Watch</div></div>
+          <div class="p-2 bg-red-50 rounded-lg"><div class="font-bold text-red-700">> 80%</div><div class="text-red-600">Critical</div></div>
+        </div>
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-calculator text-gold-400 mr-2"></i>Price Drop Simulator</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] text-surface-500 font-semibold uppercase">Simulate Price Drop</label>
+            <input type="range" min="0" max="50" value="15" class="w-full mt-2 accent-sgtx-500">
+            <div class="flex justify-between text-[10px] text-surface-400"><span>0%</span><span>-15%</span><span>-50%</span></div>
+          </div>
+          <div class="p-4 bg-amber-50 rounded-xl border border-amber-100">
+            <div class="text-xs font-semibold text-amber-800">With -15% price drop:</div>
+            <div class="text-lg font-bold text-amber-900 mt-1">LTV → 73%</div>
+            <div class="text-[10px] text-amber-600 mt-1">⚠️ Approaching margin call territory</div>
+          </div>
+          <div class="p-3 bg-surface-50 rounded-xl text-[10px] text-surface-600">
+            <div class="font-semibold mb-1">Liquidation Waterfall:</div>
+            <div>85% LTV → Margin Call • 90% → Partial Liquidation • 95% → Full Liquidation</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderDeFiTab() {
+  setTitle('DeFi Positions', 'Protocol comparison, stablecoin health');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('DeFi positions across protocols', 'Monitor yields, health, and stablecoin pegs', 'Smart contract risk acknowledged', 'Rebalance when health factor < 1.5')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-link', 'Active Positions', 3, null, 'purple')}
+      ${metricCard('fa-percent', 'Avg APY', '8.4%', 1, 'green')}
+      ${metricCard('fa-coins', 'Total Locked', '$450K', null, 'blue')}
+      ${metricCard('fa-heart-pulse', 'Health Factor', '2.1', null, 'cyan')}
+    </div>
+    <div class="sgtx-card mb-6 border-amber-200 bg-amber-50/30">
+      <div class="flex items-center gap-3 p-2">
+        <i class="fas fa-exclamation-triangle text-amber-500 text-lg"></i>
+        <div>
+          <div class="text-xs font-semibold text-amber-800">Mandatory Risk Summary (Blueprint 4.11)</div>
+          <div class="text-[10px] text-amber-600">DeFi positions carry smart contract risk, impermanent loss, and protocol failure risk. SGTX does not guarantee DeFi returns. You have acknowledged these risks.</div>
+        </div>
+      </div>
+    </div>
+    <div class="sgtx-card mb-6">
+      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-coins text-gold-400 mr-2"></i>Protocol Comparison</h3>
+      ${dataTable(['Protocol', 'Type', 'APY', 'TVL', 'Health', 'Position'], [
+        '<tr><td class="text-sm font-medium">Aave V3</td><td class="text-xs">Lending</td><td class="text-xs font-semibold text-emerald-600">6.2%</td><td class="text-xs">$12.4B</td><td><span class="text-emerald-600 text-xs font-bold">2.4</span></td><td class="text-xs font-semibold">$200K</td></tr>',
+        '<tr><td class="text-sm font-medium">Compound</td><td class="text-xs">Lending</td><td class="text-xs font-semibold text-emerald-600">5.8%</td><td class="text-xs">$8.1B</td><td><span class="text-emerald-600 text-xs font-bold">1.9</span></td><td class="text-xs font-semibold">$150K</td></tr>',
+        '<tr><td class="text-sm font-medium">Goldfinch</td><td class="text-xs">RWA</td><td class="text-xs font-semibold text-amber-600">12.4%</td><td class="text-xs">$102M</td><td><span class="text-amber-600 text-xs font-bold">1.5</span></td><td class="text-xs font-semibold">$100K</td></tr>',
+      ])}
+    </div>
+    <div class="sgtx-card">
+      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-coins text-gold-400 mr-2"></i>Stablecoin Health</h3>
+      <div class="grid grid-cols-4 gap-3">
+        ${[{name:'USDC',peg:'$1.0001',health:'Healthy',color:'emerald'},{name:'USDT',peg:'$0.9999',health:'Healthy',color:'emerald'},{name:'DAI',peg:'$1.0003',health:'Healthy',color:'emerald'},{name:'FRAX',peg:'$0.9995',health:'Watch',color:'amber'}].map(s => `
+          <div class="p-3 rounded-xl border border-surface-100 text-center">
+            <div class="text-sm font-bold">${s.name}</div>
+            <div class="text-xs font-mono mt-1">${s.peg}</div>
+            <div class="text-[10px] text-${s.color}-600 font-semibold mt-1">${s.health}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderSecondaryMarket() {
+  setTitle('Secondary Market', 'Tokenised trade assets (ERC-3525)');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Tokenised trade finance assets for secondary trading', 'Browse and trade ERC-3525 tokenised positions', 'Regulatory approval required per jurisdiction', 'AI valuation provides fair price estimates')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-coins', 'Listed Assets', 12, null, 'purple')}
+      ${metricCard('fa-arrow-right-arrow-left', 'Trades (7d)', 5, null, 'blue')}
+      ${metricCard('fa-chart-line', 'Market Cap', '$2.8M', 8, 'green')}
+      ${metricCard('fa-robot', 'AI Valuations', 12, null, 'amber')}
+    </div>
+    ${dataTable(['Token ID', 'Underlying', 'Face Value', 'AI Valuation', 'Yield', 'Maturity', 'Action'], [
+      '<tr><td class="font-mono text-xs">TF-0001</td><td class="text-sm">Pre-Export (Textiles)</td><td class="text-xs font-semibold">$180,000</td><td class="text-xs text-gold-400 font-semibold">$176,400</td><td class="text-xs text-emerald-600">7.2%</td><td class="text-xs">45d</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Buy</button></td></tr>',
+      '<tr><td class="font-mono text-xs">TF-0002</td><td class="text-sm">LC Confirmation</td><td class="text-xs font-semibold">$500,000</td><td class="text-xs text-gold-400 font-semibold">$492,500</td><td class="text-xs text-emerald-600">5.8%</td><td class="text-xs">90d</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Buy</button></td></tr>',
+      '<tr><td class="font-mono text-xs">TF-0003</td><td class="text-sm">Receivable (Agri)</td><td class="text-xs font-semibold">$95,000</td><td class="text-xs text-gold-400 font-semibold">$93,100</td><td class="text-xs text-emerald-600">9.1%</td><td class="text-xs">30d</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Buy</button></td></tr>',
+    ], { title: 'Tokenised Trade Assets (ERC-3525)' })}`;
+}
+
+async function renderFinancedCompanies() {
+  setTitle('Financed Companies', 'Private historical data per borrower');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Private borrower performance history', 'Review repayment patterns and credit trends', 'Data is private and immutable', 'Informs future financing decisions')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-building-columns', 'Companies', 8, null, 'blue')}
+      ${metricCard('fa-check-double', 'Repaid On-Time', '94%', null, 'green')}
+      ${metricCard('fa-triangle-exclamation', 'Late Payments', 2, null, 'amber')}
+      ${metricCard('fa-xmark', 'Defaults', 0, null, 'rose')}
+    </div>
+    ${dataTable(['Company', 'GTID', 'Trades Financed', 'Total Volume', 'Repayment Rate', 'Credit Trend', 'Details'], [
+      '<tr><td class="text-sm font-medium">Cairo Imports</td><td class="font-mono text-[10px]">SGTX-EG-CIRO...</td><td class="text-center">12</td><td class="text-xs font-semibold">$1.8M</td><td class="text-center text-emerald-600 font-semibold">100%</td><td class="text-center"><i class="fas fa-arrow-up text-emerald-500"></i></td><td><button class="text-xs text-gold-400 hover:underline">View</button></td></tr>',
+      '<tr><td class="text-sm font-medium">Saigon Textiles</td><td class="font-mono text-[10px]">SGTX-VN-SGTX...</td><td class="text-center">8</td><td class="text-xs font-semibold">$950K</td><td class="text-center text-emerald-600 font-semibold">96%</td><td class="text-center"><i class="fas fa-arrows-h text-surface-400"></i></td><td><button class="text-xs text-gold-400 hover:underline">View</button></td></tr>',
+      '<tr><td class="text-sm font-medium">Global Goods</td><td class="font-mono text-[10px]">SGTX-US-GLOB...</td><td class="text-center">5</td><td class="text-xs font-semibold">$620K</td><td class="text-center text-amber-600 font-semibold">88%</td><td class="text-center"><i class="fas fa-arrow-down text-amber-500"></i></td><td><button class="text-xs text-gold-400 hover:underline">View</button></td></tr>',
+    ], { title: 'Borrower Performance History' })}`;
+}
+
+async function renderSettlements() {
+  setTitle('Settlements', 'Payment orchestration and trade settlement');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(4);
+  try {
+    var res = await api('/settlements?tenant_id=' + (tenant ? tenant.id : ''));
+    var settlements = res.data || [];
+    var pending = settlements.filter(function(s) { return s.status === 'PENDING' || s.status === 'AWAITING_PAYMENT'; });
+    var completed = settlements.filter(function(s) { return s.status === 'CONFIRMED' || s.status === 'COMPLETED'; });
+
+    content.innerHTML =
+      fourQuestions(
+        settlements.length + ' settlement instruction(s) across your trades.',
+        pending.length > 0 ? 'Review and confirm ' + pending.length + ' pending settlement(s).' : 'No pending settlements right now.',
+        pending.length > 0 ? pending.length + ' awaiting payment confirmation.' : 'No blockers.',
+        'After confirmation, PSP verifies and funds are released.'
+      ) +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-money-check-alt', 'Total Instructions', settlements.length, null, 'blue') +
+        metricCard('fa-clock', 'Pending', pending.length, null, 'amber') +
+        metricCard('fa-check-double', 'Completed', completed.length, null, 'green') +
+        metricCard('fa-dollar-sign', 'Total Value', usd(settlements.reduce(function(s,i){return s+(i.amount||0);},0)), null, 'purple') +
+      '</div>' +
+      // Pending settlements
+      (pending.length ? '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-exclamation-circle mr-2 text-amber-500"></i>Pending Settlements</h3><div class="space-y-3 mb-6">' +
+        pending.map(function(s) {
+          return '<div class="sgtx-card p-4 border-l-4 border-l-amber-400">' +
+            '<div class="flex items-center justify-between mb-2"><span class="font-mono text-xs font-bold text-gold-400">' + (s.ustn || s.id) + '</span>' + badge(s.status, 'amber') + '</div>' +
+            '<div class="grid grid-cols-3 gap-3 mb-3 text-xs">' +
+              '<div><span class="text-surface-500">Type</span><div class="font-medium text-surface-800">' + (s.instruction_type || 'TRADE_PRINCIPAL') + '</div></div>' +
+              '<div><span class="text-surface-500">Amount</span><div class="font-medium text-surface-800">' + usd(s.amount || s.payload_amount || 0) + '</div></div>' +
+              '<div><span class="text-surface-500">PSP</span><div class="font-medium text-surface-800">' + (s.psp_name || 'Pending selection') + '</div></div>' +
+            '</div>' +
+            '<div class="flex gap-2">' +
+              '<button onclick="confirmSettlement(\'' + s.id + '\')" class="btn-success text-xs flex-1"><i class="fas fa-check mr-1"></i>Confirm Payment</button>' +
+              '<button onclick="viewSettlementDetails(\'' + (s.ustn || s.id) + '\')" class="px-3 py-1.5 border border-surface-200 rounded-lg text-xs text-surface-600 hover:bg-surface-50"><i class="fas fa-eye mr-1"></i>Details</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') + '</div>' : '') +
+      // All settlements table
+      '<h3 class="text-sm font-semibold text-surface-800 mb-3"><i class="fas fa-list mr-2 text-surface-400"></i>All Settlements</h3>' +
+      dataTable(['USTN', 'Type', 'Amount', 'PSP', 'Status', 'Date'], settlements.map(function(s) {
+        return '<tr><td class="font-mono text-xs text-gold-400">' + (s.ustn || '—') + '</td><td class="text-xs">' + (s.instruction_type || '') + '</td><td class="text-xs font-medium">' + usd(s.amount || 0) + '</td><td class="text-xs">' + (s.psp_name || '—') + '</td><td class="text-center">' + badge(s.status || 'PENDING', s.status === 'CONFIRMED' ? 'emerald' : 'amber') + '</td><td class="text-xs text-surface-500">' + timeAgo(s.created_at) + '</td></tr>';
+      }));
+  } catch (e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderQCDashboard() {
+  setTitle('Inspection Hub', 'Quality control operations');
+  const tenantId = window.__tenant_id || 'tenant-006';
+  let inspections = [];
+  try {
+    const res = await api(`/inspections?tenant_id=${tenantId}`);
+    inspections = res.data || [];
+  } catch(e) { console.warn('Inspections fetch:', e); }
+
+  const pending = inspections.filter(i => i.status === 'SCHEDULED');
+  const inProgress = inspections.filter(i => i.status === 'IN_PROGRESS');
+  const completed = inspections.filter(i => i.status === 'COMPLETED');
+  const passRate = completed.length > 0 ? Math.round(completed.filter(i => i.result === 'PASS').length / completed.length * 100) : 0;
+
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions(
+      `${pending.length + inProgress.length} inspections require attention`,
+      'Process scheduled inspections, complete in-progress ones',
+      pending.length > 3 ? 'Queue building up — prioritize HIGH priority items' : 'No blockers',
+      'Completed inspections unlock shipment phase'
+    )}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-clipboard-list', 'Scheduled', pending.length, null, 'amber')}
+      ${metricCard('fa-spinner', 'In Progress', inProgress.length, null, 'blue')}
+      ${metricCard('fa-check-circle', 'Pass Rate', passRate + '%', null, 'green')}
+      ${metricCard('fa-clipboard-check', 'Completed', completed.length, null, 'purple')}
+    </div>
+    <div class="sgtx-card !p-0 overflow-hidden mb-6">
+      <div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
+        <h3 class="font-semibold text-sm"><i class="fas fa-clipboard-list text-gold-400 mr-2"></i>Inspection Queue</h3>
+        <div class="flex gap-2">
+          <button class="text-[10px] px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">Scheduled (${pending.length})</button>
+          <button class="text-[10px] px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">In Progress (${inProgress.length})</button>
+          <button class="text-[10px] px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Done (${completed.length})</button>
+        </div>
+      </div>
+      <div class="divide-y divide-surface-100">
+        ${[...pending, ...inProgress].map(insp => {
+          const details = typeof insp.product_details === 'string' ? JSON.parse(insp.product_details || '{}') : (insp.product_details || {});
+          const isUrgent = insp.status === 'IN_PROGRESS';
+          return `<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">
+            <div class="w-10 h-10 rounded-xl ${isUrgent ? 'bg-blue-100' : 'bg-amber-100'} flex items-center justify-center">
+              <i class="fas fa-microscope ${isUrgent ? 'text-blue-500' : 'text-amber-500'} text-sm"></i>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium">${details.commodity || insp.inspection_type || 'Inspection'}</span>
+                <span class="text-[10px] font-mono text-surface-400">${insp.id}</span>
+              </div>
+              <div class="text-[10px] text-surface-400">${insp.inspection_type} • USTN: ${(insp.shipment_ustn||'').substring(0,20)}... • Lot: ${details.lot_size || 'N/A'}</div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${badge(insp.status)}
+              ${insp.status === 'SCHEDULED' ? `<button onclick="startInspection('${insp.id}')" class="px-3 py-1.5 bg-gold-400 text-white text-[10px] rounded-lg font-semibold">Start</button>` : 
+                `<button onclick="completeInspection('${insp.id}')" class="px-3 py-1.5 bg-emerald-500 text-white text-[10px] rounded-lg font-semibold">Complete</button>`}
+            </div>
+          </div>`;
+        }).join('') || '<div class="px-5 py-8 text-center text-xs text-surface-400">No pending inspections</div>'}
+      </div>
+    </div>
+    ${completed.length > 0 ? `
+    <div class="sgtx-card">
+      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-check-circle text-emerald-500 mr-2"></i>Recently Completed</h3>
+      <div class="space-y-2">
+        ${completed.slice(0, 5).map(insp => {
+          const details = typeof insp.product_details === 'string' ? JSON.parse(insp.product_details || '{}') : (insp.product_details || {});
+          return `<div class="flex items-center justify-between p-3 rounded-xl bg-surface-50">
+            <div class="flex items-center gap-3">
+              <i class="fas fa-${insp.result === 'PASS' ? 'check-circle text-emerald-500' : 'times-circle text-red-500'}"></i>
+              <div>
+                <div class="text-xs font-medium">${details.commodity || 'Inspection'}</div>
+                <div class="text-[10px] text-surface-400">${insp.completed_at || ''}</div>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold ${insp.result === 'PASS' ? 'text-emerald-600' : 'text-red-600'}">${insp.result || 'N/A'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}`;
+}
+
+async function renderInspectionQueue() {
+  setTitle('Inspection Queue', 'Pending inspections from trade contracts');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/qc/inspection-queue?tenant_id=' + tenant.id);
+    var items = res.data || [];
+    var pending = items.filter(function(i){return i.status==='PENDING'||i.status==='ASSIGNED';});
+    var inProgress = items.filter(function(i){return i.status==='IN_PROGRESS';});
+    var completed = items.filter(function(i){return i.status==='COMPLETED';});
+    content.innerHTML =
+      fourQuestions('Inspections queued from confirmed trade contracts', 'Accept and schedule inspections', pending.length > 0 ? pending.length + ' inspections awaiting acceptance' : 'Queue clear', 'Completed inspections unlock shipment phase') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-clipboard-list', 'In Queue', pending.length, null, 'amber') +
+        metricCard('fa-spinner', 'In Progress', inProgress.length, null, 'blue') +
+        metricCard('fa-check-circle', 'Completed', completed.length, null, 'green') +
+        metricCard('fa-list', 'Total', items.length, null, 'purple') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between"><h3 class="font-semibold text-sm"><i class="fas fa-clipboard-list text-gold-400 mr-2"></i>Inspection Queue</h3>' +
+        '<div class="flex gap-2"><button class="text-[10px] px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-semibold">Pending (' + pending.length + ')</button><button class="text-[10px] px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-semibold">Active (' + inProgress.length + ')</button></div></div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (items.length === 0 ? '<div class="py-8 text-center text-surface-400 text-xs">No inspections in queue</div>' :
+          items.map(function(i){
+            var priorityColor = i.priority==='HIGH'?'red':i.priority==='MEDIUM'?'amber':'blue';
+            return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">' +
+              '<div class="w-10 h-10 rounded-xl bg-' + priorityColor + '-100 flex items-center justify-center"><i class="fas fa-microscope text-' + priorityColor + '-500 text-sm"></i></div>' +
+              '<div class="flex-1">' +
+                '<div class="flex items-center gap-2"><span class="text-sm font-medium">' + (i.commodity_description||i.inspection_type||'Inspection') + '</span><span class="text-[10px] font-mono text-surface-400">' + i.id + '</span></div>' +
+                '<div class="text-[10px] text-surface-400">' + (i.inspection_type||'') + ' • USTN: ' + (i.ustn||'').substring(0,20) + ' • ' + (i.quantity||'') + '</div>' +
+              '</div>' +
+              '<div class="flex items-center gap-3">' +
+                '<span class="text-[10px] font-bold text-' + priorityColor + '-600">' + (i.priority||'MEDIUM') + '</span>' +
+                badge(i.status) +
+                (i.status==='PENDING' ? '<button onclick="qcAcceptInspection(\'' + i.id + '\')" class="px-3 py-1.5 bg-gold-400 text-white text-[10px] rounded-lg font-semibold">Accept</button>' :
+                 i.status==='ASSIGNED' ? '<button onclick="qcStartInspection(\'' + i.id + '\')" class="px-3 py-1.5 bg-blue-500 text-white text-[10px] rounded-lg font-semibold">Start</button>' :
+                 i.status==='IN_PROGRESS' ? '<button onclick="qcSubmitReport(\'' + i.id + '\')" class="px-3 py-1.5 bg-emerald-500 text-white text-[10px] rounded-lg font-semibold">Report</button>' : '') +
+              '</div></div>';
+          }).join('')) +
+        '</div></div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderAQLEnforcement() {
+  setTitle('AQL Sampling', 'ISO 28591 General Inspection Level II');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('AQL sampling enforcement per ISO 28591', 'Configure lot size and acceptance criteria', 'Must use General Inspection Level II', 'Results auto-feed into QC report')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-ruler-combined', 'Active Samples', 4, null, 'blue')}
+      ${metricCard('fa-check', 'Accept Rate', '96%', null, 'green')}
+      ${metricCard('fa-xmark', 'Reject Rate', '4%', null, 'rose')}
+      ${metricCard('fa-calculator', 'Lot Avg', '2,500', null, 'purple')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-calculator text-gold-400 mr-2"></i>AQL Calculator</h3>
+        <div class="space-y-3">
+          <div class="p-3 bg-surface-50 rounded-xl">
+            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Lot Size</label>
+            <input type="number" value="2500" class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div class="p-3 bg-surface-50 rounded-xl">
+            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">Inspection Level</label>
+            <select class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm"><option>General Level II (default)</option><option>General Level I</option><option>General Level III</option><option>Special S-1</option></select>
+          </div>
+          <div class="p-3 bg-surface-50 rounded-xl">
+            <label class="text-[10px] text-surface-500 font-semibold uppercase block mb-1">AQL Value</label>
+            <select class="w-full bg-white border border-surface-200 rounded-lg px-3 py-2 text-sm"><option>2.5 (standard)</option><option>1.0 (tight)</option><option>4.0 (relaxed)</option><option>6.5 (loose)</option></select>
+          </div>
+          <div class="p-4 bg-gold-50 rounded-xl border border-gold-200">
+            <div class="text-[10px] font-bold text-gold-400 uppercase">Sampling Result</div>
+            <div class="grid grid-cols-2 gap-3 mt-2">
+              <div><div class="text-lg font-bold text-gold-400">200</div><div class="text-[10px] text-gold-400">Sample Size</div></div>
+              <div><div class="text-lg font-bold text-gold-400">10 / 11</div><div class="text-[10px] text-gold-400">Accept / Reject #</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-table text-gold-400 mr-2"></i>Sampling Table (Level II)</h3>
+        <div class="overflow-hidden rounded-xl border border-surface-200">
+          <table class="w-full text-[10px]">
+            <thead class="bg-surface-50"><tr><th class="px-3 py-2 text-left">Lot Size</th><th class="px-3 py-2">Code</th><th class="px-3 py-2">Sample</th><th class="px-3 py-2">Ac</th><th class="px-3 py-2">Re</th></tr></thead>
+            <tbody class="divide-y divide-surface-100">
+              ${[['2-8','A',2,0,1],['51-90','E',13,1,2],['151-280','G',32,3,4],['501-1200','J',80,5,6],['1201-3200','K',125,7,8],['3201-10000','L',200,10,11]].map(([lot,code,sample,ac,re]) => 
+                `<tr class="${lot==='1201-3200'?'bg-gold-50':''} hover:bg-surface-50"><td class="px-3 py-2">${lot}</td><td class="px-3 py-2 font-bold">${code}</td><td class="px-3 py-2">${sample}</td><td class="px-3 py-2 text-emerald-600">${ac}</td><td class="px-3 py-2 text-red-600">${re}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderARInspection() {
+  setTitle('AR Inspection', 'Defect detection with bounding boxes');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('AI-powered visual defect detection', 'Upload images or use device camera for AR mode', 'Requires HF ViT model (on-device)', 'Defects flagged with bounding boxes + confidence')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-vr-cardboard', 'AR Sessions', 14, null, 'purple')}
+      ${metricCard('fa-bug', 'Defects Found', 23, null, 'rose')}
+      ${metricCard('fa-bullseye', 'Detection Rate', '97.3%', 2, 'green')}
+      ${metricCard('fa-image', 'Images Analyzed', 156, null, 'blue')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-camera text-gold-400 mr-2"></i>AR Inspection Mode</h3>
+        <div class="h-64 bg-surface-900 rounded-xl flex items-center justify-center relative overflow-hidden">
+          <!-- Simulated camera view with bounding boxes -->
+          <div class="absolute inset-0 bg-gradient-to-br from-surface-800 to-surface-900 flex items-center justify-center">
+            <div class="w-48 h-32 border-2 border-dashed border-surface-600 rounded-lg flex items-center justify-center">
+              <i class="fas fa-shirt text-surface-500 text-4xl"></i>
+            </div>
+          </div>
+          <!-- Defect bounding box -->
+          <div class="absolute top-12 right-16 w-16 h-12 border-2 border-red-500 rounded bg-red-500/10">
+            <div class="absolute -top-5 left-0 bg-red-500 text-white text-[8px] px-1 rounded">Stain 94%</div>
+          </div>
+          <div class="absolute bottom-16 left-12 w-12 h-10 border-2 border-amber-500 rounded bg-amber-500/10">
+            <div class="absolute -top-5 left-0 bg-amber-500 text-white text-[8px] px-1 rounded">Tear 78%</div>
+          </div>
+          <!-- Controls -->
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <button class="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center"><i class="fas fa-camera text-white"></i></button>
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <button class="flex-1 py-2 bg-gold-400 text-white rounded-lg text-xs font-semibold"><i class="fas fa-play mr-1"></i>Start AR Session</button>
+          <button class="flex-1 py-2 bg-surface-100 text-surface-600 rounded-lg text-xs font-semibold"><i class="fas fa-upload mr-1"></i>Upload Image</button>
+        </div>
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-list-check text-gold-400 mr-2"></i>Recent Detections</h3>
+        <div class="space-y-3">
+          ${[{type:'Stain',conf:94,severity:'MAJOR',img:'IMG_0042'},{type:'Thread Pull',conf:87,severity:'MINOR',img:'IMG_0043'},{type:'Color Variation',conf:72,severity:'MINOR',img:'IMG_0044'},{type:'Dimensional Error',conf:96,severity:'CRITICAL',img:'IMG_0045'}].map(d => `
+            <div class="flex items-center gap-3 p-3 rounded-xl border border-surface-100">
+              <div class="w-8 h-8 rounded-lg ${d.severity==='CRITICAL'?'bg-red-100':d.severity==='MAJOR'?'bg-amber-100':'bg-blue-100'} flex items-center justify-center">
+                <i class="fas fa-bug ${d.severity==='CRITICAL'?'text-red-500':d.severity==='MAJOR'?'text-amber-500':'text-blue-500'} text-xs"></i>
+              </div>
+              <div class="flex-1">
+                <div class="text-xs font-medium">${d.type}</div>
+                <div class="text-[10px] text-surface-400">${d.img} • ${d.conf}% confidence</div>
+              </div>
+              <span class="text-[10px] font-bold ${d.severity==='CRITICAL'?'text-red-600':d.severity==='MAJOR'?'text-amber-600':'text-blue-600'}">${d.severity}</span>
+            </div>`).join('')}
+        </div>
+        <div class="mt-3 p-3 bg-surface-50 rounded-xl text-[10px] text-surface-500">
+          <i class="fas fa-brain mr-1"></i>Model: HF ViT (on-device) • Privacy: raw images never leave device
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderOverrideLog() {
+  setTitle('Override Accountability', 'Mandatory reasons for AI override');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('All AI finding overrides with accountability trail', 'Review override justifications', 'Overrides auto-flagged in dispute evidence packages', 'Pattern detection alerts on excessive overrides')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-triangle-exclamation', 'Total Overrides', 7, null, 'amber')}
+      ${metricCard('fa-user', 'By Inspectors', 5, null, 'blue')}
+      ${metricCard('fa-user-tie', 'By Supervisors', 2, null, 'purple')}
+      ${metricCard('fa-flag', 'Flagged in Disputes', 1, null, 'rose')}
+    </div>
+    <div class="sgtx-card mb-4 border-amber-200 bg-amber-50/30">
+      <div class="flex items-center gap-3 p-2">
+        <i class="fas fa-shield-halved text-amber-500"></i>
+        <div class="text-xs text-amber-700"><b>Override Policy:</b> Every override requires a minimum 10-character justification. Overrides are automatically included in dispute evidence packages per Blueprint 6.2.4.</div>
+      </div>
+    </div>
+    ${dataTable(['Override ID', 'Inspector', 'AI Finding', 'Override Reason', 'Date', 'Dispute Flag'], [
+      '<tr><td class="font-mono text-xs">OVR-007</td><td class="text-sm">J. Smith</td><td class="text-xs text-red-600">FAIL: Stain detected (94%)</td><td class="text-xs text-surface-600 max-w-xs truncate">Stain is from packaging material, not product defect. Verified by visual inspection.</td><td class="text-xs text-surface-400">Jan 18</td><td class="text-center"><i class="fas fa-flag text-red-500"></i></td></tr>',
+      '<tr><td class="font-mono text-xs">OVR-006</td><td class="text-sm">M. Chen</td><td class="text-xs text-amber-600">WARNING: Color variation (72%)</td><td class="text-xs text-surface-600 max-w-xs truncate">Within acceptable buyer spec tolerance of ±5%. Sample compared against reference.</td><td class="text-xs text-surface-400">Jan 15</td><td class="text-center">—</td></tr>',
+      '<tr><td class="font-mono text-xs">OVR-005</td><td class="text-sm">A. Nguyen</td><td class="text-xs text-red-600">FAIL: Weight discrepancy (89%)</td><td class="text-xs text-surface-600 max-w-xs truncate">Scale was recalibrated. Reweigh confirmed within 0.5% tolerance.</td><td class="text-xs text-surface-400">Jan 12</td><td class="text-center">—</td></tr>',
+    ], { title: 'Override Accountability Log' })}`;
+}
+
+async function renderLiveTradeMonitor() {
+  setTitle('Live Trade Monitor', 'Real-time trade activity');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Real-time trade flow monitoring across jurisdictions', 'Monitor anomalies and flag suspicious patterns', 'Zero-knowledge model — identities redacted by default', 'Break-glass procedure available for full audit')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-satellite-dish', 'Live Trades', 34, null, 'blue')}
+      ${metricCard('fa-globe', 'Jurisdictions', 12, null, 'purple')}
+      ${metricCard('fa-flag', 'Flagged', 2, null, 'amber')}
+      ${metricCard('fa-shield-halved', 'Cleared', 156, null, 'green')}
+    </div>
+    <div class="sgtx-card mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm"><i class="fas fa-chart-line text-gold-400 mr-2"></i>Trade Flow (Real-time)</h3>
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span class="text-[10px] text-surface-400">Live</span></div>
+      </div>
+      <div class="h-48 bg-gradient-to-br from-surface-50 to-surface-100 rounded-xl relative overflow-hidden">
+        <svg class="w-full h-full" viewBox="0 0 400 120" preserveAspectRatio="none">
+          <defs><linearGradient id="liveGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4E3FE8" stop-opacity="0.2"/><stop offset="100%" stop-color="#4E3FE8" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,80 C20,75 40,70 60,72 C80,74 100,65 120,58 C140,51 160,55 180,48 C200,41 220,45 240,38 C260,31 280,35 300,28 C320,21 340,25 360,20 C380,15 400,18 400,15 L400,120 L0,120 Z" fill="url(#liveGrad)"/>
+          <path d="M0,80 C20,75 40,70 60,72 C80,74 100,65 120,58 C140,51 160,55 180,48 C200,41 220,45 240,38 C260,31 280,35 300,28 C320,21 340,25 360,20 C380,15 400,18 400,15" fill="none" stroke="#4E3FE8" stroke-width="2"/>
+        </svg>
+        <div class="absolute top-4 left-4 text-xs text-surface-600">Trade Volume (24h)</div>
+        <div class="absolute top-4 right-4 text-lg font-bold text-surface-800">$12.4M</div>
+      </div>
+    </div>
+    <div class="sgtx-card !p-0 overflow-hidden">
+      <div class="px-5 py-4 border-b border-surface-100"><h3 class="font-semibold text-sm"><i class="fas fa-list text-gold-400 mr-2"></i>Recent Trade Activity (Redacted)</h3></div>
+      <div class="divide-y divide-surface-100">
+        ${[{time:'2m ago',route:'VN → EG',value:'$245K',commodity:'Textiles',risk:'LOW',color:'emerald'},{time:'8m ago',route:'DE → SG',value:'$180K',commodity:'Machinery',risk:'LOW',color:'emerald'},{time:'15m ago',route:'CN → IR',value:'$92K',commodity:'Electronics',risk:'HIGH',color:'red'},{time:'22m ago',route:'IN → GB',value:'$310K',commodity:'Pharmaceuticals',risk:'MEDIUM',color:'amber'}].map(t => `
+          <div class="flex items-center gap-4 px-5 py-3 hover:bg-surface-50">
+            <span class="text-[10px] text-surface-400 w-12">${t.time}</span>
+            <span class="text-xs font-mono w-16">${t.route}</span>
+            <span class="text-xs font-semibold w-16">${t.value}</span>
+            <span class="text-xs text-surface-600 flex-1">${t.commodity}</span>
+            <span class="text-[10px] font-bold text-${t.color}-600 bg-${t.color}-50 px-2 py-0.5 rounded">${t.risk}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderAnonymousTrade() {
+  setTitle('Anonymous Trade', 'Zero-knowledge visibility, identity redaction');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Government-to-government trade with identity redaction', 'Manage anonymous trade agreements', 'Break-glass requires multisig approval', 'Trade integrity maintained without identity exposure')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-user-secret', 'Anonymous Trades', 8, null, 'purple')}
+      ${metricCard('fa-lock', 'Redacted Entities', 16, null, 'blue')}
+      ${metricCard('fa-key', 'Break-Glass Events', 1, null, 'amber')}
+      ${metricCard('fa-shield-halved', 'ZK Verified', 8, null, 'green')}
+    </div>
+    <div class="sgtx-card mb-6 border-purple-200 bg-purple-50/30">
+      <div class="flex items-center gap-3 p-2">
+        <i class="fas fa-user-secret text-purple-500 text-lg"></i>
+        <div>
+          <div class="text-xs font-semibold text-purple-800">Zero-Knowledge Visibility Model</div>
+          <div class="text-[10px] text-purple-600">Identities redacted by default. Only trade metadata (value, commodity, jurisdiction) visible. Full audit requires break-glass procedure with 3-of-5 multisig.</div>
+        </div>
+      </div>
+    </div>
+    ${dataTable(['Trade Ref', 'Origin', 'Destination', 'Value Range', 'Commodity Class', 'ZK Status', 'Action'], [
+      '<tr><td class="font-mono text-xs">ANON-2024-001</td><td class="text-sm">████████</td><td class="text-sm">████████</td><td class="text-xs">$100K-$500K</td><td class="text-xs">HS-52 (Cotton)</td><td><span class="text-emerald-600 text-xs font-semibold"><i class="fas fa-check-circle mr-1"></i>Verified</span></td><td><button class="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-semibold">Break-Glass</button></td></tr>',
+      '<tr><td class="font-mono text-xs">ANON-2024-002</td><td class="text-sm">████████</td><td class="text-sm">████████</td><td class="text-xs">$500K-$1M</td><td class="text-xs">HS-84 (Machinery)</td><td><span class="text-emerald-600 text-xs font-semibold"><i class="fas fa-check-circle mr-1"></i>Verified</span></td><td><button class="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-semibold">Break-Glass</button></td></tr>',
+    ], { title: 'Anonymous Trade Registry' })}`;
+}
+
+async function renderMultiAgency() {
+  setTitle('Multi-Agency Workflow', 'Sequential/parallel approval workflows');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/gov/multi-agency?jurisdiction=' + (tenant.jurisdiction||'GB'));
+    var workflows = res.data || [];
+    var pending = workflows.filter(function(w){return w.status==='IN_PROGRESS'||w.status==='PENDING';});
+    var completed = workflows.filter(function(w){return w.status==='COMPLETED';});
+    content.innerHTML =
+      fourQuestions('Multi-agency approval workflows for trade clearance', 'Route approvals to correct agencies', pending.length > 0 ? pending.length + ' workflows pending' : 'All clear', 'All approvals clear → trade proceeds') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-sitemap', 'Active Workflows', pending.length, null, 'blue') +
+        metricCard('fa-check-double', 'Completed', completed.length, null, 'green') +
+        metricCard('fa-building-columns', 'Total', workflows.length, null, 'purple') +
+        metricCard('fa-clock', 'Avg Completion', '2.3d', null, 'amber') +
+      '</div>' +
+      '<div class="sgtx-card mb-6">' +
+        '<h3 class="font-semibold text-sm mb-4"><i class="fas fa-sitemap text-gold-400 mr-2"></i>Active Approval Workflows</h3>' +
+        '<div class="space-y-4">' +
+          (workflows.length===0 ? '<div class="py-6 text-center text-surface-400 text-xs">No active workflows</div>' :
+          workflows.map(function(w){
+            var agencies = [];try{agencies=JSON.parse(w.agencies||'[]');}catch(e){}
+            var approvedCount = agencies.filter(function(a){return a.status==='APPROVED';}).length;
+            return '<div class="p-4 rounded-xl border border-surface-100">' +
+              '<div class="flex items-center justify-between mb-3">' +
+                '<div class="flex items-center gap-2"><span class="font-mono text-xs text-gold-400">' + w.id + '</span>' +
+                '<span class="text-[10px] px-2 py-0.5 rounded bg-surface-100 text-surface-600">' + (w.workflow_type||'Sequential') + '</span></div>' +
+                '<span class="text-[10px] text-surface-400">' + approvedCount + '/' + agencies.length + ' approved</span>' +
+              '</div>' +
+              '<div class="flex items-center gap-2">' +
+                agencies.map(function(a,i){
+                  return '<div class="flex-1 text-center"><div class="w-8 h-8 mx-auto rounded-lg ' + (a.status==='APPROVED'?'bg-emerald-500 text-white':a.status==='PENDING'?'bg-amber-100 text-amber-600':'bg-surface-100 text-surface-400') + ' flex items-center justify-center"><i class="fas ' + (a.status==='APPROVED'?'fa-check':a.status==='PENDING'?'fa-clock':'fa-hourglass') + ' text-xs"></i></div><div class="text-[9px] mt-1 font-medium">' + (a.name||'Agency') + '</div></div>' +
+                  (i<agencies.length-1 ? '<div class="w-6 h-0.5 ' + (a.status==='APPROVED'?'bg-emerald-300':'bg-surface-200') + '"></div>' : '');
+                }).join('') +
+              '</div>' +
+              (w.status==='PENDING' ? '<button onclick="govApproveWorkflow(\'' + w.id + '\')" class="mt-3 text-[10px] bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-semibold"><i class="fas fa-check mr-1"></i>Approve Step</button>' : '') +
+            '</div>';
+          }).join('')) +
+        '</div></div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderGovDocs() {
+  setTitle('Document Verification', 'Government document verification queue');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/gov/documents/pending?jurisdiction=' + (tenant.jurisdiction||'GB'));
+    var docs = res.data || [];
+    var pending = docs.filter(function(d){return d.status==='PENDING';});
+    content.innerHTML =
+      fourQuestions('Trade documents pending government verification', 'Verify document authenticity and compliance', pending.length > 0 ? pending.length + ' docs awaiting verification' : 'Queue clear', 'Verified docs unlock customs clearance') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-file-circle-check', 'In Queue', pending.length, null, 'amber') +
+        metricCard('fa-check-double', 'Verified', docs.filter(function(d){return d.status==='VERIFIED';}).length, null, 'green') +
+        metricCard('fa-robot', 'AI Confidence Avg', docs.length>0 ? Math.round(docs.reduce(function(s,d){return s+(d.ai_confidence||0);},0)/docs.length)+'%' : '—', null, 'purple') +
+        metricCard('fa-ban', 'Rejected', docs.filter(function(d){return d.status==='REJECTED';}).length, null, 'rose') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100"><h3 class="font-semibold text-sm"><i class="fas fa-file-circle-check text-gold-400 mr-2"></i>Verification Queue</h3></div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (docs.length===0 ? '<div class="py-8 text-center text-surface-400 text-xs">No documents pending</div>' :
+          docs.map(function(d){
+            return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50">' +
+              '<div class="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center"><i class="fas fa-file-pdf text-red-400 text-sm"></i></div>' +
+              '<div class="flex-1"><div class="text-sm font-medium">' + (d.document_type||'Document') + '</div>' +
+              '<div class="text-[10px] font-mono" style="color:rgba(255,255,255,.4)">USTN: ' + (d.ustn||'—').substring(0,20) + ' • ' + (d.submitter_name||'Unknown') + '</div></div>' +
+              '<div class="flex items-center gap-3">' +
+                '<div class="text-center"><div class="text-xs font-bold ' + ((d.ai_confidence||0)>=90?'text-emerald-600':(d.ai_confidence||0)>=70?'text-amber-600':'text-red-600') + '">' + (d.ai_confidence||0) + '%</div><div class="text-[10px] text-surface-400">AI conf.</div></div>' +
+                (d.status==='PENDING' ? '<button onclick="govVerifyDoc(\'' + d.id + '\')" class="px-3 py-1.5 bg-emerald-500 text-white text-[10px] rounded-lg font-semibold">Verify</button><button onclick="govRejectDoc(\'' + d.id + '\')" class="px-3 py-1.5 bg-red-100 text-red-600 text-[10px] rounded-lg font-semibold">Reject</button>' : badge(d.status)) +
+              '</div></div>';
+          }).join('')) +
+        '</div></div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderGovAudit() { setTitle('Audit Trail', 'Immutable trail — Loom + Ed25519'); return renderGovernor(); }
+
+async function renderGovJurisdictions() { return renderJurisdictions(); }
+
+async function renderCustomsAPI() {
+  setTitle('Customs API Integration', 'Nafeza, VNACCS health monitoring');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Customs system API integrations', 'Monitor integration health and configure endpoints', 'API latency spikes may delay clearance', 'Auto-failover to manual mode on API failure')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-plug', 'Connected APIs', 4, null, 'green')}
+      ${metricCard('fa-heart-pulse', 'Avg Uptime', '99.7%', null, 'blue')}
+      ${metricCard('fa-clock', 'Avg Latency', '240ms', -5, 'purple')}
+      ${metricCard('fa-triangle-exclamation', 'Alerts', 0, null, 'amber')}
+    </div>
+    <div class="sgtx-card mb-6">
+      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-plug text-gold-400 mr-2"></i>Connected Customs Systems</h3>
+      <div class="space-y-3">
+        ${[{name:'Nafeza (Egypt)',endpoint:'api.nafeza.gov.eg',status:'Healthy',uptime:'99.9%',latency:'180ms',color:'emerald'},{name:'VNACCS (Vietnam)',endpoint:'api.vnaccs.customs.gov.vn',status:'Healthy',uptime:'99.5%',latency:'220ms',color:'emerald'},{name:'ATLAS (Germany)',endpoint:'zoll-portal.de/api',status:'Degraded',uptime:'98.2%',latency:'450ms',color:'amber'},{name:'CDS (UK)',endpoint:'customs.hmrc.gov.uk/api',status:'Healthy',uptime:'99.8%',latency:'160ms',color:'emerald'}].map(api => `
+          <div class="flex items-center justify-between p-4 rounded-xl border border-surface-100 hover:border-gold-200 transition">
+            <div class="flex items-center gap-3">
+              <div class="w-3 h-3 rounded-full bg-${api.color}-500"></div>
+              <div>
+                <div class="text-sm font-medium">${api.name}</div>
+                <div class="text-[10px] font-mono" style="color:rgba(255,255,255,.4)">${api.endpoint}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 text-[10px]">
+              <div class="text-center"><div class="font-semibold">${api.uptime}</div><div class="text-surface-400">Uptime</div></div>
+              <div class="text-center"><div class="font-semibold">${api.latency}</div><div class="text-surface-400">Latency</div></div>
+              <span class="px-2 py-1 rounded bg-${api.color}-100 text-${api.color}-700 font-semibold">${api.status}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderConstitutional() {
+  setTitle('Constitutional Policies', 'Edit Rego/WASM with impact simulation');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/admin/policies');
+    var policies = res.data || [];
+    var active = policies.filter(function(p){return p.status==='ACTIVE';});
+    content.innerHTML =
+      fourQuestions('G1-G4 constitutional policy management', 'Edit policies with impact simulation before deploy', 'Changes require multisig approval', 'Deployed policies immediately enforce on all trades') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-scroll', 'Active Policies', active.length, null, 'purple') +
+        metricCard('fa-code', 'Total Rules', policies.length, null, 'blue') +
+        metricCard('fa-shield-halved', 'Constitutional', policies.filter(function(p){return (p.category||'').match(/G[1-4]/);}).length, null, 'cyan') +
+        metricCard('fa-clock', 'Last Updated', policies.length>0 ? timeAgo(policies[0].updated_at) : '—', null, 'amber') +
+      '</div>' +
+      '<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">' +
+        '<div class="sgtx-card">' +
+          '<div class="flex items-center justify-between mb-4">' +
+            '<h3 class="font-semibold text-sm"><i class="fas fa-shield-halved text-gold-400 mr-2"></i>Policies</h3>' +
+            '<button onclick="adminAddPolicy()" class="text-[10px] bg-gold-400 text-white px-3 py-1.5 rounded-lg font-semibold"><i class="fas fa-plus mr-1"></i>Add</button>' +
+          '</div>' +
+          '<div class="space-y-3">' +
+            (policies.length===0 ? '<div class="py-6 text-center text-surface-400 text-xs">No policies defined</div>' :
+            policies.slice(0,8).map(function(p){
+              return '<div class="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">' +
+                '<div class="flex items-center gap-3">' +
+                  '<span class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">' + (p.category||'P').substring(0,2) + '</span>' +
+                  '<div><div class="text-xs font-semibold text-emerald-800">' + (p.name||'Policy') + '</div><div class="text-[10px] text-emerald-600">' + (p.description||'').substring(0,40) + '</div></div>' +
+                '</div>' + badge(p.status||'ACTIVE') +
+              '</div>';
+            }).join('')) +
+          '</div>' +
+        '</div>' +
+        '<div class="sgtx-card">' +
+          '<h3 class="font-semibold text-sm mb-4"><i class="fas fa-flask text-gold-400 mr-2"></i>Impact Simulation</h3>' +
+          '<div class="p-4 bg-surface-50 rounded-xl mb-3">' +
+            '<div class="text-xs text-surface-500 mb-2">Simulate policy change impact:</div>' +
+            '<textarea id="admin-sim-policy" rows="3" class="w-full text-xs" placeholder="Enter policy rule to simulate..."></textarea>' +
+          '</div>' +
+          '<button onclick="adminSimulatePolicy()" class="w-full py-2.5 bg-gold-400 text-white rounded-lg text-xs font-semibold hover:bg-gold-500 transition"><i class="fas fa-play mr-1"></i>Run Simulation</button>' +
+          '<div id="sim-result" class="mt-3"></div>' +
+        '</div>' +
+      '</div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderGovernorLog() { return renderGovernor(); }
+
+async function renderJurisdictionMatrix() { return renderJurisdictions(); }
+
+async function renderPSPManager() {
+  setTitle('PSP Manager', 'Health monitoring, fallback chains');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/admin/psp');
+    var psps = res.data || [];
+    var healthy = psps.filter(function(p){return p.status==='HEALTHY';});
+    content.innerHTML =
+      fourQuestions('Payment Service Provider health management', 'Monitor PSP availability and configure fallbacks', psps.length-healthy.length > 0 ? (psps.length-healthy.length)+' PSPs degraded' : 'All PSPs healthy', 'AI router selects optimal PSP per transaction') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-credit-card', 'Active PSPs', psps.length, null, 'blue') +
+        metricCard('fa-heart-pulse', 'Healthy', healthy.length, null, 'green') +
+        metricCard('fa-triangle-exclamation', 'Degraded', psps.length - healthy.length, null, 'amber') +
+        metricCard('fa-arrow-right-arrow-left', 'Fallback Chain', psps.length + ' deep', null, 'purple') +
+      '</div>' +
+      '<div class="sgtx-card mb-6">' +
+        '<div class="flex items-center justify-between mb-4">' +
+          '<h3 class="font-semibold text-sm"><i class="fas fa-credit-card text-gold-400 mr-2"></i>PSP Health Dashboard</h3>' +
+          '<button onclick="adminAddPSP()" class="text-[10px] bg-gold-400 text-white px-3 py-1.5 rounded-lg font-semibold"><i class="fas fa-plus mr-1"></i>Add PSP</button>' +
+        '</div>' +
+        '<div class="space-y-3">' +
+          (psps.length===0 ? '<div class="py-6 text-center text-surface-400 text-xs">No PSPs configured</div>' :
+          psps.map(function(p,i){
+            var statusColor = p.status==='HEALTHY'?'emerald':p.status==='DEGRADED'?'amber':'red';
+            return '<div class="flex items-center justify-between p-4 rounded-xl border border-surface-100">' +
+              '<div class="flex items-center gap-3">' +
+                '<span class="w-6 h-6 rounded-full bg-surface-100 flex items-center justify-center text-[10px] font-bold">' + (p.priority||i+1) + '</span>' +
+                '<div><div class="text-sm font-medium">' + (p.name||'PSP') + '</div><div class="text-[10px] text-surface-400">' + (p.latency_ms||0) + 'ms latency • ' + (p.supported_currencies||'USD') + '</div></div>' +
+              '</div>' +
+              '<div class="flex items-center gap-3">' +
+                '<span class="text-[10px] font-semibold">' + (p.uptime_pct||0) + '% uptime</span>' +
+                '<span class="text-[10px] px-2 py-1 rounded font-semibold bg-' + statusColor + '-100 text-' + statusColor + '-700">' + (p.status||'UNKNOWN') + '</span>' +
+                '<button onclick="adminTestPSP(\'' + p.id + '\')" class="text-[10px] text-gold-400 hover:underline">Test</button>' +
+              '</div>' +
+            '</div>';
+          }).join('')) +
+        '</div>' +
+      '</div>' +
+      '<div class="sgtx-card">' +
+        '<h3 class="font-semibold text-sm mb-3"><i class="fas fa-route text-gold-400 mr-2"></i>Fallback Chain</h3>' +
+        '<div class="flex items-center gap-2 flex-wrap py-2">' +
+          psps.sort(function(a,b){return (a.priority||99)-(b.priority||99);}).map(function(p,i){
+            return '<div class="flex items-center gap-2"><div class="px-3 py-2 rounded-lg bg-gold-50 border border-gold-200 text-xs font-medium text-gold-400">' + (p.name||'PSP') + '</div>' + (i<psps.length-1 ? '<i class="fas fa-chevron-right text-surface-300 text-xs"></i>' : '') + '</div>';
+          }).join('') +
+        '</div>' +
+        '<div class="text-[10px] text-surface-400 mt-2">AI PSP Router auto-selects optimal rail. Fallback on timeout (>5s) or error rate >2%.</div>' +
+      '</div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderSpecialRates() {
+  setTitle('Special Rate Manager', 'Custom SGTX FEES rates per GTID pair');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Custom SGTX fee rates per GTID pair', 'Set special rates for specific trade corridors', 'Rates must stay within 0.1%-2.5% range', 'Changes apply immediately to new trades')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-percent', 'Special Rates', 8, null, 'purple')}
+      ${metricCard('fa-arrow-down', 'Min Rate', '0.5%', null, 'green')}
+      ${metricCard('fa-arrow-up', 'Max Rate', '2.0%', null, 'amber')}
+      ${metricCard('fa-chart-line', 'Avg Rate', '1.2%', null, 'blue')}
+    </div>
+    ${dataTable(['GTID Pair', 'Corridor', 'Rate', 'Volume (30d)', 'Since', 'Action'], [
+      '<tr><td class="font-mono text-[10px]">CIRO ↔ SGTX</td><td class="text-xs">EG → VN</td><td class="text-xs font-bold text-gold-400">1.5%</td><td class="text-xs">$450K</td><td class="text-xs">Dec 2024</td><td><button class="text-[10px] text-gold-400 hover:underline">Edit</button></td></tr>',
+      '<tr><td class="font-mono text-[10px]">ASFI ↔ HAMB</td><td class="text-xs">SG → DE</td><td class="text-xs font-bold text-gold-400">0.8%</td><td class="text-xs">$1.2M</td><td class="text-xs">Nov 2024</td><td><button class="text-[10px] text-gold-400 hover:underline">Edit</button></td></tr>',
+    ], { title: 'Custom Fee Rates (0.1% — 2.5% range)' })}`;
+}
+
+async function renderImpersonation() {
+  setTitle('Tenant Impersonation', 'Readonly, multisig-approved');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('View-only tenant impersonation for support', 'Select tenant to view their perspective', 'Requires 3-of-5 multisig approval', 'All sessions logged immutably')}
+    <div class="sgtx-card mb-6 border-amber-200 bg-amber-50/30">
+      <div class="flex items-center gap-3 p-2"><i class="fas fa-exclamation-triangle text-amber-500 text-lg"></i>
+        <div class="text-[10px] text-amber-700"><b>Security:</b> Readonly access only. Multisig approval required. All sessions immutably logged (G4).</div>
+      </div>
+    </div>
+    ${dataTable(['Tenant', 'Type', 'Requested By', 'Duration', 'Status'], [
+      '<tr><td class="text-sm">Cairo Imports</td><td class="text-xs">CORPORATE</td><td class="text-xs">Admin A</td><td class="text-xs">15 min</td><td>' + badge('APPROVED') + '</td></tr>',
+      '<tr><td class="text-sm">Saigon Textiles</td><td class="text-xs">CORPORATE</td><td class="text-xs">Admin B</td><td class="text-xs">8 min</td><td>' + badge('APPROVED') + '</td></tr>',
+    ], { title: 'Impersonation Log' })}`;
+}
+
+async function renderMarketplacePartners() {
+  setTitle('Marketplace Partners', 'Onboard partners, manage revenue splits');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Marketplace partner management', 'Onboard new partners and configure revenue', 'Partner KYB verification required', 'Revenue splits per attributed trade')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-handshake', 'Active Partners', 4, null, 'blue')}
+      ${metricCard('fa-user-plus', 'Pending', 1, null, 'amber')}
+      ${metricCard('fa-chart-pie', 'Revenue Shared', '$12.4K', null, 'green')}
+      ${metricCard('fa-link', 'Integrations', 6, null, 'purple')}
+    </div>
+    ${dataTable(['Partner', 'Status', 'Split', 'Trades', 'Revenue', 'Action'], [
+      '<tr><td class="text-sm font-medium">TradeFlow Marketplace</td><td>' + badge('ACTIVE') + '</td><td class="text-xs font-semibold">15%</td><td class="text-center">24</td><td class="text-xs font-semibold">$8,200</td><td><button class="text-[10px] text-gold-400 hover:underline">Manage</button></td></tr>',
+      '<tr><td class="text-sm font-medium">GlobalSource.io</td><td>' + badge('ACTIVE') + '</td><td class="text-xs font-semibold">12%</td><td class="text-center">11</td><td class="text-xs font-semibold">$3,100</td><td><button class="text-[10px] text-gold-400 hover:underline">Manage</button></td></tr>',
+    ], { title: 'Marketplace Partners' })}`;
+}
+
+async function renderIncidents() {
+  setTitle('Incidents', 'Lifecycle management, automated post-mortems');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Platform incident tracking', 'Monitor and resolve active incidents', 'Active incidents may affect processing', 'Post-mortem auto-generated after resolution')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-fire', 'Active', 0, null, 'green')}
+      ${metricCard('fa-clock', 'Avg Resolution', '23min', -15, 'blue')}
+      ${metricCard('fa-chart-line', 'Uptime (30d)', '99.97%', null, 'purple')}
+      ${metricCard('fa-file-alt', 'Post-Mortems', 3, null, 'amber')}
+    </div>
+    ${dataTable(['ID', 'Severity', 'Title', 'Started', 'Duration', 'Status'], [
+      '<tr><td class="font-mono text-xs">INC-003</td><td><span class="text-xs font-bold text-amber-600">P2</span></td><td class="text-sm">PSP Stripe elevated latency</td><td class="text-xs">Jan 15</td><td class="text-xs">18min</td><td>' + badge('DELIVERED') + '</td></tr>',
+      '<tr><td class="font-mono text-xs">INC-002</td><td><span class="text-xs font-bold text-red-600">P1</span></td><td class="text-sm">Governor timeout</td><td class="text-xs">Jan 10</td><td class="text-xs">34min</td><td>' + badge('DELIVERED') + '</td></tr>',
+    ], { title: 'Incident History' })}`;
+}
+
+async function renderConfigHistory() {
+  setTitle('Configuration History', 'Version control, rollback for all settings');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Platform config changes with version control', 'Review and rollback changes', 'Rollback requires approval', 'Changes tracked immutably (G4)')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-code-branch', 'Versions', 47, null, 'purple')}
+      ${metricCard('fa-clock-rotate-left', 'Changes (7d)', 5, null, 'blue')}
+      ${metricCard('fa-rotate-left', 'Rollbacks', 1, null, 'amber')}
+      ${metricCard('fa-user', 'Contributors', 3, null, 'green')}
+    </div>
+    <div class="sgtx-card !p-0 overflow-hidden">
+      <div class="px-5 py-4 border-b border-surface-100"><h3 class="font-semibold text-sm"><i class="fas fa-code-branch text-gold-400 mr-2"></i>Configuration Changes</h3></div>
+      <div class="divide-y divide-surface-100">
+        ${[{ver:'v47',change:'Updated jurisdiction matrix',author:'Admin A',time:'2h ago'},{ver:'v46',change:'PSP fallback chain reordered',author:'Admin B',time:'1d ago'},{ver:'v45',change:'Fee rate adjusted EG-VN corridor',author:'Admin A',time:'3d ago'},{ver:'v44',change:'Governor policy: Added G1U11 gate',author:'Admin C',time:'5d ago'}].map(c =>
+          '<div class="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 transition">' +
+            '<span class="font-mono text-xs text-gold-400 font-bold w-8">' + c.ver + '</span>' +
+            '<div class="flex-1"><div class="text-xs text-surface-800">' + c.change + '</div><div class="text-[10px] text-surface-400">' + c.author + ' &bull; ' + c.time + '</div></div>' +
+            '<button class="text-[10px] text-gold-400 hover:underline">Rollback</button>' +
+          '</div>'
+        ).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderCustomerCare() {
+  setTitle('Customer Care Hub', 'AI chatbot oversight, human escalation queue');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('AI chatbot oversight and human escalation', 'Handle escalated support tickets', 'High-volume may increase queue', 'AI resolves 78% without escalation')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-robot', 'AI Resolved', '78%', 5, 'green')}
+      ${metricCard('fa-headset', 'Escalated', 3, null, 'amber')}
+      ${metricCard('fa-clock', 'Avg Response', '< 2min', null, 'blue')}
+      ${metricCard('fa-star', 'Satisfaction', '4.6/5', null, 'purple')}
+    </div>
+    ${dataTable(['Ticket', 'Tenant', 'Issue', 'Priority', 'Status', 'Action'], [
+      '<tr><td class="font-mono text-xs">TKT-042</td><td class="text-sm">Cairo Imports</td><td class="text-xs">Fee dispute</td><td><span class="text-xs font-bold text-red-600">HIGH</span></td><td>' + badge('PENDING') + '</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Handle</button></td></tr>',
+      '<tr><td class="font-mono text-xs">TKT-041</td><td class="text-sm">Saigon Textiles</td><td class="text-xs">EXW lock issue</td><td><span class="text-xs font-bold text-amber-600">MED</span></td><td>' + badge('PENDING') + '</td><td><button class="text-xs bg-gold-400 text-white px-3 py-1 rounded-lg">Handle</button></td></tr>',
+    ], { title: 'Escalation Queue' })}`;
+}
+
+async function renderMPDashboard() {
+  setTitle('Partner Dashboard', 'API usage, leads & revenue');
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-key', 'API Keys', 2, null, 'purple')}
+      ${metricCard('fa-funnel-dollar', 'Active Leads', 0, null, 'blue')}
+      ${metricCard('fa-webhook', 'Webhooks', 0, null, 'cyan')}
+      ${metricCard('fa-chart-pie', 'Revenue', '$0', null, 'green')}
+    </div>
+    ${fourQuestions('Partner integration active', 'Manage API keys and webhooks', 'None', 'Revenue attribution updates daily')}
+    <div class="sgtx-card">
+      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-code text-gold-400 mr-2"></i>API Endpoints</h3>
+      <div class="space-y-2">
+        ${[['POST', '/partner/intent/analyze', 'Analyze trade intent'],['POST', '/partner/trade/initiate', 'Initiate trade'],['GET', '/partner/suppliers/match', 'Match suppliers'],['POST', '/partner/webhook/register', 'Register webhook']].map(([method, path, desc]) => 
+          `<div class="flex items-center gap-3 p-3 bg-surface-50 rounded-lg">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${method === 'POST' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}">${method}</span>
+            <code class="text-xs font-mono text-gold-400 flex-1">${path}</code>
+            <span class="text-[10px] text-surface-400">${desc}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderAPIKeys() {
+  setTitle('API Keys', 'Ed25519 keys, rate limit gauges');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('API key management for platform integration', 'Generate and manage Ed25519 keys', 'Rate limits enforced per key', 'Keys enable automated trade initiation')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-key', 'Active Keys', 2, null, 'purple')}
+      ${metricCard('fa-chart-bar', 'Calls Today', 847, null, 'blue')}
+      ${metricCard('fa-gauge', 'Rate Used', '34%', null, 'green')}
+      ${metricCard('fa-shield-halved', 'Security', 'Ed25519', null, 'cyan')}
+    </div>
+    <div class="sgtx-card mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-sm"><i class="fas fa-key text-gold-400 mr-2"></i>API Keys</h3>
+        <button class="px-4 py-2 bg-gold-400 text-white text-xs rounded-lg font-semibold hover:bg-gold-500 transition"><i class="fas fa-plus mr-1"></i>Generate Key</button>
+      </div>
+      <div class="space-y-3">
+        ${[{name:'Production Key',prefix:'sk_live_7x8K...',created:'Dec 2024',calls:12450,limit:50000,active:true},{name:'Staging Key',prefix:'sk_test_3m2N...',created:'Nov 2024',calls:3200,limit:10000,active:true}].map(k => `
+          <div class="p-4 rounded-xl border border-surface-100 hover:border-gold-200 transition">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gold-100 flex items-center justify-center"><i class="fas fa-key text-gold-400 text-xs"></i></div>
+                <div>
+                  <div class="text-sm font-medium">${k.name}</div>
+                  <div class="text-[10px] font-mono text-surface-400">${k.prefix}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] ${k.active?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-700'} px-2 py-0.5 rounded font-semibold">${k.active?'Active':'Revoked'}</span>
+                <button class="text-[10px] text-red-500 hover:underline">Revoke</button>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex-1">
+                <div class="flex items-center justify-between text-[10px] text-surface-400 mb-1"><span>Rate Limit</span><span>${k.calls.toLocaleString()} / ${k.limit.toLocaleString()}</span></div>
+                <div class="h-2 bg-surface-100 rounded-full"><div class="h-2 bg-gold-400 rounded-full" style="width:${(k.calls/k.limit)*100}%"></div></div>
+              </div>
+              <div class="text-[10px] text-surface-400">Since ${k.created}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderLeadManagement() {
+  setTitle('Lead Management', 'Intent inbox with viability scores');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/partner/leads?tenant_id=' + tenant.id);
+    var leads = res.data || [];
+    var active = leads.filter(function(l){return l.status==='NEW'||l.status==='ANALYZING';});
+    var converted = leads.filter(function(l){return l.status==='CONVERTED';});
+    content.innerHTML =
+      fourQuestions('Trade intent leads from marketplace integration', 'Review and convert high-viability leads', active.length > 0 ? active.length + ' leads pending review' : 'Pipeline clear', 'Converted leads become trade requests') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-funnel-dollar', 'Active Leads', active.length, null, 'blue') +
+        metricCard('fa-check', 'Converted', converted.length, null, 'green') +
+        metricCard('fa-chart-line', 'Conversion Rate', leads.length>0 ? Math.round(converted.length/leads.length*100)+'%' : '—', null, 'purple') +
+        metricCard('fa-dollar-sign', 'Pipeline Value', '$' + leads.reduce(function(s,l){return s+(l.estimated_value||0);},0).toLocaleString(), null, 'amber') +
+      '</div>' +
+      '<div class="sgtx-card !p-0 overflow-hidden">' +
+        '<div class="px-5 py-4 border-b border-surface-100 flex items-center justify-between"><h3 class="font-semibold text-sm"><i class="fas fa-funnel-dollar text-gold-400 mr-2"></i>Lead Inbox</h3>' +
+        '<button onclick="mpAnalyzeLeads()" class="text-[10px] bg-gold-400 text-white px-3 py-1.5 rounded-lg font-semibold"><i class="fas fa-robot mr-1"></i>AI Analyze</button></div>' +
+        '<div class="divide-y divide-surface-100">' +
+          (leads.length===0 ? '<div class="py-8 text-center text-surface-400 text-xs">No leads yet</div>' :
+          leads.map(function(l){
+            var viability = l.viability_score||0;
+            return '<div class="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 transition">' +
+              '<div class="flex-1"><div class="text-sm font-medium">' + (l.company_name||'Unknown') + '</div>' +
+              '<div class="text-xs text-surface-400">' + (l.intent_description||'') + ' • $' + (l.estimated_value||0).toLocaleString() + '</div></div>' +
+              '<div class="flex items-center gap-3">' +
+                '<div class="text-center"><div class="text-xs font-bold ' + (viability>=80?'text-emerald-600':viability>=60?'text-amber-600':'text-red-600') + '">' + viability + '%</div><div class="text-[10px] text-surface-400">viability</div></div>' +
+                badge(l.status) +
+                '<span class="text-[10px] text-surface-400">' + timeAgo(l.created_at) + '</span>' +
+              '</div></div>';
+          }).join('')) +
+        '</div></div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderWebhooks() {
+  setTitle('Webhooks', 'Register endpoints, event logs, retry');
+  var content = document.getElementById('content');
+  content.innerHTML = shimmerLoader(5);
+  try {
+    var res = await api('/partner/webhooks?tenant_id=' + tenant.id);
+    var hooks = res.data || [];
+    var active = hooks.filter(function(h){return h.status==='ACTIVE';});
+    content.innerHTML =
+      fourQuestions('Webhook endpoint management', 'Register URLs and monitor delivery', 'Failed deliveries auto-retry 3 times', 'Real-time notifications for trade events') +
+      '<div class="grid grid-cols-4 gap-4 mb-6">' +
+        metricCard('fa-link', 'Active Webhooks', active.length, null, 'blue') +
+        metricCard('fa-check', 'Total Registered', hooks.length, null, 'green') +
+        metricCard('fa-rotate', 'Avg Success', hooks.length>0 ? Math.round(hooks.reduce(function(s,h){return s+(h.success_rate||100);},0)/hooks.length)+'%' : '100%', null, 'purple') +
+        metricCard('fa-bell', 'Events Today', hooks.reduce(function(s,h){return s+(h.events_today||0);},0), null, 'amber') +
+      '</div>' +
+      '<div class="sgtx-card mb-6">' +
+        '<div class="flex items-center justify-between mb-4">' +
+          '<h3 class="font-semibold text-sm"><i class="fas fa-link text-gold-400 mr-2"></i>Registered Endpoints</h3>' +
+          '<button onclick="mpAddWebhook()" class="px-4 py-2 bg-gold-400 text-white text-xs rounded-lg font-semibold"><i class="fas fa-plus mr-1"></i>Add Webhook</button>' +
+        '</div>' +
+        '<div class="space-y-3">' +
+          (hooks.length===0 ? '<div class="py-6 text-center text-surface-400 text-xs">No webhooks registered</div>' :
+          hooks.map(function(w){
+            var events = [];try{events=JSON.parse(w.events||'[]');}catch(e){events=[w.events];}
+            return '<div class="p-4 rounded-xl border border-surface-100">' +
+              '<div class="flex items-center justify-between mb-2">' +
+                '<code class="text-xs font-mono text-gold-400">' + (w.url||'—') + '</code>' +
+                '<div class="flex items-center gap-2">' + badge(w.status||'ACTIVE') +
+                '<button onclick="mpTestWebhook(\'' + w.id + '\')" class="text-[10px] text-gold-400 hover:underline">Test</button></div>' +
+              '</div>' +
+              '<div class="flex items-center justify-between">' +
+                '<div class="flex gap-1 flex-wrap">' + events.map(function(e){return '<span class="text-[9px] px-1.5 py-0.5 bg-surface-100 rounded text-surface-600">' + e + '</span>';}).join('') + '</div>' +
+                '<span class="text-[10px] text-surface-400">' + (w.success_rate||100) + '% delivery</span>' +
+              '</div>' +
+            '</div>';
+          }).join('')) +
+        '</div>' +
+      '</div>';
+  } catch(e) { content.innerHTML = renderError(e.message); }
+}
+
+async function renderRevenueAttribution() {
+  setTitle('Revenue Attribution', 'Per-trade revenue tracking');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Revenue attributed per marketplace lead', 'Track earnings from converted leads', 'Attribution window: 90 days after lead', 'Monthly payouts on confirmed trades')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-chart-pie', 'Total Revenue', '$12,400', 18, 'green')}
+      ${metricCard('fa-handshake', 'Attributed Trades', 24, null, 'blue')}
+      ${metricCard('fa-percent', 'Avg Split', '13.5%', null, 'purple')}
+      ${metricCard('fa-calendar', 'Next Payout', '15 Feb', null, 'amber')}
+    </div>
+    ${dataTable(['Trade', 'Lead Source', 'Trade Value', 'Fee Rate', 'Your Share', 'Status'], [
+      '<tr><td class="font-mono text-xs">TRD-2024-018</td><td class="text-xs">TradeFlow intent</td><td class="text-xs font-semibold">$245,000</td><td class="text-xs">1.5%</td><td class="text-xs font-semibold text-emerald-600">$551</td><td>' + badge('APPROVED') + '</td></tr>',
+      '<tr><td class="font-mono text-xs">TRD-2024-015</td><td class="text-xs">API direct</td><td class="text-xs font-semibold">$180,000</td><td class="text-xs">2.0%</td><td class="text-xs font-semibold text-emerald-600">$540</td><td>' + badge('APPROVED') + '</td></tr>',
+      '<tr><td class="font-mono text-xs">TRD-2024-012</td><td class="text-xs">TradeFlow intent</td><td class="text-xs font-semibold">$92,000</td><td class="text-xs">1.8%</td><td class="text-xs font-semibold text-emerald-600">$248</td><td>' + badge('PENDING') + '</td></tr>',
+    ], { title: 'Revenue Attribution History' })}`;
+}
+
+async function renderSandboxEnv() {
+  setTitle('Sandbox Environment', 'Synthetic data, reset daily');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('Test environment with synthetic data', 'Test API integrations safely', 'Data resets every 24 hours', 'Mirror of production APIs with test data')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-flask', 'Test Trades', 50, null, 'purple')}
+      ${metricCard('fa-users', 'Synthetic Tenants', 10, null, 'blue')}
+      ${metricCard('fa-clock', 'Next Reset', '18h', null, 'amber')}
+      ${metricCard('fa-check', 'API Coverage', '100%', null, 'green')}
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-flask text-gold-400 mr-2"></i>Sandbox Status</h3>
+        <div class="space-y-3">
+          <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-semibold text-emerald-700">Environment Active</span>
+          </div>
+          <div class="p-3 bg-surface-50 rounded-xl"><div class="text-[10px] text-surface-400">Base URL</div><code class="text-xs text-gold-400">https://sandbox.sgtx.platform/api/v1</code></div>
+          <div class="p-3 bg-surface-50 rounded-xl"><div class="text-[10px] text-surface-400">Test API Key</div><code class="text-xs text-gold-400">sk_test_sandbox_...</code></div>
+          <button class="w-full py-2.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition"><i class="fas fa-rotate mr-1"></i>Reset Sandbox Now</button>
+        </div>
+      </div>
+      <div class="sgtx-card">
+        <h3 class="font-semibold text-sm mb-4"><i class="fas fa-database text-gold-400 mr-2"></i>Synthetic Data</h3>
+        <div class="space-y-2 text-xs text-surface-600">
+          <div class="flex items-center justify-between p-2 hover:bg-surface-50 rounded"><span>Tenants</span><span class="font-mono font-semibold">10</span></div>
+          <div class="flex items-center justify-between p-2 hover:bg-surface-50 rounded"><span>Trade Requests</span><span class="font-mono font-semibold">50</span></div>
+          <div class="flex items-center justify-between p-2 hover:bg-surface-50 rounded"><span>Contracts</span><span class="font-mono font-semibold">25</span></div>
+          <div class="flex items-center justify-between p-2 hover:bg-surface-50 rounded"><span>Shipments</span><span class="font-mono font-semibold">30</span></div>
+          <div class="flex items-center justify-between p-2 hover:bg-surface-50 rounded"><span>Financing Requests</span><span class="font-mono font-semibold">15</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function renderUsageAnalytics() {
+  setTitle('Usage Analytics', 'API call volumes and patterns');
+  document.getElementById('content').innerHTML = `
+    ${fourQuestions('API usage patterns and analytics', 'Monitor call volumes and performance', 'Rate limiting at 80% capacity', 'Usage data informs partnership negotiations')}
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-chart-bar', 'Total Calls (30d)', '24.5K', 22, 'blue')}
+      ${metricCard('fa-clock', 'Avg Latency', '145ms', -8, 'green')}
+      ${metricCard('fa-bug', 'Error Rate', '0.3%', null, 'amber')}
+      ${metricCard('fa-arrow-up', 'Peak Load', '120 rps', null, 'purple')}
+    </div>
+    <div class="sgtx-card mb-6">
+      <h3 class="font-semibold text-sm mb-4"><i class="fas fa-chart-area text-gold-400 mr-2"></i>API Call Volume (30 days)</h3>
+      <div class="h-40 flex items-end gap-1 px-2">
+        ${Array.from({length:30}, (_,i) => {const h = 30 + Math.random()*65; return `<div class="flex-1 bg-gradient-to-t from-sgtx-500 to-sgtx-400 rounded-t opacity-80 hover:opacity-100 transition" style="height:${h}%" title="Day ${i+1}"></div>`;}).join('')}
+      </div>
+      <div class="flex justify-between mt-2 text-[10px] text-surface-400"><span>30 days ago</span><span>Today</span></div>
+    </div>
+    <div class="sgtx-card">
+      <h3 class="font-semibold text-sm mb-3"><i class="fas fa-list text-gold-400 mr-2"></i>Top Endpoints</h3>
+      <div class="space-y-2">
+        ${[{endpoint:'POST /partner/intent/analyze',calls:'8,240',pct:34},{endpoint:'POST /partner/trade/initiate',calls:'5,120',pct:21},{endpoint:'GET /partner/suppliers/match',calls:'4,890',pct:20},{endpoint:'POST /partner/webhook/register',calls:'3,200',pct:13},{endpoint:'GET /partner/status',calls:'3,050',pct:12}].map(e => `
+          <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-50">
+            <code class="text-[10px] font-mono text-gold-400 flex-1">${e.endpoint}</code>
+            <span class="text-xs font-semibold w-16 text-right">${e.calls}</span>
+            <div class="w-24 h-2 bg-surface-100 rounded-full"><div class="h-2 bg-gold-400 rounded-full" style="width:${e.pct}%"></div></div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function renderLabTestingJobs() {
+  setTitle('Testing Jobs', 'Manage lab testing workflow');
+  const tid = tenant?.id || '';
+  let jobs = [];
+  try { jobs = (await api('/lab/testing-jobs?tenant_id=' + tid)).data || []; } catch(e) {}
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      ${metricCard('fa-hourglass-start', 'Pending', jobs.filter(j=>j.status==='PENDING').length, null, 'amber')}
+      ${metricCard('fa-flask', 'In Progress', jobs.filter(j=>j.status==='IN_PROGRESS').length, null, 'blue')}
+      ${metricCard('fa-clipboard-check', 'Completed', jobs.filter(j=>j.status==='RESULTS_SUBMITTED').length, null, 'emerald')}
+      ${metricCard('fa-vial', 'Total', jobs.length, null, 'purple')}
+    </div>
+    <div class="glass-card p-5">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-surface-500 text-xs border-b">
+          <th class="pb-2">Sample</th><th class="pb-2">Commodity</th><th class="pb-2">Test Panel</th>
+          <th class="pb-2">Due</th><th class="pb-2">Status</th><th class="pb-2">Actions</th>
+        </tr></thead>
+        <tbody>${jobs.map(j => {
+          let panel = [];
+          try { panel = JSON.parse(j.test_panel || '[]'); } catch(e) {}
+          return `<tr class="border-b border-surface-100">
+            <td class="py-2 font-mono text-xs">${j.sample_tracking_number || j.id}</td>
+            <td class="py-2">${j.commodity_type}</td>
+            <td class="py-2 text-xs">${panel.join(', ')}</td>
+            <td class="py-2">${j.due_date || '—'}</td>
+            <td class="py-2">${badge(j.status)}</td>
+            <td class="py-2">
+              ${j.status === 'PENDING' ? `<button onclick="labConfirmReceipt('${j.id}')" class="btn-xs btn-primary">Receive</button>` : ''}
+              ${j.status === 'SAMPLE_RECEIVED' ? `<button onclick="labStartTesting('${j.id}')" class="btn-xs btn-success">Start</button>` : ''}
+              ${j.status === 'IN_PROGRESS' ? `<button onclick="labSubmitResults('${j.id}')" class="btn-xs btn-primary">Results</button>` : ''}
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+// ═══ RECOVERED ACTION HELPERS (v11.2) ═══
+
+async function showRespondToRFQ(rfqId) {
+  showModal(
+    '<h3 class="text-lg font-bold text-surface-900 mb-4"><i class="fas fa-reply text-gold-400 mr-2"></i>Submit Logistics Quote</h3>' +
+    '<div class="space-y-3">' +
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Total Price (USD)</label><input id="rfq-resp-price" type="number" class="w-full" placeholder="2500.00"></div>' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Transit Time (Days)</label><input id="rfq-resp-transit" type="number" class="w-full" placeholder="14"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Services Included</label><input id="rfq-resp-services" type="text" class="w-full" placeholder="SEA_FREIGHT, REEFER, PORT_HANDLING"></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Conditions / Notes</label><textarea id="rfq-resp-conditions" rows="2" class="w-full" placeholder="e.g. Temperature monitoring included, insurance extra..."></textarea></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Valid Until</label><input id="rfq-resp-valid" type="date" class="w-full"></div>' +
+      '<button onclick="submitRFQResponse(\'' + rfqId + '\')" class="btn-success w-full"><i class="fas fa-paper-plane mr-2"></i>Submit Quote</button>' +
+    '</div>'
+  );
+}
+
+async function lspQuoteRFQ(rfqId) {
+  showModal('<h3 class="text-lg font-bold mb-4"><i class="fas fa-reply text-gold-400 mr-2"></i>Submit Quote</h3>' +
+    '<div class="space-y-3">' +
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Price (USD)</label><input id="lsp-q-price" type="number" class="w-full" placeholder="3500"></div>' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Transit Days</label><input id="lsp-q-days" type="number" class="w-full" placeholder="14"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Notes</label><textarea id="lsp-q-notes" rows="2" class="w-full" placeholder="Service details..."></textarea></div>' +
+      '<button onclick="lspSubmitQuote(\'' + rfqId + '\')" class="btn-success w-full"><i class="fas fa-paper-plane mr-2"></i>Submit</button>' +
+    '</div>');
+}
+
+async function lspOptimiseRoutes() {
+  showToast('Running AI route optimization...','info');
+  try {
+    var res = await apiPost('/lsp/dispatch/optimise', {tenant_id:tenant.id});
+    showToast('Routes optimized! Savings: ' + ((res.data||{}).estimated_savings||'N/A'),'success');
+    renderDispatchPlanner();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function lspAssignDispatch(planId) {
+  try {
+    await apiPost('/lsp/dispatch/assign', {plan_id:planId, tenant_id:tenant.id});
+    showToast('Dispatch assigned!','success'); renderDispatchPlanner();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function submitFinancingBid(requestId) {
+  const apr = prompt('Enter your effective APR (e.g. 6.5):');
+  if (!apr) return;
+  const allIn = prompt('Enter all-in cost (USD):');
+  if (!allIn) return;
+  try {
+    const res = await api('/financing/bids', 'POST', {
+      financing_request_id: requestId,
+      financier_tenant_id: window.__tenant_id || 'tenant-003',
+      effective_apr: parseFloat(apr),
+      all_in_cost: parseFloat(allIn),
+      conditions: 'Standard terms',
+      actor_gtid: window.__gtid || 'SGTX-SG-FIN-000001-E5F6'
+    });
+    if (res.data) { alert('Bid submitted successfully!'); renderFinancierDashboard(); }
+    else alert('Error: ' + (res.error || 'Unknown'));
+  } catch(e) { alert('Bid failed: ' + e.message); }
+}
+
+async function confirmSettlement(instructionId) {
+  try {
+    showToast('Verifying settlement...', 'info');
+    await apiPost('/settlement/approve', { instruction_id: instructionId, approver_tenant_id: tenant.id });
+    showToast('Settlement confirmed!', 'success');
+    renderSettlements();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function viewSettlementDetails(ustn) {
+  try {
+    var res = await api('/settlement/status/' + ustn);
+    var data = res.data || res;
+    showModal(
+      '<div class="space-y-4">' +
+        '<h3 class="text-lg font-bold text-surface-800">Settlement: ' + ustn + '</h3>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+          [['Status', data.status || 'PENDING'], ['Amount', usd(data.amount || 0)], ['Currency', data.currency || 'USD'], ['PSP', data.psp_name || '—'], ['Type', data.instruction_type || '—'], ['Created', time(data.created_at)]].map(function(r) {
+            return '<div class="bg-surface-50 rounded-lg p-3 border border-surface-100"><div class="text-[10px] text-surface-500 uppercase">' + r[0] + '</div><div class="text-sm font-medium text-surface-800">' + r[1] + '</div></div>';
+          }).join('') +
+        '</div>' +
+        (data.split_details ? '<div class="bg-blue-50 rounded-lg p-3 border border-blue-100 text-xs"><strong>Split Details:</strong> ' + JSON.stringify(data.split_details) + '</div>' : '') +
+      '</div>'
+    );
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function startInspection(id) {
+  try {
+    await api(`/inspections/${id}`, 'PATCH', { status: 'IN_PROGRESS' });
+    renderQCDashboard();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function completeInspection(id) {
+  const result = confirm('Did the inspection PASS?') ? 'PASS' : 'FAIL';
+  try {
+    await api(`/inspections/${id}`, 'PATCH', { status: 'COMPLETED', result, findings: { defects_found: result === 'PASS' ? 1 : 5 }, ai_summary: `Inspection completed with result: ${result}` });
+    renderQCDashboard();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function qcAcceptInspection(id) {
+  try {
+    await apiPost('/qc/inspection-queue/' + id + '/accept', {tenant_id:tenant.id});
+    showToast('Inspection accepted!','success'); renderInspectionQueue();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function qcStartInspection(id) {
+  try {
+    await apiPost('/qc/inspection-queue/' + id + '/start', {tenant_id:tenant.id});
+    showToast('Inspection started!','success'); renderInspectionQueue();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function qcSubmitReport(id) {
+  showModal('<h3 class="text-lg font-bold mb-4"><i class="fas fa-file-medical text-gold-400 mr-2"></i>Submit Inspection Report</h3>' +
+    '<div class="space-y-3">' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Result</label><select id="qc-result" class="w-full"><option value="PASS">PASS</option><option value="FAIL">FAIL</option><option value="CONDITIONAL">CONDITIONAL PASS</option></select></div>' +
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Defects Found</label><input id="qc-defects" type="number" class="w-full" value="0"></div>' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Sample Size</label><input id="qc-sample" type="number" class="w-full" value="200"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Findings</label><textarea id="qc-findings" rows="3" class="w-full" placeholder="Inspection findings..."></textarea></div>' +
+      '<button onclick="qcDoSubmitReport(\'' + id + '\')" class="btn-success w-full"><i class="fas fa-paper-plane mr-2"></i>Submit Report</button>' +
+    '</div>');
+}
+
+async function govApproveWorkflow(id) {
+  try {
+    await apiPost('/gov/multi-agency/' + id + '/approve', {officer_id:tenant.id, agency:tenant.name||'Customs'});
+    showToast('Workflow step approved!','success'); renderMultiAgency();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function govVerifyDoc(id) {
+  try {
+    await apiPost('/gov/documents/' + id + '/verify', {action:'VERIFY',officer_id:tenant.id});
+    showToast('Document verified!','success'); renderGovDocs();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function govRejectDoc(id) {
+  var reason = prompt('Rejection reason:');
+  if(!reason) return;
+  try {
+    await apiPost('/gov/documents/' + id + '/verify', {action:'REJECT',officer_id:tenant.id,reason:reason});
+    showToast('Document rejected','success'); renderGovDocs();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function adminAddPolicy() {
+  showModal('<h3 class="text-lg font-bold mb-4"><i class="fas fa-scroll text-gold-400 mr-2"></i>Add Constitutional Policy</h3>' +
+    '<div class="space-y-3">' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Policy Name</label><input id="pol-name" class="w-full" placeholder="e.g. G1U12 - New Gate"></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Category</label><select id="pol-cat" class="w-full"><option>G1</option><option>G2</option><option>G3</option><option>G4</option><option>OPERATIONAL</option></select></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Description</label><textarea id="pol-desc" rows="2" class="w-full" placeholder="Policy description..."></textarea></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Rule (Rego/WASM)</label><textarea id="pol-rule" rows="3" class="w-full font-mono text-xs" placeholder="allow { input.amount < 1000000 }"></textarea></div>' +
+      '<button onclick="adminSavePolicy()" class="btn-success w-full"><i class="fas fa-save mr-2"></i>Save Policy</button>' +
+    '</div>');
+}
+
+async function adminSimulatePolicy() {
+  var rule = document.getElementById('admin-sim-policy').value;
+  if(!rule){showToast('Enter a policy rule to simulate','error');return;}
+  try {
+    var res = await apiPost('/admin/policies/simulate', {rule_body:rule});
+    var d = res.data||{};
+    document.getElementById('sim-result').innerHTML =
+      '<div class="p-3 rounded-xl ' + (d.would_block>0?'bg-amber-50 border border-amber-200':'bg-emerald-50 border border-emerald-200') + '">' +
+        '<div class="text-xs font-semibold ' + (d.would_block>0?'text-amber-800':'text-emerald-800') + '">Simulation Result</div>' +
+        '<div class="text-[10px] mt-1">' + (d.affected_trades||0) + ' trades affected, ' + (d.would_block||0) + ' would be blocked</div>' +
+      '</div>';
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function adminAddPSP() {
+  showModal('<h3 class="text-lg font-bold mb-4"><i class="fas fa-credit-card text-gold-400 mr-2"></i>Add PSP</h3>' +
+    '<div class="space-y-3">' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">PSP Name</label><input id="psp-name" class="w-full" placeholder="e.g. Stripe"></div>' +
+      '<div class="grid grid-cols-2 gap-3">' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Priority</label><input id="psp-priority" type="number" class="w-full" value="1"></div>' +
+        '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Currencies</label><input id="psp-curr" class="w-full" placeholder="USD,EUR,GBP"></div>' +
+      '</div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">API Endpoint</label><input id="psp-endpoint" class="w-full" placeholder="https://api.stripe.com/v1"></div>' +
+      '<button onclick="adminSavePSP()" class="btn-success w-full"><i class="fas fa-save mr-2"></i>Save PSP</button>' +
+    '</div>');
+}
+
+async function adminTestPSP(id) {
+  showToast('Testing PSP connectivity...','info');
+  try {
+    var res = await apiPost('/admin/psp/' + id + '/test', {});
+    var d = res.data||{};
+    showToast('PSP ' + (d.success?'healthy':'unhealthy') + ' — ' + (d.latency_ms||0) + 'ms', d.success?'success':'error');
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function mpAnalyzeLeads() {
+  showToast('Running AI lead analysis...','info');
+  try {
+    var res = await apiPost('/partner/leads/analyze', {tenant_id:tenant.id});
+    showToast('Analysis complete! ' + ((res.data||{}).analyzed||0) + ' leads scored','success');
+    renderLeadManagement();
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function mpAddWebhook() {
+  showModal('<h3 class="text-lg font-bold mb-4"><i class="fas fa-link text-gold-400 mr-2"></i>Register Webhook</h3>' +
+    '<div class="space-y-3">' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Endpoint URL</label><input id="wh-url" class="w-full" placeholder="https://api.yourapp.com/webhooks/sgtx"></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Events (comma-separated)</label><input id="wh-events" class="w-full" placeholder="trade.created,quote.submitted,contract.signed"></div>' +
+      '<div><label class="text-xs text-surface-500 font-semibold block mb-1">Secret (for signature verification)</label><input id="wh-secret" class="w-full" placeholder="whsec_..."></div>' +
+      '<button onclick="mpSaveWebhook()" class="btn-success w-full"><i class="fas fa-save mr-2"></i>Register</button>' +
+    '</div>');
+}
+
+async function mpTestWebhook(id) {
+  showToast('Sending test event...','info');
+  try {
+    var res = await apiPost('/partner/webhooks/' + id + '/test', {});
+    showToast('Test ' + ((res.data||{}).success?'delivered!':'failed'), (res.data||{}).success?'success':'error');
+  } catch(e){showToast(e.message,'error');}
+}
+
+async function labConfirmReceipt(id) {
+  try { await apiPost('/lab/testing-jobs/' + id + '/confirm-receipt', {}); showToast('Sample receipt confirmed', 'success'); renderLabTestingJobs(); }
+  catch(e) { showToast('Failed', 'error'); }
+}
+
+async function labStartTesting(id) {
+  try { await apiPost('/lab/testing-jobs/' + id + '/start', {}); showToast('Testing started', 'success'); renderLabTestingJobs(); }
+  catch(e) { showToast('Failed', 'error'); }
+}
+
+async function labSubmitResults(id) {
+  const verdict = prompt('Verdict (PASS/FAIL/CONDITIONAL):') || 'PASS';
+  const results = [
+    { analyte: 'Cypermethrin', value: 0.02, unit: 'mg/kg', limit: 0.05, pass: true },
+    { analyte: 'Chlorpyrifos', value: 0.001, unit: 'mg/kg', limit: 0.01, pass: true },
+    { analyte: 'E.coli', value: 0, unit: 'CFU/g', limit: 10, pass: true }
+  ];
+  try {
+    await apiPost('/lab/testing-jobs/' + id + '/results', { verdict: verdict.toUpperCase(), results, certificate_type: 'PHYTO' });
+    showToast('Results submitted — ' + verdict, 'success'); renderLabTestingJobs();
+  } catch(e) { showToast('Failed', 'error'); }
+}
