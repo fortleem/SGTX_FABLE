@@ -7,11 +7,13 @@ export function loginHTML(): string {
 <title>Sign In — SGTX Sovereign Governed Trade Execution</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{font-family:'Inter',system-ui,sans-serif}
-body{background:#0D0D0D;background-image:radial-gradient(circle at 20% 50%,rgba(212,160,23,.06) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(212,160,23,.04) 0%,transparent 40%)}
-.glass-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15);backdrop-filter:blur(16px)}
+h1,h2,h3,.btn-gold{font-family:'Sora','Inter',sans-serif}
+body{background:#0B0B0D;background-image:radial-gradient(circle at 20% 50%,rgba(212,160,23,.07) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(212,160,23,.05) 0%,transparent 40%)}
+.glass-card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(201,168,76,.16);backdrop-filter:blur(16px);position:relative}
+.glass-card::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent 5%,rgba(212,160,23,.3) 50%,transparent 95%)}
 .input-field{background:rgba(255,255,255,.05)!important;border:1px solid rgba(201,168,76,.15)!important;color:white!important;border-radius:10px!important;padding:11px 14px!important;font-size:14px!important;width:100%;transition:all .2s;outline:none}
 .input-field:focus{background:rgba(255,255,255,.07)!important;border-color:rgba(212,160,23,.5)!important;box-shadow:0 0 0 3px rgba(212,160,23,.08)!important}
 .input-field::placeholder{color:rgba(255,255,255,.3)!important}
@@ -34,7 +36,7 @@ label{color:rgba(255,255,255,.6);font-size:13px;font-weight:500;margin-bottom:5p
       <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><span class="font-black text-black text-xl">SG</span></div>
       <span class="font-black text-3xl" style="color:#D4A017">SGTX</span>
     </div>
-    <h2 class="text-4xl font-black text-white mb-4 leading-tight">Sovereign<br><span style="color:#D4A017">Governed</span><br>Trade Execution</h2>
+    <h2 class="text-4xl font-black mb-4 leading-tight" style="color:#F5EFDC">Sovereign<br><span style="background:linear-gradient(90deg,#F0C420,#C9A84C);-webkit-background-clip:text;background-clip:text;color:transparent">Governed</span><br>Trade Execution</h2>
     <p class="text-sm leading-relaxed mb-8" style="color:rgba(255,255,255,.45)">Non-custodial. AI-governed. Cryptographically certain. The operating system for global trade — not a marketplace, not a bank.</p>
     <div class="space-y-3">
       ${['Non-Custodial by Design','AI-Governed, Never Autonomous','Fixed 1.5% Transparent Fee','Jurisdiction-Aware at Every Step'].map(f=>`
@@ -59,7 +61,7 @@ label{color:rgba(255,255,255,.6);font-size:13px;font-weight:500;margin-bottom:5p
       <img src="/static/brand/sgtx-icon-gold.png" alt="SGTX" class="h-10 w-auto mx-auto mb-4" onerror="this.style.display='none'">
     </div>
 
-    <h1 class="text-2xl font-black text-white mb-1">Welcome back</h1>
+    <h1 class="text-2xl font-black mb-1" style="background:linear-gradient(90deg,#F5EFDC,#F0C420);-webkit-background-clip:text;background-clip:text;color:transparent">Welcome back</h1>
     <p class="text-sm mb-8" style="color:rgba(255,255,255,.4)">Sign in to your organization's trade execution dashboard</p>
 
     <div id="login-error" class="hidden text-sm rounded-xl p-3 mb-5" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5"></div>

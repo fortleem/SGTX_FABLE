@@ -7,11 +7,14 @@ export function registerHTML(): string {
 <title>Register Organization — SGTX</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{font-family:'Inter',system-ui,sans-serif}
-body{background:#0D0D0D;background-image:radial-gradient(circle at 80% 20%,rgba(212,160,23,.06) 0%,transparent 50%)}
-.glass-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.12);border-radius:16px;padding:24px}
+h1,h2,h3,.section-title,.btn-gold{font-family:'Sora','Inter',sans-serif}
+body{background:#0B0B0D;background-image:radial-gradient(900px 500px at 80% -10%,rgba(212,160,23,.08) 0%,transparent 55%),radial-gradient(700px 400px at 0% 100%,rgba(212,160,23,.05) 0%,transparent 50%)}
+.glass-card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(201,168,76,.14);border-radius:18px;padding:24px;position:relative;transition:border-color .25s ease,box-shadow .25s ease}
+.glass-card::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;border-radius:18px 18px 0 0;background:linear-gradient(90deg,transparent 5%,rgba(212,160,23,.3) 50%,transparent 95%)}
+.glass-card:hover{border-color:rgba(212,160,23,.28);box-shadow:0 0 32px rgba(212,160,23,.06)}
 .input-field{background:rgba(255,255,255,.05)!important;border:1px solid rgba(201,168,76,.15)!important;color:white!important;border-radius:10px!important;padding:10px 14px!important;font-size:13px!important;width:100%;transition:all .2s;outline:none}
 .input-field:focus{background:rgba(255,255,255,.07)!important;border-color:rgba(212,160,23,.5)!important;box-shadow:0 0 0 3px rgba(212,160,23,.08)!important}
 .input-field::placeholder{color:rgba(255,255,255,.25)!important}
@@ -36,7 +39,7 @@ label{color:rgba(255,255,255,.6);font-size:12px;font-weight:500;margin-bottom:4p
         <span class="font-black text-2xl" style="color:#D4A017">SGTX</span>
       </div>
     </a>
-    <h1 class="text-2xl font-black text-white mb-2">Register Organization</h1>
+    <h1 class="text-2xl font-black mb-2" style="background:linear-gradient(90deg,#F5EFDC,#F0C420);-webkit-background-clip:text;background-clip:text;color:transparent">Register Organization</h1>
     <p class="text-sm" style="color:rgba(255,255,255,.4)">Create your organization on the Sovereign Trade Execution Infrastructure</p>
   </div>
 
