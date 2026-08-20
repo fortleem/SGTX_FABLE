@@ -652,6 +652,9 @@ export async function evaluateGovernor(db: D1Database, request: GovernorRequest)
   const decision_id = uuid();
   const timestamp = isoNow();
 
+  // Defensive normalization: D1 rejects `undefined` binds — coerce to safe defaults
+  request.actor_gtid = (request.actor_gtid ?? 'SYSTEM') as any;
+
   // ─── Step 0: Replay Protection (Part 1.5.2) ────────────────────────────
   const replayCheck = await validateReplayProtection(
     db, request.nonce, request.request_timestamp, request.actor_gtid, request.decision_type
