@@ -89,6 +89,22 @@ app.get('/portal/:id', (c) => {
 app.get('/trade-request', (c) => c.html(tradeRequestFormHTML()));
 app.get('/seller-quote', (c) => c.html(sellerQuoteFormHTML()));
 
+// ─── COCKPIT CANONICAL ROUTES (Rebuild Phase 0) ──────────
+// URL = source of truth. One trade = one URL = one workspace.
+// All serve the SPA shell; the client router derives state from location.pathname.
+app.get('/join', (c) => c.html(registerHTML()));
+app.get('/home', (c) => c.html(appHTML()));
+app.get('/trades', (c) => c.html(appHTML()));
+app.get('/trades/new', (c) => c.html(appHTML()));
+app.get('/trades/:ref', (c) => c.html(appHTML()));
+app.get('/trades/:ref/:sub', (c) => c.html(appHTML()));
+app.get('/network', (c) => c.html(appHTML()));
+app.get('/finance', (c) => c.html(appHTML()));
+app.get('/trust', (c) => c.html(appHTML()));
+app.get('/admin', (c) => c.html(appHTML()));
+// Deep-linkable legacy screens: /app/<page-id> (refresh/share/back all work)
+app.get('/app/:page', (c) => c.html(appHTML()));
+
 // ─── API Routes ───────────────────────────────────────────
 // Public landing-page stats (no auth)
 app.get('/api/v1/public/stats', async (c) => {
@@ -204,11 +220,23 @@ app.get('/api/v1/stats', async (c) => {
   }});
 });
 
-// Catch-all: redirect unknown routes to landing
+// Catch-all: explicit 404 — deterministic navigation (Cockpit Law 5). Never redirect.
 app.get('/:path{.+}', (c) => {
   const path = c.req.param('path');
   if (path.startsWith('static/') || path.startsWith('api/')) return c.notFound();
-  return c.redirect('/');
+  return c.html(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>404 — SGTX</title><script src="https://cdn.tailwindcss.com"></script></head>
+<body style="background:#0D0D0D;color:#fff;font-family:Inter,system-ui,sans-serif" class="min-h-screen flex items-center justify-center p-6">
+<main class="text-center max-w-md">
+  <p class="text-6xl font-bold" style="color:#D4A017">404</p>
+  <h1 class="text-xl font-semibold mt-4">This page does not exist</h1>
+  <p class="mt-2 text-sm" style="color:rgba(255,255,255,.5)">The route <code style="color:#C9A84C">/${path}</code> is not part of SGTX. Nothing was redirected.</p>
+  <nav class="mt-6 flex gap-3 justify-center">
+    <a href="/home" class="px-4 py-2 rounded-lg text-sm font-semibold" style="background:linear-gradient(135deg,#D4A017,#C9A84C);color:#0D0D0D">Go to Home</a>
+    <a href="/login" class="px-4 py-2 rounded-lg text-sm" style="border:1px solid rgba(255,255,255,.2)">Sign in</a>
+  </nav>
+</main></body></html>`, 404);
 });
 
 export default app;

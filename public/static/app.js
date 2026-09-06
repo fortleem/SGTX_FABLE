@@ -325,10 +325,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       defaultPortal = TENANT_DEFAULT_PORTAL[tenant.type] || available[0] || 'dashboard';
     }
     document.getElementById('portal-select').value = defaultPortal;
-    switchPortal(defaultPortal);
+    // URL = source of truth: honour the address bar instead of a hardcoded default page
+    preparePortal(defaultPortal);
+    applyRoute(parseRoute(location.pathname), { noPush: true });
   } else {
-    buildPortalSelector();
-    switchPortal('dashboard');
+    // Canonical app routes are auth-gated: unauthenticated → login
+    location.href = '/login';
+    return;
   }
 });
 
@@ -377,6 +380,16 @@ function switchPortal(portal) {
   navigate('smart-inbox');
 }
 
+// Portal switch without forcing a page change (used at boot so the URL wins)
+function preparePortal(portal) {
+  currentPortal = portal;
+  const modeSwitcher = document.getElementById('mode-switcher');
+  if (modeSwitcher) {
+    modeSwitcher.classList.toggle('hidden', !((tenant?.type === 'CORPORATE' || tenant?.type === 'TRD') && portal === 'trader'));
+  }
+  renderNavigation(portalMenus[portal] || portalMenus.dashboard);
+}
+
 function renderNavigation(items) {
   const nav = document.getElementById('nav-items');
   nav.innerHTML = items.filter(item => {
@@ -413,8 +426,41 @@ function updateModeToggle() {
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────
-function navigate(page) {
+// COCKPIT ROUTER — URL = source of truth. One trade = one URL = one workspace.
+const CANONICAL_URLS = {
+  'smart-inbox': '/home',
+  'trade-command': '/trades',
+  'new-trade': '/trades/new',
+  'contacts': '/network',
+  'financing': '/finance',
+  'governor': '/trust',
+  'dashboard': '/admin',
+};
+
+function parseRoute(pathname) {
+  if (pathname === '/' || pathname === '/app' || pathname === '/home') return { kind: 'page', page: 'smart-inbox' };
+  if (pathname === '/trades') return { kind: 'page', page: 'trade-command' };
+  if (pathname === '/trades/new') return { kind: 'page', page: 'new-trade' };
+  let m = pathname.match(/^\/trades\/([^\/]+)(?:\/([a-z0-9-]+))?$/);
+  if (m) return { kind: 'trade', ref: decodeURIComponent(m[1]), sub: m[2] || null };
+  if (pathname === '/network') return { kind: 'page', page: 'contacts' };
+  if (pathname === '/finance') return { kind: 'page', page: 'financing' };
+  if (pathname === '/trust') return { kind: 'page', page: 'governor' };
+  if (pathname === '/admin') return { kind: 'page', page: 'dashboard' };
+  m = pathname.match(/^\/app\/([a-z0-9-]+)$/);
+  if (m) return { kind: 'page', page: m[1] };
+  if (/^\/portal\//.test(pathname)) return { kind: 'page', page: 'smart-inbox' }; // legacy entrance, live until cutover
+  return { kind: 'notfound', path: pathname };
+}
+
+function urlForPage(page) { return CANONICAL_URLS[page] || ('/app/' + page); }
+
+function navigate(page, opts = {}) {
   currentPage = page;
+  if (!opts.noPush) {
+    const url = urlForPage(page);
+    if (location.pathname !== url) history.pushState({ page }, '', url);
+  }
   // Update active state
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.getAttribute('onclick')?.includes(`'${page}'`));
@@ -422,6 +468,32 @@ function navigate(page) {
   loadPage(page);
 }
 var navigateTo = navigate; // alias used by inline onclick handlers
+
+// One trade = one URL = one workspace
+function openTrade(ref, sub, opts = {}) {
+  const url = '/trades/' + encodeURIComponent(ref) + (sub ? '/' + sub : '');
+  if (!opts.noPush && location.pathname !== url) history.pushState({ trade: ref, sub }, '', url);
+  currentPage = 'trade-workspace';
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick')?.includes("'trade-command'"));
+  });
+  loadTradeWorkspace(ref, sub);
+}
+
+function applyRoute(route, opts = {}) {
+  if (route.kind === 'trade') return openTrade(route.ref, route.sub, { noPush: true });
+  if (route.kind === 'notfound') {
+    document.getElementById('content').innerHTML = renderRouteNotFound(route.path);
+    setTitle('Not Found', '');
+    return;
+  }
+  navigate(route.page, { noPush: true });
+}
+
+// Back / forward buttons resolve deterministically
+window.addEventListener('popstate', () => {
+  applyRoute(parseRoute(location.pathname), { noPush: true });
+});
 
 async function loadPage(page) {
   const content = document.getElementById('content');
@@ -435,11 +507,91 @@ async function loadPage(page) {
     if (renderer) {
       await renderer();
     } else {
-      content.innerHTML = renderComingSoon(page);
+      // Deterministic navigation: unknown page = explicit 404 view, never a fallback.
+      content.innerHTML = renderRouteNotFound('/app/' + page);
+      setTitle('Not Found', '');
     }
   } catch(e) {
     content.innerHTML = renderError(e.message);
   }
+}
+
+// ─── TRADE WORKSPACE LOADER (Phase 0 seed — real data or honest 404) ───
+async function loadTradeWorkspace(ref, sub) {
+  const content = document.getElementById('content');
+  content.innerHTML = shimmerLoader();
+  try {
+    let res = await api(`/trades/${encodeURIComponent(ref)}`);
+    let trade = res && res.data && !res.error ? res.data : null;
+    let shipment = null;
+    if (!trade) {
+      // ref may be a USTN — resolve via shipments namespace
+      const ships = await api('/shipments');
+      const list = (ships && (ships.data || ships.results)) || [];
+      shipment = list.find(s => s.ustn === ref || s.anonymous_ustn === ref) || null;
+      if (shipment && shipment.trade_request_id) {
+        res = await api(`/trades/${shipment.trade_request_id}`);
+        trade = res && res.data && !res.error ? res.data : null;
+      }
+    }
+    if (!trade) {
+      content.innerHTML = renderRouteNotFound('/trades/' + ref);
+      setTitle('Trade Not Found', ref);
+      return;
+    }
+    renderTradeWorkspaceView(trade, shipment, ref, sub);
+  } catch(e) {
+    content.innerHTML = renderError(e.message);
+  }
+}
+
+function renderTradeWorkspaceView(t, shipment, ref, sub) {
+  const content = document.getElementById('content');
+  let specs = {};
+  try { specs = typeof t.parsed_specs === 'string' ? JSON.parse(t.parsed_specs || '{}') : (t.parsed_specs || {}); } catch(e) {}
+  const quotes = t.quotes || [];
+  const contracts = t.contracts || [];
+  setTitle('Trade Workspace', ref);
+  content.innerHTML = `
+  <div class="space-y-4 animate-fade-in" id="trade-workspace">
+    <header class="sgtx-card p-5">
+      <div class="flex flex-wrap items-center gap-3">
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-surface-400">Trade</div>
+          <h1 class="text-lg font-bold font-mono" style="color:#D4A017">${shipment?.ustn || t.id}</h1>
+        </div>
+        <div class="ml-auto flex items-center gap-2">${badge(t.status)}</div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs">
+        <div><div class="text-surface-400">Buyer</div><div class="font-semibold text-surface-800">${t.importer_name || '—'}</div><div class="font-mono text-[10px] text-surface-400">${t.importer_gtid || ''}</div></div>
+        <div><div class="text-surface-400">Seller</div><div class="font-semibold text-surface-800">${t.exporter_name || 'Not assigned'}</div><div class="font-mono text-[10px] text-surface-400">${t.exporter_gtid || ''}</div></div>
+        <div><div class="text-surface-400">Commodity</div><div class="font-semibold text-surface-800">${specs.commodity || specs.product || (t.raw_description || '').slice(0,40) || '—'}</div></div>
+        <div><div class="text-surface-400">Created</div><div class="font-semibold text-surface-800">${time(t.created_at)}</div></div>
+      </div>
+    </header>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section class="lg:col-span-2 space-y-4">
+        <div class="sgtx-card p-5">
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-file-invoice-dollar mr-2" style="color:#D4A017"></i>Quotes (${quotes.length})</h2>
+          ${quotes.length ? quotes.map(q => `<div class="flex items-center justify-between py-2 border-b border-surface-100 text-xs"><span class="font-mono">${(q.id||'').slice(0,8)}</span><span>${q.incoterm || ''} ${usd(q.exw_price)}</span>${badge(q.status || 'SUBMITTED')}</div>`).join('') : '<p class="text-xs text-surface-400">No quotes yet for this trade.</p>'}
+        </div>
+        <div class="sgtx-card p-5">
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-file-signature mr-2" style="color:#D4A017"></i>Contracts (${contracts.length})</h2>
+          ${contracts.length ? contracts.map(ct => `<div class="flex items-center justify-between py-2 border-b border-surface-100 text-xs"><span class="font-mono">${(ct.id||'').slice(0,8)}</span><span>${ct.incoterm || ''}</span>${badge(ct.status || 'DRAFT')}</div>`).join('') : '<p class="text-xs text-surface-400">No contract yet for this trade.</p>'}
+        </div>
+      </section>
+      <aside class="space-y-4">
+        <div class="sgtx-card p-5">
+          <h2 class="text-sm font-bold text-surface-800 mb-3">Shipment</h2>
+          ${shipment ? `<div class="text-xs space-y-2"><div class="flex justify-between"><span class="text-surface-400">USTN</span><span class="font-mono">${shipment.ustn}</span></div><div class="flex justify-between"><span class="text-surface-400">Status</span>${badge(shipment.status || '—')}</div></div>` : '<p class="text-xs text-surface-400">No shipment linked yet.</p>'}
+        </div>
+        <div class="sgtx-card p-5">
+          <h2 class="text-sm font-bold text-surface-800 mb-3">Channel</h2>
+          ${t.channel ? `<p class="text-xs text-surface-600">Secure trade channel active.</p>` : '<p class="text-xs text-surface-400">No channel opened.</p>'}
+        </div>
+      </aside>
+    </div>
+  </div>`;
 }
 
 // ─── PAGE RENDERER REGISTRY ──────────────────────────────
@@ -598,15 +750,15 @@ function shimmerLoader() {
   </div>`;
 }
 
-function renderComingSoon(page) {
-  return `<div class="flex flex-col items-center justify-center h-96 text-center">
+function renderRouteNotFound(path) {
+  return `<div class="flex flex-col items-center justify-center h-96 text-center" role="alert">
     <div class="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style="background:rgba(212,160,23,.1);border:1px solid rgba(212,160,23,.2)">
-      <i class="fas fa-rocket text-3xl" style="color:#D4A017"></i>
+      <span class="text-2xl font-bold" style="color:#D4A017">404</span>
     </div>
-    <h2 class="text-xl font-bold text-surface-800 mb-2">Coming Soon</h2>
-    <p class="text-sm text-surface-400 max-w-md">The <span class="font-semibold" style="color:#D4A017">${page}</span> module is under development. Check back soon for updates.</p>
+    <h2 class="text-xl font-bold text-surface-800 mb-2">This screen does not exist</h2>
+    <p class="text-sm text-surface-400 max-w-md"><span class="font-mono" style="color:#D4A017">${path}</span> is not a valid SGTX destination.</p>
     <div class="mt-6 flex gap-3">
-      <button onclick="navigate('smart-inbox')" class="btn-primary text-xs px-4 py-2">Back to Inbox</button>
+      <button onclick="navigate('smart-inbox')" class="btn-primary text-xs px-4 py-2">Go to Home</button>
     </div>
   </div>`;
 }
