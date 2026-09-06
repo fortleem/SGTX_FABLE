@@ -53,6 +53,8 @@ import traderPortal from './routes/trader_portal';
 // Seller Workflow: Gap closure bridge routes, AI integration, trade actions, finance endpoints
 import sellerWorkflow from './routes/seller_workflow';
 import worldTrade from './routes/world_trade';
+import addonsV13 from './routes/addons_v13';
+import brainRoutes from './routes/brain';
 import type { Bindings } from './lib/types';
 import { landingPageHTML } from './pages/landing';
 import { appHTML } from './pages/app';
@@ -157,6 +159,10 @@ app.route('/api/v1', sellerWorkflow);
 app.route('/api/v1', constitution);
 // World Trade Intelligence Module (Gemini AI + AIS + indices)
 app.route('/api/v1', worldTrade);
+// v13.1 Blueprint: Add-Ons 9-28 (Demurrage, Broker, Valuation, Cold Chain, FTA, Insurance, LC, FM, GRiRE, ...)
+app.route('/api/v1', addonsV13);
+// SGTX Brain: multi-provider AI consensus orchestration (advisory-only per A-02/A-17)
+app.route('/api/v1', brainRoutes);
 
 // ─── Health & Stats ───────────────────────────────────────
 app.get('/api/health', (c) => c.json({
