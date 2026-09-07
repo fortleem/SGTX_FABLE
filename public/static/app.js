@@ -626,51 +626,187 @@ async function loadTradeWorkspace(ref, sub) {
   }
 }
 
+// ─── EXPERT MODE (Cockpit Law 6): global Operational ⇄ Expert toggle ───
+let expertMode = localStorage.getItem('sgtx_expert_mode') === '1';
+function toggleExpertMode() {
+  expertMode = !expertMode;
+  localStorage.setItem('sgtx_expert_mode', expertMode ? '1' : '0');
+  // Re-render current view
+  applyRoute(parseRoute(location.pathname), { noPush: true });
+}
+
+// ─── TIER 1: what must the user do RIGHT NOW for this trade ───
+function computeNextAction(t, quotes, contracts, shipment) {
+  const isBuyer = tenant && (t.importer_tenant_id === tenant.id);
+  const isSeller = tenant && (t.assigned_exporter_id === tenant.id || t.exporter_tenant_id === tenant.id);
+  const s = t.status;
+  if (s === 'DRAFT') return { title: 'Complete this trade request', desc: 'The request is a draft. Finish and submit it to invite quotes.', cta: 'Continue draft', action: `navigate('new-trade')` };
+  if (s === 'PENDING_EXPORTER_RESPONSE') {
+    if (isSeller) return { title: 'Respond to this trade request', desc: 'The buyer is waiting for your quote.', cta: 'Submit quote', action: `navigate('quote-submit')` };
+    return { title: 'Waiting for seller response', desc: 'The assigned seller has been notified. No action needed from you yet.', cta: null };
+  }
+  if (s === 'QUOTE_SUBMITTED' || s === 'QUOTED') {
+    if (isBuyer) return { title: 'Review the submitted quote', desc: `${quotes.length} quote${quotes.length===1?'':'s'} awaiting your decision.`, cta: 'Review quotes', action: `navigate('quote-review')` };
+    return { title: 'Quote submitted — awaiting buyer', desc: 'Your quote is with the buyer. You will be notified of their decision.', cta: null };
+  }
+  if (s === 'NEGOTIATING' || s === 'COUNTER_OFFER') return { title: 'Negotiation in progress', desc: 'Respond to the latest counter-offer.', cta: 'Open negotiation', action: `navigate('contract-signing')` };
+  if (s === 'CONTRACTED' || contracts.some(c => c.status === 'LOCKED')) {
+    if (!shipment) return { title: 'Arrange shipment', desc: 'Contract is locked. Logistics booking is the next step.', cta: 'Open logistics', action: `navigate('logistics-builder')` };
+    return { title: 'Track shipment', desc: `Shipment ${shipment.ustn} is ${shipment.status || 'active'}.`, cta: 'View shipments', action: `navigate('shipments-vault')` };
+  }
+  if (s === 'CANCELLED' || s === 'REJECTED') return { title: 'This trade is closed', desc: `Status: ${s}. No further action available.`, cta: null };
+  return { title: 'Trade in progress', desc: `Current status: ${s}.`, cta: null };
+}
+
+// ─── TIER 3: blockers — real conditions only, never fabricated ───
+function computeBlockers(t, quotes, contracts, shipment) {
+  const blockers = [];
+  if (!t.exporter_name && !t.assigned_exporter_id) blockers.push({ level: 'warn', text: 'No seller assigned to this trade yet.' });
+  if ((t.status === 'QUOTE_SUBMITTED' || t.status === 'QUOTED') && !contracts.length) blockers.push({ level: 'info', text: 'Quote awaiting decision — no contract exists yet.' });
+  if (contracts.some(c => c.status === 'LOCKED') && !shipment) blockers.push({ level: 'warn', text: 'Contract locked but no shipment created.' });
+  if (t.governor_decision_id === null && t.status !== 'DRAFT') blockers.push({ level: 'info', text: 'No Governor decision recorded for creation.' });
+  return blockers;
+}
+
+function tradeLifecycleSteps(t, quotes, contracts, shipment) {
+  const stages = ['Request', 'Quote', 'Contract', 'Shipment', 'Settlement'];
+  let reached = 0;
+  if (t.status !== 'DRAFT') reached = 1;
+  if (quotes.length) reached = 2;
+  if (contracts.length) reached = 3;
+  if (shipment) reached = 4;
+  if (shipment && shipment.status === 'DELIVERED') reached = 5;
+  return stages.map((s, i) => ({ label: s, done: i < reached, current: i === reached }));
+}
+
 function renderTradeWorkspaceView(t, shipment, ref, sub) {
   const content = document.getElementById('content');
   let specs = {};
   try { specs = typeof t.parsed_specs === 'string' ? JSON.parse(t.parsed_specs || '{}') : (t.parsed_specs || {}); } catch(e) {}
   const quotes = t.quotes || [];
   const contracts = t.contracts || [];
+  const next = computeNextAction(t, quotes, contracts, shipment);
+  const blockers = computeBlockers(t, quotes, contracts, shipment);
+  const steps = tradeLifecycleSteps(t, quotes, contracts, shipment);
+  const activeTab = sub || 'overview';
   setTitle('Trade Workspace', ref);
+
+  const tabBtn = (id, label, icon) => `<button role="tab" aria-selected="${activeTab===id}" onclick="openTrade('${ref}', '${id}')" class="px-3 py-2 text-xs font-semibold rounded-lg transition-colors" style="${activeTab===id ? 'background:rgba(212,160,23,.15);color:#D4A017' : 'color:rgba(120,120,130,1)'}"><i class="fas ${icon} mr-1.5"></i>${label}</button>`;
+
   content.innerHTML = `
   <div class="space-y-4 animate-fade-in" id="trade-workspace">
+    <!-- HEADER: identity + status + expert toggle -->
     <header class="sgtx-card p-5">
       <div class="flex flex-wrap items-center gap-3">
         <div>
           <div class="text-[10px] uppercase tracking-wider text-surface-400">Trade</div>
           <h1 class="text-lg font-bold font-mono" style="color:#D4A017">${shipment?.ustn || t.id}</h1>
         </div>
-        <div class="ml-auto flex items-center gap-2">${badge(t.status)}</div>
+        <div class="ml-auto flex items-center gap-3">
+          ${badge(t.status)}
+          <button onclick="toggleExpertMode()" aria-pressed="${expertMode}" class="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg" style="${expertMode ? 'background:linear-gradient(135deg,#D4A017,#C9A84C);color:#0D0D0D' : 'border:1px solid rgba(120,120,130,.3);color:rgba(120,120,130,1)'}">
+            <i class="fas fa-microscope mr-1"></i>${expertMode ? 'Expert Mode' : 'Operational'}
+          </button>
+        </div>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs">
+      <!-- lifecycle progress -->
+      <div class="flex items-center gap-1 mt-4" aria-label="Trade lifecycle progress">
+        ${steps.map(s => `<div class="flex-1"><div class="h-1.5 rounded-full" style="background:${s.done ? '#D4A017' : s.current ? 'rgba(212,160,23,.4)' : 'rgba(120,120,130,.15)'}"></div><div class="text-[9px] mt-1 ${s.current ? 'font-bold' : ''}" style="color:${s.done || s.current ? '#D4A017' : 'rgba(120,120,130,.6)'}">${s.label}</div></div>`).join('')}
+      </div>
+    </header>
+
+    <!-- TIER 1: NEXT ACTION — always dominant -->
+    <section class="sgtx-card p-5" style="border:1px solid rgba(212,160,23,.35);background:linear-gradient(135deg,rgba(212,160,23,.06),transparent)" aria-label="Next action">
+      <div class="flex items-start gap-4">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><i class="fas fa-bolt" style="color:#0D0D0D"></i></div>
+        <div class="flex-1">
+          <div class="text-[10px] uppercase tracking-wider font-bold" style="color:#D4A017">Next Action</div>
+          <h2 class="text-base font-bold text-surface-800 mt-0.5">${next.title}</h2>
+          <p class="text-xs text-surface-400 mt-1">${next.desc}</p>
+        </div>
+        ${next.cta ? `<button onclick="${next.action}" class="btn-primary text-xs px-4 py-2.5 shrink-0">${next.cta} <i class="fas fa-arrow-right ml-1"></i></button>` : ''}
+      </div>
+    </section>
+
+    <!-- TIER 3: BLOCKERS (only if real) -->
+    ${blockers.length ? `<section class="space-y-2" aria-label="Blockers">${blockers.map(b => `
+      <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs" style="background:${b.level==='warn'?'rgba(245,158,11,.08)':'rgba(120,120,130,.08)'};border:1px solid ${b.level==='warn'?'rgba(245,158,11,.25)':'rgba(120,120,130,.15)'}">
+        <i class="fas ${b.level==='warn'?'fa-triangle-exclamation':'fa-circle-info'}" style="color:${b.level==='warn'?'#f59e0b':'rgba(120,120,130,1)'}"></i>
+        <span class="text-surface-600">${b.text}</span>
+      </div>`).join('')}</section>` : ''}
+
+    <!-- TIER 2: SUMMARY -->
+    <section class="sgtx-card p-5" aria-label="Trade summary">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
         <div><div class="text-surface-400">Buyer</div><div class="font-semibold text-surface-800">${t.importer_name || '—'}</div><div class="font-mono text-[10px] text-surface-400">${t.importer_gtid || ''}</div></div>
         <div><div class="text-surface-400">Seller</div><div class="font-semibold text-surface-800">${t.exporter_name || 'Not assigned'}</div><div class="font-mono text-[10px] text-surface-400">${t.exporter_gtid || ''}</div></div>
         <div><div class="text-surface-400">Commodity</div><div class="font-semibold text-surface-800">${specs.commodity || specs.product || (t.raw_description || '').slice(0,40) || '—'}</div></div>
         <div><div class="text-surface-400">Created</div><div class="font-semibold text-surface-800">${time(t.created_at)}</div></div>
       </div>
-    </header>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <section class="lg:col-span-2 space-y-4">
-        <div class="sgtx-card p-5">
-          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-file-invoice-dollar mr-2" style="color:#D4A017"></i>Quotes (${quotes.length})</h2>
-          ${quotes.length ? quotes.map(q => `<div class="flex items-center justify-between py-2 border-b border-surface-100 text-xs"><span class="font-mono">${(q.id||'').slice(0,8)}</span><span>${q.incoterm || ''} ${usd(q.exw_price)}</span>${badge(q.status || 'SUBMITTED')}</div>`).join('') : '<p class="text-xs text-surface-400">No quotes yet for this trade.</p>'}
-        </div>
-        <div class="sgtx-card p-5">
-          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-file-signature mr-2" style="color:#D4A017"></i>Contracts (${contracts.length})</h2>
-          ${contracts.length ? contracts.map(ct => `<div class="flex items-center justify-between py-2 border-b border-surface-100 text-xs"><span class="font-mono">${(ct.id||'').slice(0,8)}</span><span>${ct.incoterm || ''}</span>${badge(ct.status || 'DRAFT')}</div>`).join('') : '<p class="text-xs text-surface-400">No contract yet for this trade.</p>'}
-        </div>
-      </section>
-      <aside class="space-y-4">
-        <div class="sgtx-card p-5">
-          <h2 class="text-sm font-bold text-surface-800 mb-3">Shipment</h2>
-          ${shipment ? `<div class="text-xs space-y-2"><div class="flex justify-between"><span class="text-surface-400">USTN</span><span class="font-mono">${shipment.ustn}</span></div><div class="flex justify-between"><span class="text-surface-400">Status</span>${badge(shipment.status || '—')}</div></div>` : '<p class="text-xs text-surface-400">No shipment linked yet.</p>'}
-        </div>
-        <div class="sgtx-card p-5">
-          <h2 class="text-sm font-bold text-surface-800 mb-3">Channel</h2>
-          ${t.channel ? `<p class="text-xs text-surface-600">Secure trade channel active.</p>` : '<p class="text-xs text-surface-400">No channel opened.</p>'}
-        </div>
-      </aside>
+    </section>
+
+    <!-- TIER 4: DETAIL TABS (drawer pattern) -->
+    <nav class="flex gap-1 flex-wrap" role="tablist" aria-label="Trade detail sections">
+      ${tabBtn('overview','Overview','fa-table-cells-large')}
+      ${tabBtn('quotes',`Quotes (${quotes.length})`,'fa-file-invoice-dollar')}
+      ${tabBtn('contracts',`Contracts (${contracts.length})`,'fa-file-signature')}
+      ${tabBtn('shipment','Shipment','fa-ship')}
+      ${expertMode ? tabBtn('expert','Technical','fa-code') : ''}
+    </nav>
+    <section role="tabpanel" id="trade-tab-panel">${renderTradeTab(activeTab, t, specs, quotes, contracts, shipment)}</section>
+  </div>`;
+}
+
+function renderTradeTab(tab, t, specs, quotes, contracts, shipment) {
+  if (tab === 'quotes') {
+    return `<div class="sgtx-card p-5">${quotes.length ? quotes.map(q => `
+      <div class="flex items-center justify-between py-2.5 border-b border-surface-100 text-xs">
+        <span class="font-mono text-surface-400">${(q.id||'').slice(0,8)}</span>
+        <span class="font-semibold text-surface-800">${q.incoterm || ''} ${usd(q.exw_price)}</span>
+        <span class="text-surface-400">${timeAgo(q.created_at)}</span>
+        ${badge(q.status || 'SUBMITTED')}
+      </div>`).join('') : '<p class="text-xs text-surface-400 py-6 text-center">No quotes have been submitted for this trade.</p>'}</div>`;
+  }
+  if (tab === 'contracts') {
+    return `<div class="sgtx-card p-5">${contracts.length ? contracts.map(ct => `
+      <div class="flex items-center justify-between py-2.5 border-b border-surface-100 text-xs">
+        <span class="font-mono text-surface-400">${(ct.id||'').slice(0,8)}</span>
+        <span class="font-semibold text-surface-800">${ct.incoterm || ''} ${ct.total_value != null ? usd(ct.total_value) : ''}</span>
+        <span class="text-surface-400">${timeAgo(ct.created_at)}</span>
+        ${badge(ct.status || 'DRAFT')}
+      </div>`).join('') : '<p class="text-xs text-surface-400 py-6 text-center">No contract exists for this trade yet.</p>'}</div>`;
+  }
+  if (tab === 'shipment') {
+    return `<div class="sgtx-card p-5">${shipment ? `
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        <div><div class="text-surface-400">USTN</div><div class="font-mono font-semibold text-surface-800">${shipment.ustn}</div></div>
+        <div><div class="text-surface-400">Status</div>${badge(shipment.status || '—')}</div>
+        <div><div class="text-surface-400">Mode</div><div class="font-semibold text-surface-800">${shipment.transport_mode || '—'}</div></div>
+        <div><div class="text-surface-400">ETA</div><div class="font-semibold text-surface-800">${shipment.eta ? time(shipment.eta) : '—'}</div></div>
+      </div>` : '<p class="text-xs text-surface-400 py-6 text-center">No shipment has been created for this trade.</p>'}</div>`;
+  }
+  if (tab === 'expert') {
+    // TIER 5 — technical internals, Expert Mode only
+    return `<div class="sgtx-card p-5 space-y-3 text-xs">
+      <div><div class="text-surface-400 font-bold mb-1">Trade request record</div><pre class="font-mono text-[10px] p-3 rounded-lg overflow-x-auto" style="background:rgba(0,0,0,.25);color:rgba(212,160,23,.85)">${JSON.stringify({ id: t.id, status: t.status, importer_tenant_id: t.importer_tenant_id, assigned_exporter_id: t.assigned_exporter_id, governor_decision_id: t.governor_decision_id, incoterm: t.incoterm, transport_mode: t.transport_mode, created_at: t.created_at, updated_at: t.updated_at }, null, 2)}</pre></div>
+      <div><div class="text-surface-400 font-bold mb-1">Parsed specifications</div><pre class="font-mono text-[10px] p-3 rounded-lg overflow-x-auto" style="background:rgba(0,0,0,.25);color:rgba(212,160,23,.85)">${JSON.stringify(specs, null, 2)}</pre></div>
+      ${t.channel ? `<div><div class="text-surface-400 font-bold mb-1">Trade channel</div><pre class="font-mono text-[10px] p-3 rounded-lg overflow-x-auto" style="background:rgba(0,0,0,.25);color:rgba(212,160,23,.85)">${JSON.stringify(t.channel, null, 2)}</pre></div>` : ''}
+    </div>`;
+  }
+  // overview (default)
+  return `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="sgtx-card p-5">
+      <h3 class="text-sm font-bold text-surface-800 mb-3">Request</h3>
+      <p class="text-xs text-surface-600 leading-relaxed">${t.raw_description || 'No description recorded.'}</p>
+      ${Object.keys(specs).length ? `<div class="mt-3 grid grid-cols-2 gap-2 text-xs">${Object.entries(specs).slice(0,8).map(([k,v]) => `<div><span class="text-surface-400">${k}:</span> <span class="font-semibold text-surface-800">${typeof v === 'object' ? JSON.stringify(v) : v}</span></div>`).join('')}</div>` : ''}
+    </div>
+    <div class="sgtx-card p-5">
+      <h3 class="text-sm font-bold text-surface-800 mb-3">Channel & Governance</h3>
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-surface-400">Secure channel</span><span class="font-semibold text-surface-800">${t.channel ? 'Active' : 'Not opened'}</span></div>
+        <div class="flex justify-between"><span class="text-surface-400">Governor decision</span><span class="font-mono text-[10px] text-surface-800">${t.governor_decision_id ? t.governor_decision_id.slice(0,13) + '…' : 'None recorded'}</span></div>
+        <div class="flex justify-between"><span class="text-surface-400">Incoterm</span><span class="font-semibold text-surface-800">${t.incoterm || '—'}</span></div>
+      </div>
     </div>
   </div>`;
 }
