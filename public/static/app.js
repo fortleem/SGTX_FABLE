@@ -390,24 +390,109 @@ function preparePortal(portal) {
   renderNavigation(portalMenus[portal] || portalMenus.dashboard);
 }
 
-function renderNavigation(items) {
-  const nav = document.getElementById('nav-items');
-  nav.innerHTML = items.filter(item => {
-    // Filter by mode for trader portal
-    if (item.mode && currentPortal === 'trader') {
-      return item.mode === currentMode || !item.mode;
+// ─── COCKPIT IA (Rebuild Phase 1): ≤7 nav groups, progressive disclosure ───
+// Every legacy tab maps to exactly one cockpit group (see docs/COCKPIT_MAPPING.md).
+const COCKPIT_GROUPS = [
+  { id: 'home',       label: 'Home',       icon: 'fa-bolt' },
+  { id: 'trades',     label: 'Trades',     icon: 'fa-arrows-left-right' },
+  { id: 'operations', label: 'Operations', icon: 'fa-ship' },
+  { id: 'money',      label: 'Money',      icon: 'fa-coins' },
+  { id: 'trust',      label: 'Trust',      icon: 'fa-shield-halved' },
+  { id: 'network',    label: 'Network',    icon: 'fa-users' },
+  { id: 'admin',      label: 'Admin',      icon: 'fa-gear' },
+];
+
+const PAGE_GROUP = {
+  // Home — what needs my attention now
+  'smart-inbox':'home',
+  // Trades — the trade lifecycle (request → quote → contract)
+  'trade-command':'trades','new-trade':'trades','quote-review':'trades','contract-signing':'trades',
+  'negotiation':'trades','pending-requests':'trades','quote-submit':'trades','distressed-buy':'trades',
+  'distressed-sell':'trades','rfq-inbox':'trades',
+  // Operations — physical movement, inspection, testing, documents
+  'shipments-vault':'operations','customs-readiness':'operations','containerisation':'operations',
+  'logistics-builder':'operations','lab-selection':'operations','qc-booking':'operations',
+  'doc-finalisation':'operations','barcode-print':'operations','logistics-dashboard':'operations',
+  'booking-requests':'operations','dispatch-planner':'operations','active-shipments':'operations',
+  'doc-verification':'operations','performance-dash':'operations','ebl-management':'operations',
+  'qc-dashboard':'operations','inspection-queue':'operations','aql-enforcement':'operations',
+  'ar-inspection':'operations','qc-reports':'operations','qc-performance':'operations',
+  'ship-dashboard':'operations','ship-booking-requests':'operations','ship-ebl':'operations',
+  'ship-vessel-schedule':'operations','ship-performance':'operations','lab-dashboard':'operations',
+  'lab-testing-jobs':'operations','lab-results':'operations','lab-certificates':'operations',
+  'lab-performance':'operations',
+  // Money — pricing, financing, settlement
+  'financing':'money','cash-position':'money','exw-price-lock':'money','financier-dashboard':'money',
+  'financing-opportunities':'money','full-disclosure':'money','bidding':'money','collateral-monitor':'money',
+  'defi-tab':'money','secondary-market':'money','financed-companies':'money','settlements':'money',
+  'ship-freight-invoices':'money','ship-contract-rates':'money','lab-invoices':'money',
+  // Trust — governance, compliance, disputes, jurisdictions
+  'governor':'trust','disputes':'trust','override-log':'trust','jurisdictions':'trust',
+  'gov-dashboard':'trust','live-trade-monitor':'trust','anonymous-trade':'trust','multi-agency':'trust',
+  'gov-docs':'trust','gov-audit':'trust','gov-jurisdictions':'trust','gov-compliance':'trust',
+  'gov-permits':'trust','customs-api':'trust',
+  // Network — counterparties, market intelligence, integrations
+  'contacts':'network','world-trade':'network','mp-dashboard':'network','lead-management':'network',
+  'api-keys':'network','webhooks':'network','sandbox-env':'network','usage-analytics':'network',
+  'revenue-attribution':'network',
+  // Admin — platform machinery (PLATFORM_ADMIN) or own-company admin (tenants)
+  'dashboard':'admin','tenants':'admin','admin-health':'admin','constitutional':'admin',
+  'governor-log':'admin','jurisdiction-matrix':'admin','psp-manager':'admin','special-rates':'admin',
+  'impersonation':'admin','marketplace-partners':'admin','incidents':'admin','config-history':'admin',
+  'customer-care':'admin','company-admin':'admin',
+};
+
+function isPlatformAdmin() {
+  return employee?.role === 'PLATFORM_ADMIN' || employee?.role === 'ADMIN';
+}
+
+// Bucket the current portal's screens into the ≤7 cockpit groups
+function buildCockpitNav(items) {
+  const buckets = {};
+  items.filter(item => {
+    if (item.section) return false;
+    if (item.mode && currentPortal === 'trader') return item.mode === currentMode;
+    return true;
+  }).forEach(item => {
+    const g = PAGE_GROUP[item.id] || 'home';
+    (buckets[g] = buckets[g] || []).push(item);
+  });
+  return COCKPIT_GROUPS.filter(g => {
+    if (!buckets[g.id] || !buckets[g.id].length) return false;
+    // Admin machinery invisible to tenants: platform screens require PLATFORM_ADMIN;
+    // tenants keep only their own company admin under this group.
+    if (g.id === 'admin' && !isPlatformAdmin()) {
+      buckets[g.id] = buckets[g.id].filter(i => i.id === 'company-admin');
+      return buckets[g.id].length > 0;
     }
     return true;
-  }).map(item => {
-    if (item.section) {
-      return `<div class="nav-section">${item.section}</div>`;
-    }
-    const isActive = currentPage === item.id;
-    return `<div class="nav-item${isActive ? ' active' : ''}" onclick="navigate('${item.id}')">
-      <i class="fas ${item.icon} w-4 text-center text-[11px]"></i>
-      <span class="flex-1">${item.label}</span>
-      ${item.badge ? '<span class="w-2 h-2 rounded-full animate-pulse-slow" style="background:#D4A017"></span>' : ''}
+  }).map(g => ({ ...g, children: buckets[g.id] }));
+}
+
+function activeGroupId() {
+  if (currentPage === 'trade-workspace') return 'trades';
+  return PAGE_GROUP[currentPage] || 'home';
+}
+
+function renderNavigation(items) {
+  const nav = document.getElementById('nav-items');
+  const groups = buildCockpitNav(items);
+  const active = activeGroupId();
+  nav.innerHTML = groups.map(g => {
+    const isActive = g.id === active;
+    const primary = g.children[0];
+    const head = `<div class="nav-item${isActive ? ' active' : ''}" role="link" aria-current="${isActive ? 'page' : 'false'}" onclick="navigate('${primary.id}')">
+      <i class="fas ${g.icon} w-4 text-center text-[11px]"></i>
+      <span class="flex-1 font-semibold">${g.label}</span>
+      ${g.children.some(c => c.badge) ? '<span class="w-2 h-2 rounded-full animate-pulse-slow" style="background:#D4A017"></span>' : ''}
+      ${g.children.length > 1 ? `<i class="fas fa-chevron-${isActive ? 'down' : 'right'} text-[9px]" style="color:rgba(255,255,255,.25)"></i>` : ''}
     </div>`;
+    // Progressive disclosure: children only under the active group
+    const kids = (isActive && g.children.length > 1) ? `<div class="ml-4 mb-1">${g.children.map(c =>
+      `<div class="nav-item text-[11px] py-1.5${currentPage === c.id ? ' active' : ''}" onclick="navigate('${c.id}')">
+        <i class="fas ${c.icon} w-4 text-center text-[10px]"></i><span class="flex-1">${c.label}</span>
+      </div>`).join('')}</div>` : '';
+    return head + kids;
   }).join('');
 }
 
@@ -461,10 +546,8 @@ function navigate(page, opts = {}) {
     const url = urlForPage(page);
     if (location.pathname !== url) history.pushState({ page }, '', url);
   }
-  // Update active state
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.getAttribute('onclick')?.includes(`'${page}'`));
-  });
+  // Re-render grouped cockpit nav (active group expands — progressive disclosure)
+  renderNavigation(portalMenus[currentPortal] || portalMenus.dashboard);
   loadPage(page);
 }
 var navigateTo = navigate; // alias used by inline onclick handlers
@@ -474,9 +557,7 @@ function openTrade(ref, sub, opts = {}) {
   const url = '/trades/' + encodeURIComponent(ref) + (sub ? '/' + sub : '');
   if (!opts.noPush && location.pathname !== url) history.pushState({ trade: ref, sub }, '', url);
   currentPage = 'trade-workspace';
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.getAttribute('onclick')?.includes("'trade-command'"));
-  });
+  renderNavigation(portalMenus[currentPortal] || portalMenus.dashboard);
   loadTradeWorkspace(ref, sub);
 }
 
