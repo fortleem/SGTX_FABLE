@@ -1760,10 +1760,196 @@ async function renderJurisdictions() {
 // TRADER PORTAL — BUYER SECTION (New Trade, Quote Review, Contract, Customs, Finance)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── TRADE REQUEST WIZARD (Cockpit Phase 3): 6 steps, save-draft, platform-determined compliance ───
+let wizState = null;
+const WIZ_KEY = 'sgtx_trade_wizard_draft';
+const WIZ_STEPS = [
+  { id: 1, label: 'Commodity' },
+  { id: 2, label: 'Quantity & Specs' },
+  { id: 3, label: 'Counterparty' },
+  { id: 4, label: 'Delivery' },
+  { id: 5, label: 'Compliance' },
+  { id: 6, label: 'Review' },
+];
+
+function wizLoad() {
+  try { return JSON.parse(localStorage.getItem(WIZ_KEY) || 'null'); } catch(e) { return null; }
+}
+function wizSave() {
+  if (wizState) { wizState.saved_at = new Date().toISOString(); localStorage.setItem(WIZ_KEY, JSON.stringify(wizState)); }
+}
+function wizField(id, val) {
+  wizState.data[id] = val;
+  wizSave();
+}
+function wizGo(step) {
+  // capture visible inputs before moving
+  document.querySelectorAll('#wizard [data-wiz]').forEach(el => { wizState.data[el.getAttribute('data-wiz')] = el.value; });
+  wizSave();
+  wizState.step = Math.max(1, Math.min(6, step));
+  wizSave();
+  renderNewTrade();
+}
+function wizDiscard() {
+  localStorage.removeItem(WIZ_KEY);
+  wizState = null;
+  renderNewTrade();
+}
+
+// Compliance is determined by the platform, not chosen by the user (Cockpit Law: nothing fabricated)
+function wizCompliance(d) {
+  const items = [];
+  items.push({ label: 'Governor pre-screen', detail: 'Every trade request is screened by the SGTX Governor before creation. The verdict is recorded on the trade.' });
+  if (d.seller_gtid) items.push({ label: 'Counterparty jurisdiction screening', detail: 'Both parties\u2019 jurisdictions are evaluated automatically.' });
+  else items.push({ label: 'Jurisdiction screening', detail: 'Your jurisdiction is screened now; the counterparty is screened at assignment.' });
+  if ((d.commodity || '').match(/food|fruit|vegetable|meat|dairy|fish|strawberr|produce|agri/i)) items.push({ label: 'Cold chain / phytosanitary review', detail: 'Perishable commodity detected — temperature and certificate requirements apply at logistics stage.' });
+  if (d.transport_mode === 'RORO') items.push({ label: 'RoRo mode handling', detail: 'Roll-on/roll-off is a first-class transport mode with its own document set.' });
+  return items;
+}
+
 async function renderNewTrade() {
-  setTitle('New Trade Request', 'AI-assisted structured trade request form');
   const content = document.getElementById('content');
-  content.innerHTML = `<div class="sgtx-card p-6 text-center"><i class="fas fa-plus-circle text-4xl text-gold-400 mb-3"></i><p class="text-surface-600 mb-4">The full trade request form is available at the dedicated page.</p><a href="/trade-request" class="btn-primary px-6 py-3"><i class="fas fa-external-link-alt mr-2"></i>Open Trade Request Form</a><p class="text-xs text-surface-400 mt-3">Container-level specs, HS code auto-fill, AI product advisor, multi-shipment scheduling</p></div>`;
+  if (!wizState) {
+    const saved = wizLoad();
+    wizState = saved || { step: 1, data: {}, saved_at: null };
+  }
+  const s = wizState.step;
+  const d = wizState.data;
+  setTitle('New Trade Request', `Step ${s} of 6 — ${WIZ_STEPS[s-1].label}`);
+
+  const input = (id, label, placeholder, type='text', required=false) => `
+    <label class="block text-xs">
+      <span class="text-surface-400 font-semibold">${label}${required ? ' *' : ''}</span>
+      <input data-wiz="${id}" type="${type}" value="${(d[id]||'').toString().replace(/"/g,'&quot;')}" placeholder="${placeholder}"
+        onchange="wizField('${id}', this.value)"
+        class="mt-1 w-full px-3 py-2.5 rounded-lg text-sm text-surface-800" style="background:rgba(0,0,0,.15);border:1px solid rgba(120,120,130,.25)" />
+    </label>`;
+  const select = (id, label, opts, required=false) => `
+    <label class="block text-xs">
+      <span class="text-surface-400 font-semibold">${label}${required ? ' *' : ''}</span>
+      <select data-wiz="${id}" onchange="wizField('${id}', this.value)"
+        class="mt-1 w-full px-3 py-2.5 rounded-lg text-sm text-surface-800" style="background:rgba(0,0,0,.15);border:1px solid rgba(120,120,130,.25)">
+        <option value="">— select —</option>
+        ${opts.map(o => `<option value="${o}" ${d[id]===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </label>`;
+
+  let body = '';
+  if (s === 1) body = `
+    <div class="space-y-4">
+      ${input('commodity','What are you trading?','e.g. Frozen strawberries, Grade A', 'text', true)}
+      <label class="block text-xs"><span class="text-surface-400 font-semibold">Describe the trade in your own words</span>
+        <textarea data-wiz="raw_description" rows="4" onchange="wizField('raw_description', this.value)" placeholder="Commodity, quality grade, origin, packaging, timing…"
+          class="mt-1 w-full px-3 py-2.5 rounded-lg text-sm text-surface-800" style="background:rgba(0,0,0,.15);border:1px solid rgba(120,120,130,.25)">${d.raw_description||''}</textarea></label>
+    </div>`;
+  else if (s === 2) body = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${input('quantity','Quantity','e.g. 24', 'number', true)}
+      ${select('quantity_unit','Unit',['MT','KG','Containers (40ft)','Containers (20ft)','Pallets','Units'], true)}
+      ${input('quality_grade','Quality grade','e.g. Grade A / premium')}
+      ${input('packaging','Packaging','e.g. 10kg cartons, palletized')}
+      ${input('target_price','Target price (USD, optional)','e.g. 1200 per MT','number')}
+      ${input('hs_code','HS code (if known)','e.g. 0811.10')}
+    </div>`;
+  else if (s === 3) body = `
+    <div class="space-y-4">
+      <div class="text-xs text-surface-400">Leave blank to let SGTX match sellers. Enter a GTID to direct the request to a specific counterparty.</div>
+      ${input('seller_gtid','Seller GTID (optional)','e.g. SGTX-EG-TRD-000002-1234')}
+      ${input('seller_company_name','Seller company name (optional)','If you know the company but not the GTID')}
+    </div>`;
+  else if (s === 4) body = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${select('incoterm','Incoterm',['EXW','FOB','CIF','CFR','DAP','DDP','FCA'], true)}
+      ${select('transport_mode','Transport mode',['SEA','AIR','ROAD','RAIL','RORO','MULTIMODAL'], true)}
+      ${input('origin','Origin (city / port)','e.g. Alexandria, EG')}
+      ${input('destination','Destination (city / port)','e.g. Hamburg, DE', 'text', true)}
+      ${input('delivery_window','Delivery window','e.g. Within 6 weeks')}
+    </div>`;
+  else if (s === 5) {
+    const items = wizCompliance(d);
+    body = `
+    <div class="space-y-3">
+      <div class="text-xs text-surface-400 mb-2">Compliance is determined by the platform from your trade details — nothing to configure.</div>
+      ${items.map(i => `<div class="flex items-start gap-3 p-3 rounded-xl" style="background:rgba(212,160,23,.05);border:1px solid rgba(212,160,23,.2)">
+        <i class="fas fa-shield-halved mt-0.5" style="color:#D4A017"></i>
+        <div><div class="text-xs font-bold text-surface-800">${i.label}</div><div class="text-[11px] text-surface-400 mt-0.5">${i.detail}</div></div>
+      </div>`).join('')}
+    </div>`;
+  }
+  else if (s === 6) {
+    const rows = [
+      ['Commodity', d.commodity], ['Description', (d.raw_description||'').slice(0,120)],
+      ['Quantity', d.quantity ? `${d.quantity} ${d.quantity_unit||''}` : null], ['Quality', d.quality_grade],
+      ['Packaging', d.packaging], ['Target price', d.target_price ? '$'+d.target_price : null],
+      ['HS code', d.hs_code], ['Seller', d.seller_gtid || d.seller_company_name || 'SGTX will match'],
+      ['Incoterm', d.incoterm], ['Transport', d.transport_mode], ['Origin', d.origin], ['Destination', d.destination],
+      ['Delivery window', d.delivery_window],
+    ].filter(r => r[1]);
+    body = `
+    <div class="space-y-1">
+      ${rows.map(r => `<div class="flex justify-between py-2 border-b border-surface-100 text-xs"><span class="text-surface-400">${r[0]}</span><span class="font-semibold text-surface-800 text-right max-w-[60%]">${r[1]}</span></div>`).join('')}
+      <div id="wiz-submit-msg" class="pt-3"></div>
+    </div>`;
+  }
+
+  const canNext = s < 6;
+  const missing = s === 6 && (!d.commodity || !d.quantity || !d.incoterm || !d.transport_mode || !d.destination);
+  content.innerHTML = `
+  <div id="wizard" class="max-w-3xl mx-auto space-y-4 animate-fade-in">
+    <!-- step progress -->
+    <nav class="flex items-center gap-1" aria-label="Wizard progress">
+      ${WIZ_STEPS.map(st => `<div class="flex-1 cursor-pointer" onclick="wizGo(${st.id})">
+        <div class="h-1.5 rounded-full" style="background:${st.id < s ? '#D4A017' : st.id === s ? 'rgba(212,160,23,.5)' : 'rgba(120,120,130,.15)'}"></div>
+        <div class="text-[9px] mt-1 ${st.id === s ? 'font-bold' : ''}" style="color:${st.id <= s ? '#D4A017' : 'rgba(120,120,130,.6)'}">${st.label}</div>
+      </div>`).join('')}
+    </nav>
+    <section class="sgtx-card p-6">
+      <h2 class="text-base font-bold text-surface-800 mb-4">${WIZ_STEPS[s-1].label}</h2>
+      ${body}
+    </section>
+    <footer class="flex items-center gap-3">
+      ${s > 1 ? `<button onclick="wizGo(${s-1})" class="text-xs px-4 py-2.5 rounded-lg font-semibold" style="border:1px solid rgba(120,120,130,.3);color:rgba(120,120,130,1)"><i class="fas fa-arrow-left mr-1"></i>Back</button>` : ''}
+      <span class="flex-1 text-[10px] text-surface-400">${wizState.saved_at ? 'Draft saved ' + timeAgo(wizState.saved_at) : 'Draft saves automatically'}</span>
+      <button onclick="wizDiscard()" class="text-xs px-3 py-2.5 rounded-lg" style="color:rgba(239,68,68,.8)">Discard</button>
+      ${canNext ? `<button onclick="wizGo(${s+1})" class="btn-primary text-xs px-5 py-2.5">Next <i class="fas fa-arrow-right ml-1"></i></button>`
+                : `<button onclick="wizSubmit()" ${missing ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} class="btn-primary text-xs px-5 py-2.5"><i class="fas fa-paper-plane mr-1"></i>Submit Trade Request</button>`}
+    </footer>
+    ${missing ? '<p class="text-[10px] text-right" style="color:#f59e0b">Required: commodity, quantity, incoterm, transport mode, destination.</p>' : ''}
+  </div>`;
+}
+
+async function wizSubmit() {
+  document.querySelectorAll('#wizard [data-wiz]').forEach(el => { wizState.data[el.getAttribute('data-wiz')] = el.value; });
+  const d = wizState.data;
+  const msg = document.getElementById('wiz-submit-msg');
+  msg.innerHTML = '<div class="text-xs text-surface-400"><i class="fas fa-circle-notch fa-spin mr-2"></i>Submitting — Governor pre-screen in progress…</div>';
+  try {
+    const payload = {
+      importer_tenant_id: tenant?.id,
+      created_by: employee?.id,
+      raw_description: d.raw_description || d.commodity,
+      exporter_gtid: d.seller_gtid || undefined,
+      parsed_specs: {
+        commodity: d.commodity, quantity: d.quantity, quantity_unit: d.quantity_unit,
+        quality_grade: d.quality_grade, packaging: d.packaging, target_price: d.target_price,
+        hs_code: d.hs_code, incoterm: d.incoterm, transport_mode: d.transport_mode,
+        origin: d.origin, destination: d.destination, delivery_window: d.delivery_window,
+      },
+      specifications: { incoterm: d.incoterm, transport_mode: d.transport_mode },
+    };
+    const res = await apiPost('/trades', payload);
+    if (res.error) {
+      msg.innerHTML = `<div class="p-3 rounded-xl text-xs" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#ef4444"><i class="fas fa-triangle-exclamation mr-2"></i>${res.error}${res.governor ? ' — Governor verdict: ' + (res.governor.verdict||'') : ''}</div>`;
+      return;
+    }
+    const newId = res.data?.id || res.id;
+    localStorage.removeItem(WIZ_KEY);
+    wizState = null;
+    if (newId) { openTrade(newId); showToast && showToast('Trade request created'); }
+    else { navigate('trade-command'); }
+  } catch(e) {
+    msg.innerHTML = `<div class="text-xs" style="color:#ef4444">Submission failed: ${e.message}</div>`;
+  }
 }
 
 async function renderQuoteReview() {
