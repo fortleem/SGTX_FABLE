@@ -377,7 +377,7 @@ function switchPortal(portal) {
   }
 
   renderNavigation(items);
-  navigate('smart-inbox');
+  navigate('home');
 }
 
 // Portal switch without forcing a page change (used at boot so the URL wins)
@@ -404,7 +404,7 @@ const COCKPIT_GROUPS = [
 
 const PAGE_GROUP = {
   // Home — what needs my attention now
-  'smart-inbox':'home',
+  'home':'home','smart-inbox':'home',
   // Trades — the trade lifecycle (request → quote → contract)
   'trade-command':'trades','new-trade':'trades','quote-review':'trades','contract-signing':'trades',
   'negotiation':'trades','pending-requests':'trades','quote-submit':'trades','distressed-buy':'trades',
@@ -457,6 +457,9 @@ function buildCockpitNav(items) {
     const g = PAGE_GROUP[item.id] || 'home';
     (buckets[g] = buckets[g] || []).push(item);
   });
+  // Cockpit Home (5 questions) is always the first destination of the Home group
+  buckets.home = [{ id: 'home', icon: 'fa-bolt', label: 'Home', badge: true },
+    ...(buckets.home || []).filter(i => i.id !== 'home')];
   return COCKPIT_GROUPS.filter(g => {
     if (!buckets[g.id] || !buckets[g.id].length) return false;
     // Admin machinery invisible to tenants: platform screens require PLATFORM_ADMIN;
@@ -502,7 +505,7 @@ function switchMode(mode) {
   // Re-render navigation for mode-specific items
   const items = portalMenus[currentPortal] || portalMenus.dashboard;
   renderNavigation(items);
-  navigate('smart-inbox');
+  navigate('home');
 }
 
 function updateModeToggle() {
@@ -513,7 +516,8 @@ function updateModeToggle() {
 // ─── NAVIGATION ──────────────────────────────────────────
 // COCKPIT ROUTER — URL = source of truth. One trade = one URL = one workspace.
 const CANONICAL_URLS = {
-  'smart-inbox': '/home',
+  'home': '/home',
+  'smart-inbox': '/app/smart-inbox',
   'trade-command': '/trades',
   'new-trade': '/trades/new',
   'contacts': '/network',
@@ -523,7 +527,7 @@ const CANONICAL_URLS = {
 };
 
 function parseRoute(pathname) {
-  if (pathname === '/' || pathname === '/app' || pathname === '/home') return { kind: 'page', page: 'smart-inbox' };
+  if (pathname === '/' || pathname === '/app' || pathname === '/home') return { kind: 'page', page: 'home' };
   if (pathname === '/trades') return { kind: 'page', page: 'trade-command' };
   if (pathname === '/trades/new') return { kind: 'page', page: 'new-trade' };
   let m = pathname.match(/^\/trades\/([^\/]+)(?:\/([a-z0-9-]+))?$/);
@@ -534,7 +538,7 @@ function parseRoute(pathname) {
   if (pathname === '/admin') return { kind: 'page', page: 'dashboard' };
   m = pathname.match(/^\/app\/([a-z0-9-]+)$/);
   if (m) return { kind: 'page', page: m[1] };
-  if (/^\/portal\//.test(pathname)) return { kind: 'page', page: 'smart-inbox' }; // legacy entrance, live until cutover
+  if (/^\/portal\//.test(pathname)) return { kind: 'page', page: 'home' }; // legacy entrance, live until cutover
   return { kind: 'notfound', path: pathname };
 }
 
@@ -814,6 +818,7 @@ function renderTradeTab(tab, t, specs, quotes, contracts, shipment) {
 // ─── PAGE RENDERER REGISTRY ──────────────────────────────
 const pageRenderers = {
   // Shared
+  'home': renderCockpitHome,
   'smart-inbox': renderSmartInbox,
   'trade-command': renderTradeCommandCenter,
   'shipments-vault': renderShipmentsVault,
@@ -975,7 +980,7 @@ function renderRouteNotFound(path) {
     <h2 class="text-xl font-bold text-surface-800 mb-2">This screen does not exist</h2>
     <p class="text-sm text-surface-400 max-w-md"><span class="font-mono" style="color:#D4A017">${path}</span> is not a valid SGTX destination.</p>
     <div class="mt-6 flex gap-3">
-      <button onclick="navigate('smart-inbox')" class="btn-primary text-xs px-4 py-2">Go to Home</button>
+      <button onclick="navigate('home')" class="btn-primary text-xs px-4 py-2">Go to Home</button>
     </div>
   </div>`;
 }
@@ -1300,6 +1305,101 @@ async function dismissInboxItem(itemId) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SMART INBOX — Priority-scored action feed with one-click actions (Blueprint 12A.1)
 // ─────────────────────────────────────────────────────────────────────────────
+// ─── COCKPIT HOME (Rebuild Phase 4): answers exactly 5 questions ───
+// 1. What needs my action now?   2. What is waiting on others?
+// 3. What is moving?             4. What is at risk?
+// 5. What happened recently?
+async function renderCockpitHome() {
+  setTitle('Home', 'Your trade operations at a glance');
+  const content = document.getElementById('content');
+  content.innerHTML = shimmerLoader();
+  try {
+    const tid = tenant?.id || '';
+    const [inboxRes, tradesRes, shipsRes] = await Promise.all([
+      api('/inbox?tenant_id=' + tid).catch(() => ({ data: [] })),
+      api('/trades?tenant_id=' + tid).catch(() => ({ data: [] })),
+      api('/shipments').catch(() => ({ data: [] })),
+    ]);
+    const inbox = (inboxRes.data || []).sort((a,b) => (b.priority_score||b.urgency_score||0) - (a.priority_score||a.urgency_score||0));
+    const trades = tradesRes.data || [];
+    const ships = (shipsRes.data || []).filter(s => ['IN_TRANSIT','BOOKED','LOADING','DEPARTED','ARRIVED'].includes(s.status));
+
+    // Q1: needs MY action (status where this tenant is the actor)
+    const myAction = trades.filter(t => {
+      const buyer = t.importer_tenant_id === tid, seller = (t.assigned_exporter_id === tid || t.exporter_tenant_id === tid);
+      if (seller && t.status === 'PENDING_EXPORTER_RESPONSE') return true;
+      if (buyer && (t.status === 'QUOTE_SUBMITTED' || t.status === 'QUOTED')) return true;
+      if (t.status === 'DRAFT' && buyer) return true;
+      return false;
+    });
+    // Q2: waiting on others
+    const waiting = trades.filter(t => !myAction.includes(t) && !['CANCELLED','REJECTED','COMPLETED','DELIVERED'].includes(t.status));
+    // Q4: at risk — high-priority inbox items
+    const atRisk = inbox.filter(i => (i.priority_score||i.urgency_score||0) >= 80);
+    // Q5: recent activity
+    const recent = [...trades].sort((a,b) => new Date(b.updated_at||b.created_at) - new Date(a.updated_at||a.created_at)).slice(0,5);
+
+    const tradeRow = (t, actionable) => {
+      let specs = {}; try { specs = JSON.parse(t.parsed_specs || '{}'); } catch(e) {}
+      return `<div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs cursor-pointer hover:bg-black/5 rounded-lg px-2 -mx-2" onclick="openTrade('${t.id}')">
+        <span class="font-mono text-[10px] text-surface-400 shrink-0">${t.id.slice(0,8)}</span>
+        <span class="font-semibold text-surface-800 flex-1 truncate">${specs.commodity || specs.product || (t.raw_description||'').slice(0,50) || 'Trade'}</span>
+        ${badge(t.status)}
+        ${actionable ? '<i class="fas fa-arrow-right text-[10px]" style="color:#D4A017"></i>' : ''}
+      </div>`;
+    };
+
+    content.innerHTML = `
+    <div class="space-y-4 animate-fade-in">
+      <!-- Q1: WHAT NEEDS MY ACTION NOW (T1 — dominant) -->
+      <section class="sgtx-card p-5" style="border:1px solid rgba(212,160,23,.35);background:linear-gradient(135deg,rgba(212,160,23,.06),transparent)" aria-label="Needs my action">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><i class="fas fa-bolt text-sm" style="color:#0D0D0D"></i></div>
+          <h2 class="text-sm font-bold text-surface-800 flex-1">Needs my action now</h2>
+          <span class="text-lg font-black" style="color:#D4A017">${myAction.length}</span>
+        </div>
+        ${myAction.length ? myAction.slice(0,5).map(t => tradeRow(t, true)).join('') : '<p class="text-xs text-surface-400">Nothing requires your action right now.</p>'}
+      </section>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Q2: WAITING ON OTHERS -->
+        <section class="sgtx-card p-5" aria-label="Waiting on others">
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-hourglass-half mr-2 text-surface-400"></i>Waiting on others <span class="float-right text-surface-400">${waiting.length}</span></h2>
+          ${waiting.length ? waiting.slice(0,4).map(t => tradeRow(t, false)).join('') : '<p class="text-xs text-surface-400">No trades are waiting on counterparties.</p>'}
+        </section>
+
+        <!-- Q3: WHAT IS MOVING -->
+        <section class="sgtx-card p-5" aria-label="Shipments in motion">
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-ship mr-2 text-surface-400"></i>Moving now <span class="float-right text-surface-400">${ships.length}</span></h2>
+          ${ships.length ? ships.slice(0,4).map(s => `<div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs cursor-pointer hover:bg-black/5 rounded-lg px-2 -mx-2" onclick="openTrade('${s.ustn}')">
+            <span class="font-mono text-[10px] shrink-0" style="color:#D4A017">${s.ustn}</span>
+            <span class="flex-1"></span>${badge(s.status)}
+          </div>`).join('') : '<p class="text-xs text-surface-400">No shipments are currently in motion.</p>'}
+        </section>
+      </div>
+
+      <!-- Q4: WHAT IS AT RISK -->
+      <section class="sgtx-card p-5" aria-label="At risk">
+        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-triangle-exclamation mr-2" style="color:#f59e0b"></i>At risk <span class="float-right text-surface-400">${atRisk.length}</span></h2>
+        ${atRisk.length ? atRisk.slice(0,4).map(i => `<div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs">
+          <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#ef4444"></span>
+          <span class="font-semibold text-surface-800 flex-1 truncate">${i.title || i.message || 'Attention required'}</span>
+          <span class="text-surface-400">${timeAgo(i.created_at)}</span>
+        </div>`).join('') : '<p class="text-xs text-surface-400">No high-priority risks detected.</p>'}
+      </section>
+
+      <!-- Q5: WHAT HAPPENED RECENTLY -->
+      <section class="sgtx-card p-5" aria-label="Recent activity">
+        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-clock-rotate-left mr-2 text-surface-400"></i>Recent activity</h2>
+        ${recent.length ? recent.map(t => tradeRow(t, false)).join('') : '<p class="text-xs text-surface-400">No trade activity yet. Start with a new trade request.</p>'}
+        <div class="mt-4"><button onclick="navigate('new-trade')" class="btn-primary text-xs px-4 py-2"><i class="fas fa-plus mr-1"></i>New Trade Request</button></div>
+      </section>
+    </div>`;
+  } catch(e) {
+    content.innerHTML = renderError(e.message);
+  }
+}
+
 async function renderSmartInbox() {
   setTitle('Smart Inbox', 'AI-prioritized actions with one-click execution');
   const content = document.getElementById('content');
