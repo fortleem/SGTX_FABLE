@@ -639,8 +639,59 @@ function toggleExpertMode() {
   applyRoute(parseRoute(location.pathname), { noPush: true });
 }
 
+// ─── ROLE PERSPECTIVES (Cockpit Phase 5): 12 roles, one workspace ───
+// The trade is the primary object; a role only changes WHICH action is yours.
+const ROLE_PERSPECTIVES = {
+  trader:      { label: 'Trader',            icon: 'fa-handshake' },
+  logistics:   { label: 'Logistics',         icon: 'fa-truck-fast' },
+  shipping:    { label: 'Shipping Line',     icon: 'fa-ship' },
+  financier:   { label: 'Financier',         icon: 'fa-landmark' },
+  qc:          { label: 'QC / Inspection',   icon: 'fa-microscope' },
+  laboratory:  { label: 'Laboratory',        icon: 'fa-flask' },
+  government:  { label: 'Government',        icon: 'fa-building-columns' },
+  marketplace: { label: 'Marketplace',       icon: 'fa-store' },
+  dashboard:   { label: 'Platform',          icon: 'fa-gauge-high' },
+  admin:       { label: 'Admin',             icon: 'fa-gear' },
+};
+
+// Role-specific perspective on the same trade (non-trader roles)
+function rolePerspectiveAction(t, quotes, contracts, shipment) {
+  const p = currentPortal;
+  const s = t.status;
+  const locked = contracts.some(c => c.status === 'LOCKED');
+  if (p === 'logistics' || p === 'shipping') {
+    if (locked && !shipment) return { title: 'Logistics needed for this trade', desc: 'Contract locked — routing and booking can begin.', cta: 'Open dispatch', action: `navigate('${p === 'shipping' ? 'ship-booking-requests' : 'dispatch-planner'}')` };
+    if (shipment) return { title: 'Shipment under your management', desc: `USTN ${shipment.ustn} — ${shipment.status || 'active'}. Confirm milestones as they occur.`, cta: 'Active shipments', action: `navigate('${p === 'shipping' ? 'ship-dashboard' : 'active-shipments'}')` };
+    return { title: 'Not yet at logistics stage', desc: `Trade is ${s}. Booking becomes available after contract lock.`, cta: null };
+  }
+  if (p === 'financier') {
+    if (locked) return { title: 'Financing opportunity', desc: 'Contract locked — review disclosure and bid if terms fit your book.', cta: 'View opportunities', action: `navigate('financing-opportunities')` };
+    return { title: 'Pre-contract stage', desc: `Trade is ${s}. Financing opens at contract lock.`, cta: null };
+  }
+  if (p === 'qc') {
+    if (locked) return { title: 'Inspection may be booked', desc: 'Contract locked — check the inspection queue for this trade.', cta: 'Inspection queue', action: `navigate('inspection-queue')` };
+    return { title: 'Awaiting contract', desc: `Trade is ${s}. QC engagement begins after contract lock.`, cta: null };
+  }
+  if (p === 'laboratory') {
+    return { title: 'Laboratory perspective', desc: locked ? 'Testing jobs for this trade appear in your queue when booked by the seller.' : `Trade is ${s}. Lab work is booked at documentation stage.`, cta: locked ? 'Testing jobs' : null, action: `navigate('lab-testing-jobs')` };
+  }
+  if (p === 'government') {
+    return { title: 'Regulatory oversight', desc: 'Monitor this trade’s compliance events and document verifications.', cta: 'Live monitor', action: `navigate('live-trade-monitor')` };
+  }
+  if (p === 'marketplace') {
+    return { title: 'Attribution view', desc: t.marketplace_partner_id ? 'This trade is attributed to your partnership.' : 'This trade has no marketplace attribution.', cta: 'Revenue attribution', action: `navigate('revenue-attribution')` };
+  }
+  if (p === 'dashboard' || p === 'admin') {
+    return { title: 'Platform oversight', desc: `Status ${s} · ${quotes.length} quote(s) · ${contracts.length} contract(s). Governor decision ${t.governor_decision_id ? 'recorded' : 'absent'}.`, cta: 'Governor log', action: `navigate('governor')` };
+  }
+  return null;
+}
+
 // ─── TIER 1: what must the user do RIGHT NOW for this trade ───
 function computeNextAction(t, quotes, contracts, shipment) {
+  // Non-trader roles see their own perspective on the same object
+  const rp = rolePerspectiveAction(t, quotes, contracts, shipment);
+  if (rp) return rp;
   const isBuyer = tenant && (t.importer_tenant_id === tenant.id);
   const isSeller = tenant && (t.assigned_exporter_id === tenant.id || t.exporter_tenant_id === tenant.id);
   const s = t.status;
@@ -707,6 +758,7 @@ function renderTradeWorkspaceView(t, shipment, ref, sub) {
           <h1 class="text-lg font-bold font-mono" style="color:#D4A017">${shipment?.ustn || t.id}</h1>
         </div>
         <div class="ml-auto flex items-center gap-3">
+          <span class="text-[10px] px-2 py-1 rounded-lg" style="border:1px solid rgba(212,160,23,.25);color:#C9A84C" title="Your perspective on this trade"><i class="fas ${(ROLE_PERSPECTIVES[currentPortal]||ROLE_PERSPECTIVES.trader).icon} mr-1"></i>${(ROLE_PERSPECTIVES[currentPortal]||ROLE_PERSPECTIVES.trader).label} view</span>
           ${badge(t.status)}
           <button onclick="toggleExpertMode()" aria-pressed="${expertMode}" class="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg" style="${expertMode ? 'background:linear-gradient(135deg,#D4A017,#C9A84C);color:#0D0D0D' : 'border:1px solid rgba(120,120,130,.3);color:rgba(120,120,130,1)'}">
             <i class="fas fa-microscope mr-1"></i>${expertMode ? 'Expert Mode' : 'Operational'}
@@ -1590,7 +1642,8 @@ function getNextAction(status) {
   const map = { DRAFT:'Complete & submit', SUBMITTED:'Awaiting seller', ACCEPTED:'Lock EXW price', PRICING:'Set price', QUOTED:'Review quote', NEGOTIATING:'Counter/Accept', CONTRACTED:'Arrange finance', FINANCED:'Track shipment', IN_TRANSIT:'Monitor delivery', ARRIVED:'Confirm receipt' };
   return map[status] || 'View details';
 }
-function showTradeDetail(id) { showModal('Trade Detail', `<div class="p-4"><p class="text-sm text-surface-600">Full trade timeline, documents, and action panel for trade #${id}</p><div class="mt-4 flex gap-2"><button onclick="closeModal();navigate('shipments-vault')" class="btn-primary text-xs">Track Shipment</button><button onclick="closeModal()" class="btn-ghost text-xs">Close</button></div></div>`); }
+// Deterministic navigation (Law 4/5): trade detail IS the workspace — one trade = one URL.
+function showTradeDetail(id) { openTrade(id); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHIPMENTS VAULT (Blueprint 12A.4) — USTN-indexed shipment tracking
