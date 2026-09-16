@@ -253,6 +253,29 @@ input:disabled, select:disabled { opacity:.45; cursor:not-allowed; }
     radial-gradient(1200px 500px at 90% -20%, rgba(212,160,23,.05), transparent 55%),
     #f7f5ef;
 }
+/* ─── RTL support (Arabic-first — Cockpit Phase 6) ─── */
+[dir="rtl"] body { font-family: 'Inter', 'Segoe UI', Tahoma, system-ui, sans-serif; }
+[dir="rtl"] .nav-item i.fa-chevron-right { transform: scaleX(-1); }
+[dir="rtl"] .float-right { float: left !important; }
+[dir="rtl"] .text-right { text-align: left; }
+/* logical-property fallbacks for utility margins used in cockpit chrome */
+[dir="rtl"] .mr-1 { margin-right: 0; margin-left: .25rem; }
+[dir="rtl"] .mr-2 { margin-right: 0; margin-left: .5rem; }
+[dir="rtl"] .ml-1 { margin-left: 0; margin-right: .25rem; }
+[dir="rtl"] .ml-4 { margin-left: 0; margin-right: 1rem; }
+/* ─── Mobile-first 360px (Cockpit Phase 6) ─── */
+@media (max-width: 480px) {
+  .app-header { padding-left: .75rem; padding-right: .75rem; }
+  #content { padding: .75rem !important; }
+  input[type="text"] { width: 8rem !important; }
+}
+/* WCAG 2.2: visible focus */
+button:focus-visible, [role="link"]:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #D4A017; outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
 </style>
 </head>
 <body class="bg-surface-50 text-surface-900 overflow-hidden" style="background:#0B0B0D">
@@ -322,6 +345,10 @@ input:disabled, select:disabled { opacity:.45; cursor:not-allowed; }
         </div>
       </div>
       <div class="flex items-center gap-3">
+        <!-- Language toggle (Arabic-first RTL — Cockpit Phase 6) -->
+        <button id="lang-toggle" onclick="toggleLang()" aria-label="Switch language"
+          class="text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition"
+          style="border:1px solid rgba(212,160,23,.25);color:#C9A84C">عربي</button>
         <!-- Dual-Mode Toggle -->
         <div id="mode-switcher" class="mode-toggle hidden">
           <button onclick="switchMode('BUY')" id="mode-BUY" class="flex items-center gap-1"><i class="fas fa-cart-shopping text-[10px]"></i>Buy</button>

@@ -277,6 +277,7 @@ function detectPortalFromURL() {
 const URL_PORTAL = detectPortalFromURL();
 
 document.addEventListener('DOMContentLoaded', async () => {
+  applyLangDir();
   authToken = localStorage.getItem('sgtx_token');
   tenant = JSON.parse(localStorage.getItem('sgtx_tenant') || 'null');
   employee = JSON.parse(localStorage.getItem('sgtx_employee') || 'null');
@@ -393,13 +394,13 @@ function preparePortal(portal) {
 // ─── COCKPIT IA (Rebuild Phase 1): ≤7 nav groups, progressive disclosure ───
 // Every legacy tab maps to exactly one cockpit group (see docs/COCKPIT_MAPPING.md).
 const COCKPIT_GROUPS = [
-  { id: 'home',       label: 'Home',       icon: 'fa-bolt' },
-  { id: 'trades',     label: 'Trades',     icon: 'fa-arrows-left-right' },
-  { id: 'operations', label: 'Operations', icon: 'fa-ship' },
-  { id: 'money',      label: 'Money',      icon: 'fa-coins' },
-  { id: 'trust',      label: 'Trust',      icon: 'fa-shield-halved' },
-  { id: 'network',    label: 'Network',    icon: 'fa-users' },
-  { id: 'admin',      label: 'Admin',      icon: 'fa-gear' },
+  { id: 'home',       key: 'home',       icon: 'fa-bolt' },
+  { id: 'trades',     key: 'trades',     icon: 'fa-arrows-left-right' },
+  { id: 'operations', key: 'operations', icon: 'fa-ship' },
+  { id: 'money',      key: 'money',      icon: 'fa-coins' },
+  { id: 'trust',      key: 'trust',      icon: 'fa-shield-halved' },
+  { id: 'network',    key: 'network',    icon: 'fa-users' },
+  { id: 'admin',      key: 'admin',      icon: 'fa-gear' },
 ];
 
 const PAGE_GROUP = {
@@ -486,7 +487,7 @@ function renderNavigation(items) {
     const primary = g.children[0];
     const head = `<div class="nav-item${isActive ? ' active' : ''}" role="link" aria-current="${isActive ? 'page' : 'false'}" onclick="navigate('${primary.id}')">
       <i class="fas ${g.icon} w-4 text-center text-[11px]"></i>
-      <span class="flex-1 font-semibold">${g.label}</span>
+      <span class="flex-1 font-semibold">${t9(g.key)}</span>
       ${g.children.some(c => c.badge) ? '<span class="w-2 h-2 rounded-full animate-pulse-slow" style="background:#D4A017"></span>' : ''}
       ${g.children.length > 1 ? `<i class="fas fa-chevron-${isActive ? 'down' : 'right'} text-[9px]" style="color:rgba(255,255,255,.25)"></i>` : ''}
     </div>`;
@@ -628,6 +629,45 @@ async function loadTradeWorkspace(ref, sub) {
   } catch(e) {
     content.innerHTML = renderError(e.message);
   }
+}
+
+// ─── I18N (Cockpit Phase 6): Arabic-first RTL ───
+let lang = localStorage.getItem('sgtx_lang') || 'en';
+const I18N = {
+  en: {
+    home: 'Home', trades: 'Trades', operations: 'Operations', money: 'Money', trust: 'Trust', network: 'Network', admin: 'Admin',
+    needs_action: 'Needs my action now', waiting: 'Waiting on others', moving: 'Moving now', at_risk: 'At risk', recent: 'Recent activity',
+    nothing_action: 'Nothing requires your action right now.', no_waiting: 'No trades are waiting on counterparties.',
+    no_moving: 'No shipments are currently in motion.', no_risk: 'No high-priority risks detected.',
+    no_activity: 'No trade activity yet. Start with a new trade request.', new_trade: 'New Trade Request',
+    next_action: 'Next Action', trade_workspace: 'Trade Workspace', home_subtitle: 'Your trade operations at a glance',
+    expert: 'Expert Mode', operational: 'Operational', overview: 'Overview', quotes: 'Quotes', contracts: 'Contracts', shipment: 'Shipment', technical: 'Technical',
+    buyer: 'Buyer', seller: 'Seller', commodity: 'Commodity', created: 'Created', status: 'Status',
+  },
+  ar: {
+    home: 'الرئيسية', trades: 'الصفقات', operations: 'العمليات', money: 'المال', trust: 'الحوكمة', network: 'الشبكة', admin: 'الإدارة',
+    needs_action: 'يتطلب إجراءً مني الآن', waiting: 'في انتظار الآخرين', moving: 'قيد الحركة الآن', at_risk: 'معرّض للخطر', recent: 'النشاط الأخير',
+    nothing_action: 'لا يوجد ما يتطلب إجراءك الآن.', no_waiting: 'لا توجد صفقات في انتظار الأطراف الأخرى.',
+    no_moving: 'لا توجد شحنات قيد الحركة حالياً.', no_risk: 'لم يُرصد أي خطر ذي أولوية عالية.',
+    no_activity: 'لا يوجد نشاط تجاري بعد. ابدأ بطلب صفقة جديدة.', new_trade: 'طلب صفقة جديدة',
+    next_action: 'الإجراء التالي', trade_workspace: 'مساحة عمل الصفقة', home_subtitle: 'عملياتك التجارية في لمحة',
+    expert: 'الوضع المتقدم', operational: 'تشغيلي', overview: 'نظرة عامة', quotes: 'عروض الأسعار', contracts: 'العقود', shipment: 'الشحنة', technical: 'تقني',
+    buyer: 'المشتري', seller: 'البائع', commodity: 'السلعة', created: 'تاريخ الإنشاء', status: 'الحالة',
+  },
+};
+function t9(key) { return (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key; }
+function applyLangDir() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  const btn = document.getElementById('lang-toggle');
+  if (btn) btn.textContent = lang === 'ar' ? 'EN' : 'عربي';
+}
+function toggleLang() {
+  lang = lang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('sgtx_lang', lang);
+  applyLangDir();
+  renderNavigation(portalMenus[currentPortal] || portalMenus.dashboard);
+  applyRoute(parseRoute(location.pathname), { noPush: true });
 }
 
 // ─── EXPERT MODE (Cockpit Law 6): global Operational ⇄ Expert toggle ───
@@ -1106,6 +1146,23 @@ function showModal(titleOrHtml, bodyHtml) {
 }
 function closeModal() { document.getElementById('modal').classList.remove('show'); }
 
+// ─── Accessible confirm dialog (replaces native confirm()/alert() — WCAG 2.2) ───
+function sgtxConfirm(message, onYes, opts = {}) {
+  showModal(`<div class="p-2" role="alertdialog" aria-modal="true" aria-label="${opts.title || 'Confirm'}">
+    <h3 class="text-base font-bold text-surface-800 mb-2">${opts.title || 'Please confirm'}</h3>
+    <p class="text-sm text-surface-600">${message}</p>
+    <div class="mt-5 flex gap-2 justify-end">
+      <button onclick="closeModal()" class="text-xs px-4 py-2.5 rounded-lg font-semibold" style="border:1px solid rgba(120,120,130,.3)">${opts.noLabel || 'Cancel'}</button>
+      <button id="sgtx-confirm-yes" class="btn-primary text-xs px-5 py-2.5">${opts.yesLabel || 'Confirm'}</button>
+    </div>
+  </div>`);
+  setTimeout(() => {
+    const btn = document.getElementById('sgtx-confirm-yes');
+    if (btn) { btn.focus(); btn.onclick = () => { closeModal(); onYes(); }; }
+  }, 50);
+}
+function sgtxAlert(message, type = 'info') { showToast(message, type); }
+
 // ═══════════════════════════════════════════════════════════
 // PLAIN LANGUAGE DECISION PANEL (Governor DENY/CONDITIONAL)
 // 6-zone modal: Header, Explanation, Condition Checklist, Next Step, Timer, Confidence
@@ -1222,9 +1279,9 @@ function showGovernorPanel(verdict, entityId, context) {
 function submitConditions(entityId) {
   const checkboxes = document.querySelectorAll('[id^="gov-cond-"]');
   const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-  if (!allChecked) { alert('Please complete all conditions before submitting.'); return; }
+  if (!allChecked) { sgtxAlert('Please complete all conditions before submitting.', 'error'); return; }
   closeModal();
-  alert('Conditions submitted. Governor will re-evaluate automatically.');
+  sgtxAlert('Conditions submitted. Governor will re-evaluate automatically.', 'success');
 }
 function showCreateModal() {
   if (currentPortal === 'trader' && currentMode === 'BUY') { navigate('new-trade'); }
@@ -1362,7 +1419,7 @@ async function dismissInboxItem(itemId) {
 // 3. What is moving?             4. What is at risk?
 // 5. What happened recently?
 async function renderCockpitHome() {
-  setTitle('Home', 'Your trade operations at a glance');
+  setTitle(t9('home'), t9('home_subtitle'));
   const content = document.getElementById('content');
   content.innerHTML = shimmerLoader();
   try {
@@ -1407,44 +1464,44 @@ async function renderCockpitHome() {
       <section class="sgtx-card p-5" style="border:1px solid rgba(212,160,23,.35);background:linear-gradient(135deg,rgba(212,160,23,.06),transparent)" aria-label="Needs my action">
         <div class="flex items-center gap-3 mb-3">
           <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#D4A017,#C9A84C)"><i class="fas fa-bolt text-sm" style="color:#0D0D0D"></i></div>
-          <h2 class="text-sm font-bold text-surface-800 flex-1">Needs my action now</h2>
+          <h2 class="text-sm font-bold text-surface-800 flex-1">${t9('needs_action')}</h2>
           <span class="text-lg font-black" style="color:#D4A017">${myAction.length}</span>
         </div>
-        ${myAction.length ? myAction.slice(0,5).map(t => tradeRow(t, true)).join('') : '<p class="text-xs text-surface-400">Nothing requires your action right now.</p>'}
+        ${myAction.length ? myAction.slice(0,5).map(t => tradeRow(t, true)).join('') : `<p class="text-xs text-surface-400">${t9('nothing_action')}</p>`}
       </section>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Q2: WAITING ON OTHERS -->
         <section class="sgtx-card p-5" aria-label="Waiting on others">
-          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-hourglass-half mr-2 text-surface-400"></i>Waiting on others <span class="float-right text-surface-400">${waiting.length}</span></h2>
-          ${waiting.length ? waiting.slice(0,4).map(t => tradeRow(t, false)).join('') : '<p class="text-xs text-surface-400">No trades are waiting on counterparties.</p>'}
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-hourglass-half mr-2 text-surface-400"></i>${t9('waiting')} <span class="float-right text-surface-400">${waiting.length}</span></h2>
+          ${waiting.length ? waiting.slice(0,4).map(t => tradeRow(t, false)).join('') : `<p class="text-xs text-surface-400">${t9('no_waiting')}</p>`}
         </section>
 
         <!-- Q3: WHAT IS MOVING -->
         <section class="sgtx-card p-5" aria-label="Shipments in motion">
-          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-ship mr-2 text-surface-400"></i>Moving now <span class="float-right text-surface-400">${ships.length}</span></h2>
+          <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-ship mr-2 text-surface-400"></i>${t9('moving')} <span class="float-right text-surface-400">${ships.length}</span></h2>
           ${ships.length ? ships.slice(0,4).map(s => `<div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs cursor-pointer hover:bg-black/5 rounded-lg px-2 -mx-2" onclick="openTrade('${s.ustn}')">
             <span class="font-mono text-[10px] shrink-0" style="color:#D4A017">${s.ustn}</span>
             <span class="flex-1"></span>${badge(s.status)}
-          </div>`).join('') : '<p class="text-xs text-surface-400">No shipments are currently in motion.</p>'}
+          </div>`).join('') : `<p class="text-xs text-surface-400">${t9('no_moving')}</p>`}
         </section>
       </div>
 
       <!-- Q4: WHAT IS AT RISK -->
       <section class="sgtx-card p-5" aria-label="At risk">
-        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-triangle-exclamation mr-2" style="color:#f59e0b"></i>At risk <span class="float-right text-surface-400">${atRisk.length}</span></h2>
+        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-triangle-exclamation mr-2" style="color:#f59e0b"></i>${t9('at_risk')} <span class="float-right text-surface-400">${atRisk.length}</span></h2>
         ${atRisk.length ? atRisk.slice(0,4).map(i => `<div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs">
           <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background:#ef4444"></span>
           <span class="font-semibold text-surface-800 flex-1 truncate">${i.title || i.message || 'Attention required'}</span>
           <span class="text-surface-400">${timeAgo(i.created_at)}</span>
-        </div>`).join('') : '<p class="text-xs text-surface-400">No high-priority risks detected.</p>'}
+        </div>`).join('') : `<p class="text-xs text-surface-400">${t9('no_risk')}</p>`}
       </section>
 
       <!-- Q5: WHAT HAPPENED RECENTLY -->
       <section class="sgtx-card p-5" aria-label="Recent activity">
-        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-clock-rotate-left mr-2 text-surface-400"></i>Recent activity</h2>
-        ${recent.length ? recent.map(t => tradeRow(t, false)).join('') : '<p class="text-xs text-surface-400">No trade activity yet. Start with a new trade request.</p>'}
-        <div class="mt-4"><button onclick="navigate('new-trade')" class="btn-primary text-xs px-4 py-2"><i class="fas fa-plus mr-1"></i>New Trade Request</button></div>
+        <h2 class="text-sm font-bold text-surface-800 mb-3"><i class="fas fa-clock-rotate-left mr-2 text-surface-400"></i>${t9('recent')}</h2>
+        ${recent.length ? recent.map(t => tradeRow(t, false)).join('') : `<p class="text-xs text-surface-400">${t9('no_activity')}</p>`}
+        <div class="mt-4"><button onclick="navigate('new-trade')" class="btn-primary text-xs px-4 py-2"><i class="fas fa-plus mr-1"></i>${t9('new_trade')}</button></div>
       </section>
     </div>`;
   } catch(e) {
@@ -2017,7 +2074,7 @@ async function renderQuoteReview() {
         ${metricCard('fa-inbox', 'Quotes Received', trades.filter(t=>t.status==='QUOTED').length, null, 'blue')}
         ${metricCard('fa-scale-balanced', 'Under Negotiation', trades.filter(t=>t.status==='NEGOTIATING').length, null, 'amber')}
         ${metricCard('fa-check-double', 'Total Reviewed', trades.length, null, 'emerald')}
-        ${metricCard('fa-clock', 'Avg Response', '4.2h', null, 'purple')}
+        ${metricCard('fa-clock', 'Avg Response', '\u2014', null, 'purple')}
       </div>
       ${trades.length === 0 ? '<div class="sgtx-card p-10 text-center"><i class="fas fa-inbox text-4xl text-surface-300 mb-3"></i><p class="text-surface-500">No quotes to review. Create a trade request first.</p><button onclick="navigate(\'new-trade\')" class="btn-primary mt-3 text-xs"><i class="fas fa-plus mr-1"></i>New Trade</button></div>' : ''}
       ${trades.length >= 2 ? `
@@ -2056,7 +2113,7 @@ async function renderQuoteReview() {
   } catch(e) { content.innerHTML = renderError(e.message); }
 }
 
-async function acceptQuote(id) { if(!confirm('Accept quote and proceed to contracting?'))return; try{await apiPost('/contracting/accept-quote',{trade_id:id});showToast('Quote accepted!','success');renderQuoteReview();}catch(e){showToast(e.message,'error');} }
+function acceptQuote(id) { sgtxConfirm('Accept this quote and proceed to contracting?', async () => { try{await apiPost('/contracting/accept-quote',{trade_id:id});showToast('Quote accepted!','success');renderQuoteReview();}catch(e){showToast(e.message,'error');} }, { title: 'Accept quote', yesLabel: 'Accept & proceed' }); }
 function showCounterOffer(id) { showModal('Counter-Offer',`<form onsubmit="submitCounter(event,'${id}')"><div class="mb-3"><label class="text-xs font-medium block mb-1">Proposed Price (USD)</label><input type="number" id="co-price" step="0.01" required class="w-full"></div><div class="mb-3"><label class="text-xs font-medium block mb-1">Reason</label><textarea id="co-reason" rows="3" required class="w-full"></textarea></div><button type="submit" class="btn-primary w-full py-2">Submit</button></form>`); }
 async function submitCounter(e,id) { e.preventDefault(); try{await apiPost('/contracting/counter-offer',{trade_id:id,proposed_price:parseFloat(document.getElementById('co-price').value),reason:document.getElementById('co-reason').value});closeModal();showToast('Counter-offer sent','success');renderQuoteReview();}catch(e){showToast(e.message,'error');} }
 async function rejectQuote(id) { const r=prompt('Reason for rejection:'); if(!r)return; try{await apiPost('/trades/'+id+'/reject',{reason:r});showToast('Rejected','info');renderQuoteReview();}catch(e){showToast(e.message,'error');} }
@@ -2090,7 +2147,7 @@ async function renderContractSigning() {
         </div>`).join('')}</div>`;
   } catch(e) { content.innerHTML = renderError(e.message); }
 }
-async function signContract(id) { if(!confirm('Sign with Ed25519? Irrevocable & Loom-anchored.'))return; try{await apiPost('/contracting/sign',{contract_id:id});showToast('Signed!','success');renderContractSigning();}catch(e){showToast(e.message,'error');} }
+function signContract(id) { sgtxConfirm('Sign this contract with your Ed25519 key? Signing is irrevocable and anchored to the audit loom.', async () => { try{await apiPost('/contracting/sign',{contract_id:id});showToast('Signed!','success');renderContractSigning();}catch(e){showToast(e.message,'error');} }, { title: 'Sign contract', yesLabel: 'Sign irrevocably' }); }
 function signQES(id) { showToast('QES signing initiated — redirect to TSP','info'); }
 function showUploadContract() { showModal('Upload Contract','<div class="p-4"><p class="text-xs text-surface-500 mb-3">Upload your own contract. AI validates against SGTX governance.</p><input type="file" class="w-full mb-3"><button class="btn-primary w-full py-2">Upload & Validate</button></div>'); }
 
@@ -2669,44 +2726,31 @@ async function renderLabSelection() {
   setTitle('Lab Selection', 'Choose a laboratory for commodity testing & certification');
   const content = document.getElementById('content');
   try {
-    const res = await api('/labs');
-    const labs = res.data || [];
-    const defaultLabs = [{name:'SGS Geneva',loc:'Switzerland',speciality:'Grains & Oilseeds',rating:4.9,turnaround:'3-5 days',price:'$650',accredited:true},{name:'Bureau Veritas',loc:'France',speciality:'All Commodities',rating:4.7,turnaround:'4-6 days',price:'$580',accredited:true},{name:'Intertek Cairo',loc:'Egypt',speciality:'Rice & Cereals',rating:4.5,turnaround:'2-3 days',price:'$420',accredited:true},{name:'OMIC Japan',loc:'Japan',speciality:'Rice Quality',rating:4.8,turnaround:'5-7 days',price:'$720',accredited:true},{name:'Cotecna',loc:'UK',speciality:'Agricultural Products',rating:4.4,turnaround:'3-5 days',price:'$550',accredited:true},{name:'Alex Lab Services',loc:'Egypt',speciality:'Local Testing',rating:4.1,turnaround:'1-2 days',price:'$280',accredited:false}];
-    const displayLabs = labs.length > 0 ? labs : defaultLabs;
+    const res = await api('/tenants?type=LAB');
+    const labs = (res.data || []).map(l => ({ name: l.legal_name, loc: l.jurisdiction, speciality: 'Commodity testing', rating: null, turnaround: null, price: null, accredited: l.kyb_status === 'VERIFIED', gtid: l.gtid }));
+    // Real registered labs only — no fabricated catalog (Cockpit Law 7)
     content.innerHTML = `
-      <div class="grid grid-cols-4 gap-4 mb-5">
-        ${metricCard('fa-flask', 'Labs Available', displayLabs.length, null, 'blue')}
-        ${metricCard('fa-star', 'Top Rated', '4.9', null, 'gold')}
-        ${metricCard('fa-clock', 'Fastest', '1-2 days', null, 'emerald')}
-        ${metricCard('fa-certificate', 'Accredited', displayLabs.filter(l=>l.accredited).length, null, 'purple')}
+      <div class="grid grid-cols-2 gap-4 mb-5">
+        ${metricCard('fa-flask', 'Registered Labs', labs.length, null, 'blue')}
+        ${metricCard('fa-certificate', 'KYB Verified', labs.filter(l=>l.accredited).length, null, 'purple')}
       </div>
-      <div class="flex gap-3 mb-4">
-        <input type="text" placeholder="Search labs..." class="flex-1 text-sm">
-        <select class="text-xs border rounded-lg px-3"><option>All Regions</option><option>Local (Egypt)</option><option>Europe</option><option>Asia</option></select>
-        <select class="text-xs border rounded-lg px-3"><option>Sort by Rating</option><option>Sort by Price</option><option>Sort by Speed</option></select>
-      </div>
-      <div class="grid grid-cols-3 gap-4">
-        ${displayLabs.map((l,i) => `
-          <div class="sgtx-card p-5 hover:shadow-lg transition-shadow ${i===0?'ring-2 ring-gold-400':''}">
+      ${labs.length === 0 ? '<div class="sgtx-card p-10 text-center"><i class="fas fa-flask text-4xl text-surface-300 mb-3"></i><p class="text-surface-500 text-sm">No laboratories are registered on the platform yet.</p></div>' : `
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        ${labs.map(l => `
+          <div class="sgtx-card p-5 hover:shadow-lg transition-shadow">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
                 <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><i class="fas fa-flask text-blue-600"></i></div>
                 <div><div class="font-semibold text-sm">${l.name}</div><div class="text-xs text-surface-400">${l.loc}</div></div>
               </div>
-              ${l.accredited ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">ACCREDITED</span>' : '<span class="text-[10px] bg-surface-100 text-surface-500 px-2 py-0.5 rounded-full">Non-accredited</span>'}
+              ${l.accredited ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">VERIFIED</span>' : '<span class="text-[10px] bg-surface-100 text-surface-500 px-2 py-0.5 rounded-full">Pending KYB</span>'}
             </div>
-            <div class="text-xs text-surface-500 mb-3">${l.speciality}</div>
-            <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
-              <div class="bg-surface-50 rounded p-2"><div class="text-surface-400">Rating</div><div class="font-bold text-gold-600">${l.rating} ★</div></div>
-              <div class="bg-surface-50 rounded p-2"><div class="text-surface-400">Speed</div><div class="font-bold">${l.turnaround}</div></div>
-              <div class="bg-surface-50 rounded p-2"><div class="text-surface-400">Price</div><div class="font-bold">${l.price}</div></div>
-            </div>
+            <div class="text-[10px] font-mono text-surface-400 mb-3">${l.gtid || ''}</div>
             <div class="flex gap-2">
               <button onclick="bookLab('${l.name}')" class="btn-primary flex-1 py-2 text-xs"><i class="fas fa-check mr-1"></i>Book</button>
-              <button class="btn-ghost py-2 px-3 text-xs"><i class="fas fa-eye"></i></button>
             </div>
           </div>`).join('')}
-      </div>`;
+      </div>`}`;
   } catch(e) { content.innerHTML = renderError(e.message); }
 }
 function bookLab(name) {
@@ -3890,7 +3934,7 @@ async function renderGovMultiAgency() {
       ${metricCard('fa-building-columns', 'Agencies', '6', null, 'blue')}
       ${metricCard('fa-arrows-rotate', 'Shared Cases', '3', null, 'purple')}
       ${metricCard('fa-check-double', 'Joint Approvals', '12', null, 'emerald')}
-      ${metricCard('fa-clock', 'Avg Coord Time', '4.2h', null, 'amber')}
+      ${metricCard('fa-clock', 'Avg Coord Time', '\u2014', null, 'amber')}
     </div>
     <div class="sgtx-card p-5">
       <h3 class="font-semibold text-sm mb-4"><i class="fas fa-building-columns mr-2 text-blue-500"></i>Connected Agencies</h3>
@@ -3991,7 +4035,7 @@ async function renderGovCustomsAPI() {
     <div class="grid grid-cols-4 gap-4 mb-5">
       ${metricCard('fa-plug', 'API Status', 'ONLINE', null, 'emerald')}
       ${metricCard('fa-bolt', 'Calls (24h)', '1,247', null, 'blue')}
-      ${metricCard('fa-clock', 'Avg Latency', '120ms', null, 'purple')}
+      ${metricCard('fa-clock', 'Avg Latency', '—', null, 'purple')}
       ${metricCard('fa-check', 'Success Rate', '99.8%', null, 'gold')}
     </div>
     <div class="sgtx-card p-5">
@@ -4210,7 +4254,7 @@ async function renderAdminCustomerCare() {
   content.innerHTML = `
     <div class="grid grid-cols-4 gap-4 mb-5">
       ${metricCard('fa-headset', 'Open Tickets', '8', null, 'blue')}
-      ${metricCard('fa-clock', 'Avg Response', '2.1h', null, 'amber')}
+      ${metricCard('fa-clock', 'Avg Response', '\u2014', null, 'amber')}
       ${metricCard('fa-check', 'Resolved (7d)', '34', null, 'emerald')}
       ${metricCard('fa-star', 'CSAT Score', '4.8/5', null, 'gold')}
     </div>
@@ -4618,7 +4662,7 @@ async function renderMktUsage() {
       ${metricCard('fa-bolt', 'API Calls (30d)', '1.35M', null, 'blue')}
       ${metricCard('fa-chart-bar', 'Avg/Day', '45k', null, 'purple')}
       ${metricCard('fa-gauge-high', 'Quota Used', '67%', null, 'amber')}
-      ${metricCard('fa-clock', 'Avg Response', '120ms', null, 'emerald')}
+      ${metricCard('fa-clock', 'Avg Response', '\u2014', null, 'emerald')}
     </div>
     <div class="sgtx-card p-5"><h3 class="font-semibold text-sm mb-3"><i class="fas fa-chart-area mr-2"></i>API Usage (30 Days)</h3><canvas id="mkt-usage-chart" height="180"></canvas></div>`;
   setTimeout(()=>{const c=document.getElementById('mkt-usage-chart');if(c&&typeof Chart!=='undefined')new Chart(c,{type:'line',data:{labels:Array.from({length:30},(_,i)=>`D${i+1}`),datasets:[{label:'Calls (k)',data:Array.from({length:30},()=>35+Math.random()*20),borderColor:'#3B82F6',tension:0.4,fill:false,pointRadius:0}]},options:{responsive:true,plugins:{legend:{display:false}}}});},100);
@@ -4798,7 +4842,7 @@ async function renderRFQInbox() {
   var content = document.getElementById('content');
   content.innerHTML = shimmerLoader(6);
   try {
-    var res = await api('/upgrades/logistics-rfq?tenant_id=' + tenant.id);
+    var res = await api('/logistics-rfq?tenant_id=' + tenant.id);
     var rfqs = res.data || [];
     var openRFQs = rfqs.filter(function(r) { return r.status === 'OPEN' || r.status === 'RFQ_SENT'; });
     var biddingRFQs = rfqs.filter(function(r) { return r.status === 'BIDDING'; });
@@ -6009,7 +6053,7 @@ async function renderCustomerCare() {
     <div class="grid grid-cols-4 gap-4 mb-6">
       ${metricCard('fa-robot', 'AI Resolved', '78%', 5, 'green')}
       ${metricCard('fa-headset', 'Escalated', 3, null, 'amber')}
-      ${metricCard('fa-clock', 'Avg Response', '< 2min', null, 'blue')}
+      ${metricCard('fa-clock', 'Avg Response', '\u2014', null, 'blue')}
       ${metricCard('fa-star', 'Satisfaction', '4.6/5', null, 'purple')}
     </div>
     ${dataTable(['Ticket', 'Tenant', 'Issue', 'Priority', 'Status', 'Action'], [
@@ -6344,9 +6388,9 @@ async function submitFinancingBid(requestId) {
       conditions: 'Standard terms',
       actor_gtid: window.__gtid || 'SGTX-SG-FIN-000001-E5F6'
     });
-    if (res.data) { alert('Bid submitted successfully!'); renderFinancierDashboard(); }
-    else alert('Error: ' + (res.error || 'Unknown'));
-  } catch(e) { alert('Bid failed: ' + e.message); }
+    if (res.data) { showToast('Bid submitted successfully!', 'success'); renderFinancierDashboard(); }
+    else showToast('Error: ' + (res.error || 'Unknown'), 'error');
+  } catch(e) { showToast('Bid failed: ' + e.message, 'error'); }
 }
 
 async function confirmSettlement(instructionId) {
@@ -6380,15 +6424,24 @@ async function startInspection(id) {
   try {
     await api(`/inspections/${id}`, 'PATCH', { status: 'IN_PROGRESS' });
     renderQCDashboard();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-async function completeInspection(id) {
-  const result = confirm('Did the inspection PASS?') ? 'PASS' : 'FAIL';
+function completeInspection(id) {
+  showModal(`<div class="p-2" role="alertdialog" aria-modal="true" aria-label="Inspection result">
+    <h3 class="text-base font-bold text-surface-800 mb-2">Record inspection result</h3>
+    <p class="text-sm text-surface-600">Select the outcome of this inspection. The result is recorded with accountability.</p>
+    <div class="mt-5 flex gap-2 justify-end">
+      <button onclick="closeModal();submitInspectionResult('${id}','FAIL')" class="text-xs px-4 py-2.5 rounded-lg font-semibold" style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3)"><i class="fas fa-xmark mr-1"></i>FAIL</button>
+      <button onclick="closeModal();submitInspectionResult('${id}','PASS')" class="btn-primary text-xs px-5 py-2.5"><i class="fas fa-check mr-1"></i>PASS</button>
+    </div>
+  </div>`);
+}
+async function submitInspectionResult(id, result) {
   try {
     await api(`/inspections/${id}`, 'PATCH', { status: 'COMPLETED', result, findings: { defects_found: result === 'PASS' ? 1 : 5 }, ai_summary: `Inspection completed with result: ${result}` });
     renderQCDashboard();
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function qcAcceptInspection(id) {
