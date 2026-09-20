@@ -428,7 +428,7 @@ const PAGE_GROUP = {
   'defi-tab':'money','secondary-market':'money','financed-companies':'money','settlements':'money',
   'ship-freight-invoices':'money','ship-contract-rates':'money','lab-invoices':'money',
   // Trust — governance, compliance, disputes, jurisdictions
-  'governor':'trust','disputes':'trust','override-log':'trust','jurisdictions':'trust',
+  'governor':'trust','disputes':'trust','override-log':'trust','jurisdictions':'trust','glossary':'trust',
   'gov-dashboard':'trust','live-trade-monitor':'trust','anonymous-trade':'trust','multi-agency':'trust',
   'gov-docs':'trust','gov-audit':'trust','gov-jurisdictions':'trust','gov-compliance':'trust',
   'gov-permits':'trust','customs-api':'trust',
@@ -847,10 +847,72 @@ function renderTradeWorkspaceView(t, shipment, ref, sub) {
       ${tabBtn('quotes',`Quotes (${quotes.length})`,'fa-file-invoice-dollar')}
       ${tabBtn('contracts',`Contracts (${contracts.length})`,'fa-file-signature')}
       ${tabBtn('shipment','Shipment','fa-ship')}
+      ${tabBtn('activity','Activity','fa-clock-rotate-left')}
       ${expertMode ? tabBtn('expert','Technical','fa-code') : ''}
     </nav>
     <section role="tabpanel" id="trade-tab-panel">${renderTradeTab(activeTab, t, specs, quotes, contracts, shipment)}</section>
   </div>`;
+}
+
+// ─── TERMINOLOGY GLOSSARY (Cockpit Phase 7, Law 4: one canonical definition per concept) ───
+function renderGlossary() {
+  setTitle('Terminology', 'One canonical definition per concept — used consistently platform-wide');
+  const TERMS = [
+    ['Trade', 'The primary object of SGTX. One trade = one URL (/trades/:ref) = one workspace. Every role views the same trade from its own perspective.'],
+    ['Trade Request', 'The opening state of a trade: a buyer\u2019s structured intent (commodity, specs, delivery) submitted through the wizard and pre-screened by the Governor.'],
+    ['Quote', 'A seller\u2019s priced response to a trade request (EXW price + incoterm). Accepting a quote moves the trade toward contract.'],
+    ['Contract', 'The bilateral agreement generated from an accepted quote. LOCKED means cryptographically final \u2014 no further edits.'],
+    ['Shipment', 'The physical movement record for a contracted trade, identified by its USTN and tracked via confirmed milestones.'],
+    ['USTN', 'Universal Shipment Tracking Number \u2014 the single canonical identifier for a shipment. /trades/:ref accepts a trade id or a USTN.'],
+    ['Milestone', 'A confirmed, evidence-backed event on a shipment (e.g. loaded, departed, arrived). Milestones can trigger phased commission release.'],
+    ['Governor', 'The AI governance layer. Every consequential action is screened; verdicts are ALLOW, BLOCK or REVIEW, and each decision is recorded with an id.'],
+    ['Governor Decision', 'The immutable record of one Governor verdict, referenced by governor_decision_id on the affected object.'],
+    ['GTID', 'Global Trade Identity \u2014 the platform-wide identifier of a verified tenant (company).'],
+    ['Tenant', 'A company on SGTX (trader, logistics, financier, lab, etc.). Employees belong to a tenant; a tenant\u2019s role determines its perspectives.'],
+    ['Perspective', 'What a role sees when opening a trade workspace. Same trade, same URL \u2014 role-specific next action.'],
+    ['Next Action', 'The single most important thing the current user should do on a trade right now (Tier 1 of the workspace).'],
+    ['Blocker', 'A real, currently-true condition preventing a trade from advancing. Never fabricated.'],
+    ['Expert Mode', 'Global toggle revealing technical internals (raw records, decision ids, channel state). Off = operational view.'],
+    ['Smart Inbox', 'The prioritized queue of items needing attention, feeding the Home screen\u2019s "Needs my action" section.'],
+    ['Incoterm', 'The standardized delivery term (EXW, FOB, CIF\u2026) defining where risk and cost transfer between buyer and seller.'],
+    ['KYB', 'Know Your Business \u2014 verification status of a tenant. VERIFIED tenants are accredited counterparties.'],
+    ['Distressed Trade', 'A trade re-offered after failure elsewhere (buy-side or sell-side rescue flows).'],
+    ['Trade Channel', 'The secure communication channel opened between counterparties of a specific trade.'],
+  ];
+  document.getElementById('content').innerHTML = `
+    <div class="max-w-3xl space-y-1.5">
+      ${TERMS.map(([term, def]) => `
+        <details class="sgtx-card px-5 py-3 group">
+          <summary class="text-sm font-bold text-surface-800 cursor-pointer list-none flex items-center justify-between">
+            ${term}<i class="fas fa-chevron-down text-[10px] text-surface-400 group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <p class="text-xs text-surface-600 leading-relaxed mt-2">${def}</p>
+        </details>`).join('')}
+    </div>`;
+}
+
+async function loadWorkspaceMilestones(ustn) {
+  const el = document.getElementById('ws-milestones');
+  if (!el) return;
+  try {
+    const res = await api(`/shipments/${encodeURIComponent(ustn)}/milestones`);
+    const ms = (res && (res.data || res.results)) || [];
+    if (!ms.length) { el.innerHTML = '<p class="text-xs text-surface-400">No milestones have been confirmed for this shipment yet.</p>'; return; }
+    el.innerHTML = `<div class="text-[10px] font-bold uppercase tracking-wider text-surface-400 mb-3">Milestone Timeline</div>
+      <ol class="space-y-0" aria-label="Shipment milestones">${ms.map((m, i) => `
+        <li class="flex gap-3 text-xs">
+          <div class="flex flex-col items-center">
+            <span class="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style="background:#d4a017"></span>
+            ${i < ms.length - 1 ? '<span class="w-px flex-1" style="background:rgba(212,160,23,.3)"></span>' : ''}
+          </div>
+          <div class="pb-4">
+            <div class="font-semibold text-surface-800">${(m.milestone || '').replace(/_/g, ' ')}</div>
+            <div class="text-surface-400 mt-0.5">${m.confirmed_at ? time(m.confirmed_at) : ''}${m.confirmation_method ? ' · ' + m.confirmation_method : ''}</div>
+          </div>
+        </li>`).join('')}</ol>`;
+  } catch (e) {
+    el.innerHTML = '<p class="text-xs text-surface-400">Milestone timeline unavailable.</p>';
+  }
 }
 
 function renderTradeTab(tab, t, specs, quotes, contracts, shipment) {
@@ -873,13 +935,34 @@ function renderTradeTab(tab, t, specs, quotes, contracts, shipment) {
       </div>`).join('') : '<p class="text-xs text-surface-400 py-6 text-center">No contract exists for this trade yet.</p>'}</div>`;
   }
   if (tab === 'shipment') {
+    if (shipment && shipment.ustn) setTimeout(() => loadWorkspaceMilestones(shipment.ustn), 0);
     return `<div class="sgtx-card p-5">${shipment ? `
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
         <div><div class="text-surface-400">USTN</div><div class="font-mono font-semibold text-surface-800">${shipment.ustn}</div></div>
         <div><div class="text-surface-400">Status</div>${badge(shipment.status || '—')}</div>
         <div><div class="text-surface-400">Mode</div><div class="font-semibold text-surface-800">${shipment.transport_mode || '—'}</div></div>
         <div><div class="text-surface-400">ETA</div><div class="font-semibold text-surface-800">${shipment.eta ? time(shipment.eta) : '—'}</div></div>
-      </div>` : '<p class="text-xs text-surface-400 py-6 text-center">No shipment has been created for this trade.</p>'}</div>`;
+      </div>
+      <div id="ws-milestones" class="mt-5 pt-4 border-t border-surface-100"><p class="text-xs text-surface-400">Loading milestone timeline…</p></div>` : '<p class="text-xs text-surface-400 py-6 text-center">No shipment has been created for this trade.</p>'}</div>`;
+  }
+  if (tab === 'activity') {
+    // Phase 2: activity feed — REAL events only (quotes, contracts, shipment), chronological
+    const events = [];
+    if (t.created_at) events.push({ at: t.created_at, icon: 'fa-file-circle-plus', text: 'Trade request created' });
+    quotes.forEach(q => q.created_at && events.push({ at: q.created_at, icon: 'fa-file-invoice-dollar', text: `Quote submitted — ${q.incoterm || ''} ${usd(q.exw_price)}` }));
+    contracts.forEach(ct => {
+      if (ct.created_at) events.push({ at: ct.created_at, icon: 'fa-file-signature', text: `Contract drafted (${ct.status || 'DRAFT'})` });
+      if (ct.locked_at) events.push({ at: ct.locked_at, icon: 'fa-lock', text: 'Contract locked' });
+    });
+    if (shipment && shipment.created_at) events.push({ at: shipment.created_at, icon: 'fa-ship', text: `Shipment created — ${shipment.ustn}` });
+    if (t.updated_at && t.updated_at !== t.created_at) events.push({ at: t.updated_at, icon: 'fa-rotate', text: `Status updated → ${t.status}` });
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+    return `<div class="sgtx-card p-5">${events.length ? events.map(e => `
+      <div class="flex items-center gap-3 py-2.5 border-b border-surface-100 text-xs">
+        <i class="fas ${e.icon} text-surface-400 w-4 text-center"></i>
+        <span class="flex-1 text-surface-700">${e.text}</span>
+        <span class="text-surface-400">${timeAgo(e.at)}</span>
+      </div>`).join('') : '<p class="text-xs text-surface-400 py-6 text-center">No recorded activity for this trade yet.</p>'}</div>`;
   }
   if (tab === 'expert') {
     // TIER 5 — technical internals, Expert Mode only
@@ -920,6 +1003,7 @@ const pageRenderers = {
   'jurisdictions': renderJurisdictions,
   'contacts': renderContacts,
   'disputes': renderDisputes,
+  'glossary': renderGlossary,
   // Trader - Buyer
   'new-trade': renderNewTrade,
   'quote-review': renderQuoteReview,
@@ -1633,12 +1717,6 @@ function filterInbox(level) {
   });
 }
 
-async function snoozeInboxItem(id) {
-  try { await apiPost('/inbox/' + id + '/snooze', { snooze_until: new Date(Date.now()+24*3600000).toISOString() }); showToast('Snoozed for 24h', 'info'); renderSmartInbox(); } catch(e) { showToast('Failed', 'error'); }
-}
-async function dismissInboxItem(id) {
-  try { await apiPost('/inbox/' + id + '/dismiss', {}); showToast('Dismissed', 'info'); renderSmartInbox(); } catch(e) { showToast('Failed', 'error'); }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TRADE COMMAND CENTER (Blueprint 12A.2) — Central trade operations view
